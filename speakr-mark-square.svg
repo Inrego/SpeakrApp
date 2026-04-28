@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200" fill="currentColor" aria-label="Speakr">
+  <g transform="translate(14, 22)">
+    <circle cx="14.2" cy="11.2" r="8.5"></circle>
+    <rect x="34.5" y="5.0" width="102.5" height="11.2" rx="5.6"></rect>
+    <rect x="0" y="36.4" width="172.0" height="11.2" rx="5.6" opacity="0.87"></rect>
+    <rect x="0" y="67.8" width="148.0" height="11.2" rx="5.6" opacity="0.74"></rect>
+    <rect x="0" y="99.2" width="160.0" height="11.2" rx="5.6" opacity="0.61"></rect>
+    <rect x="0" y="130.6" width="100.0" height="11.2" rx="5.6" opacity="0.48"></rect>
+  </g>
+</svg>

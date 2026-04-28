@@ -1,0 +1,16 @@
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  errors:
+    # Freezed forwards JsonKey via factory constructor parameters; the analyzer
+    # flags this even though codegen handles it correctly.
+    invalid_annotation_target: ignore
+  exclude:
+    - "**/*.freezed.dart"
+    - "**/*.g.dart"
+
+linter:
+  rules:
+    use_null_aware_elements: false
+    unnecessary_underscores: false
+    unnecessary_brace_in_string_interps: false

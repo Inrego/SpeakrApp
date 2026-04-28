@@ -1,0 +1,201 @@
+// Stroke icons ported from `AIcon` in direction-a-1.jsx (lines 19-31).
+// Implemented as CustomPainters so they pick up `currentColor` from the
+// IconTheme exactly like the SVGs in the React mock.
+
+import 'package:flutter/material.dart';
+
+import '../theme/colors.dart';
+
+enum SpeakrIcon {
+  back,
+  search,
+  more,
+  plus,
+  mic,
+  star,
+  send,
+  pause,
+  stop,
+  flag,
+  chev,
+  close,
+  play,
+  flagBookmark,
+}
+
+class SpeakrIconView extends StatelessWidget {
+  const SpeakrIconView(this.icon, {super.key, this.size = 20, this.color});
+  final SpeakrIcon icon;
+  final double size;
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = color ?? IconTheme.of(context).color ?? SpeakrColors.ink;
+    return SizedBox(
+      width: size,
+      height: size,
+      child: CustomPaint(painter: _IconPainter(icon, c)),
+    );
+  }
+}
+
+class _IconPainter extends CustomPainter {
+  _IconPainter(this.icon, this.color);
+  final SpeakrIcon icon;
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // Paint at a 20×20 grid then scale.
+    final s = size.width / 20.0;
+    canvas.scale(s);
+    final stroke = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+    final fill = Paint()..color = color;
+
+    switch (icon) {
+      case SpeakrIcon.back:
+        final p = Path()
+          ..moveTo(12.5, 4)
+          ..lineTo(6.5, 10)
+          ..lineTo(12.5, 16);
+        canvas.drawPath(p, stroke);
+        break;
+      case SpeakrIcon.search:
+        canvas.drawCircle(const Offset(9, 9), 5.5, stroke);
+        canvas.drawLine(const Offset(13, 13), const Offset(16.5, 16.5), stroke);
+        break;
+      case SpeakrIcon.more:
+        canvas.drawCircle(const Offset(4.5, 10), 1.2, fill);
+        canvas.drawCircle(const Offset(10, 10), 1.2, fill);
+        canvas.drawCircle(const Offset(15.5, 10), 1.2, fill);
+        break;
+      case SpeakrIcon.plus:
+        canvas.drawLine(const Offset(10, 4), const Offset(10, 16), stroke);
+        canvas.drawLine(const Offset(4, 10), const Offset(16, 10), stroke);
+        break;
+      case SpeakrIcon.mic:
+        final body = RRect.fromRectAndRadius(
+          const Rect.fromLTWH(7.5, 3, 5, 9),
+          const Radius.circular(2.5),
+        );
+        canvas.drawRRect(body, stroke);
+        final arc = Path()
+          ..moveTo(4.5, 9.5)
+          ..arcToPoint(const Offset(15.5, 9.5),
+              radius: const Radius.circular(5.5), largeArc: false, clockwise: false);
+        canvas.drawPath(arc, stroke);
+        canvas.drawLine(const Offset(10, 15), const Offset(10, 17.5), stroke);
+        break;
+      case SpeakrIcon.star:
+        final p = Path()
+          ..moveTo(10, 1.5)
+          ..lineTo(12.6, 7.2)
+          ..lineTo(18.5, 7.8)
+          ..lineTo(13.9, 11.8)
+          ..lineTo(15.4, 17.6)
+          ..lineTo(10, 14.6)
+          ..lineTo(4.6, 17.6)
+          ..lineTo(6.1, 11.8)
+          ..lineTo(1.5, 7.8)
+          ..lineTo(7.4, 7.2)
+          ..close();
+        canvas.drawPath(p, fill);
+        break;
+      case SpeakrIcon.send:
+        final p = Path()
+          ..moveTo(2.5, 10)
+          ..lineTo(17, 3.3)
+          ..lineTo(13.7, 17.3)
+          ..lineTo(9.7, 11.7)
+          ..close();
+        canvas.drawPath(p, stroke);
+        break;
+      case SpeakrIcon.pause:
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(
+            const Rect.fromLTWH(5.5, 4.5, 3.2, 11),
+            const Radius.circular(1),
+          ),
+          fill,
+        );
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(
+            const Rect.fromLTWH(11.4, 4.5, 3.2, 11),
+            const Radius.circular(1),
+          ),
+          fill,
+        );
+        break;
+      case SpeakrIcon.stop:
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(
+            const Rect.fromLTWH(5.5, 5.5, 9, 9),
+            const Radius.circular(1.5),
+          ),
+          fill,
+        );
+        break;
+      case SpeakrIcon.flag:
+      case SpeakrIcon.flagBookmark:
+        canvas.drawLine(const Offset(5, 3), const Offset(5, 17), stroke);
+        final p = Path()
+          ..moveTo(5, 4)
+          ..lineTo(14, 4)
+          ..lineTo(12, 7)
+          ..lineTo(14, 10)
+          ..lineTo(5, 10);
+        canvas.drawPath(p, stroke);
+        break;
+      case SpeakrIcon.chev:
+        final p = Path()
+          ..moveTo(7.5, 5)
+          ..lineTo(12.5, 10)
+          ..lineTo(7.5, 15);
+        canvas.drawPath(p, stroke);
+        break;
+      case SpeakrIcon.close:
+        canvas.drawLine(const Offset(5, 5), const Offset(15, 15), stroke);
+        canvas.drawLine(const Offset(15, 5), const Offset(5, 15), stroke);
+        break;
+      case SpeakrIcon.play:
+        final p = Path()
+          ..moveTo(6, 4)
+          ..lineTo(16, 10)
+          ..lineTo(6, 16)
+          ..close();
+        canvas.drawPath(p, fill);
+        break;
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _IconPainter old) =>
+      old.icon != icon || old.color != color;
+}
+
+/// 36×36 ghost icon button used throughout the design (`iconBtn` in JSX).
+class GhostIconButton extends StatelessWidget {
+  const GhostIconButton({super.key, required this.icon, this.onTap, this.size = 20});
+  final SpeakrIcon icon;
+  final VoidCallback? onTap;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkResponse(
+      onTap: onTap,
+      radius: 22,
+      child: SizedBox(
+        width: 36,
+        height: 36,
+        child: Center(child: SpeakrIconView(icon, size: size)),
+      ),
+    );
+  }
+}

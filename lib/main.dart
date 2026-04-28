@@ -1,0 +1,43 @@
+import 'dart:async';
+import 'dart:io' show Platform;
+
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:just_audio_media_kit/just_audio_media_kit.dart';
+import 'package:workmanager/workmanager.dart';
+
+import 'app.dart';
+import 'features/auto_upload/auto_upload_worker.dart';
+import 'features/auto_upload/workmanager_callback.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  if (!kIsWeb && (Platform.isWindows || Platform.isLinux)) {
+    JustAudioMediaKit.ensureInitialized();
+  }
+  GoogleFonts.config.allowRuntimeFetching = true;
+
+  if (!kIsWeb && Platform.isAndroid) {
+    await Workmanager().initialize(autoUploadCallbackDispatcher);
+    await Workmanager().registerPeriodicTask(
+      AutoUploadTaskNames.periodic,
+      AutoUploadTaskNames.periodic,
+      frequency: const Duration(minutes: 15),
+      constraints: Constraints(networkType: NetworkType.connected),
+      existingWorkPolicy: ExistingPeriodicWorkPolicy.keep,
+    );
+  }
+
+  if (!kIsWeb && (Platform.isWindows || Platform.isLinux || Platform.isMacOS)) {
+    // No WorkManager on desktop — run a foreground polling loop. The
+    // worker bails internally when the feature is disabled, so this is
+    // cheap when not configured.
+    Timer.periodic(const Duration(minutes: 5), (_) {
+      runAutoUploadScan(trigger: 'desktop_timer');
+    });
+  }
+
+  runApp(const ProviderScope(child: SpeakrApp()));
+}

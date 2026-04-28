@@ -1,0 +1,226 @@
+// Thin Dio-based client over the Speakr API v1.
+// One method per OpenAPI operation that the UI actually calls. Other
+// operations from openapi/speakr-openapi.json can be added as needed.
+
+import 'dart:io';
+
+import 'package:dio/dio.dart';
+
+import 'models.dart';
+
+class SpeakrApiException implements Exception {
+  SpeakrApiException(this.statusCode, this.message, [this.cause]);
+  final int? statusCode;
+  final String message;
+  final Object? cause;
+
+  @override
+  String toString() => 'SpeakrApiException($statusCode): $message';
+}
+
+class SpeakrApi {
+  SpeakrApi(this._dio);
+
+  final Dio _dio;
+  Dio get dio => _dio;
+
+  // ── Recordings ────────────────────────────────────────────────────────────
+  Future<RecordingPage> listRecordings({
+    int page = 1,
+    int perPage = 25,
+    String? status,
+    String sortBy = 'meeting_date',
+    String sortOrder = 'desc',
+    int? tagId,
+    String? query,
+  }) async {
+    final res = await _get<Map<String, dynamic>>('/recordings', query: {
+      'page': page,
+      'per_page': perPage,
+      if (status != null) 'status': status,
+      'sort_by': sortBy,
+      'sort_order': sortOrder,
+      if (tagId != null) 'tag_id': tagId,
+      if (query != null && query.isNotEmpty) 'q': query,
+    });
+    return RecordingPage.fromJson(res);
+  }
+
+  // Uses the unofficial /api/recordings/{id} endpoint (no /v1) — it returns
+  // richer data than the v1 detail endpoint, including audio_duration.
+  Future<Recording> getRecording(int id) async {
+    final res = await _request<Map<String, dynamic>>(
+      () => _dio.get<Map<String, dynamic>>(
+        '/recordings/$id',
+        options: Options(extra: {'useRootApi': true}),
+      ),
+    );
+    return Recording.fromJson(_unwrap(res, 'recording'));
+  }
+
+  Future<RecordingStatusResponse> getStatus(int id) async {
+    final res = await _get<Map<String, dynamic>>('/recordings/$id/status');
+    return RecordingStatusResponse.fromJson(res);
+  }
+
+  Future<Recording> updateRecording(int id, Map<String, dynamic> patch) async {
+    final res = await _patch<Map<String, dynamic>>('/recordings/$id', patch);
+    return Recording.fromJson(_unwrap(res, 'recording'));
+  }
+
+  Future<void> deleteRecording(int id) async {
+    await _delete<void>('/recordings/$id');
+  }
+
+  Future<ChatResponse> chat(int id, String message,
+      {List<ChatMessage> history = const []}) async {
+    final body = {
+      'message': message,
+      'conversation_history': history
+          .map((m) => {'role': m.role, 'text': m.text})
+          .toList(growable: false),
+    };
+    final res = await _post<Map<String, dynamic>>(
+        '/recordings/$id/chat', body);
+    return ChatResponse.fromJson(res);
+  }
+
+  Future<Recording> uploadRecording({
+    required File file,
+    String? language,
+    int? minSpeakers,
+    int? maxSpeakers,
+    List<int> tagIds = const [],
+    DateTime? fileLastModified,
+    String? notes,
+    void Function(int sent, int total)? onProgress,
+  }) async {
+    final form = FormData.fromMap({
+      'file': await MultipartFile.fromFile(file.path,
+          filename: file.path.split(RegExp(r'[\\/]')).last),
+      if (language != null) 'language': language,
+      if (minSpeakers != null) 'min_speakers': minSpeakers,
+      if (maxSpeakers != null) 'max_speakers': maxSpeakers,
+      if (fileLastModified != null)
+        'file_last_modified':
+            fileLastModified.millisecondsSinceEpoch.toString(),
+      if (notes != null) 'notes': notes,
+      for (var i = 0; i < tagIds.length; i++) 'tag_ids[$i]': tagIds[i],
+    });
+    try {
+      final res = await _dio.post<Map<String, dynamic>>(
+        '/recordings/upload',
+        data: form,
+        onSendProgress: onProgress,
+      );
+      return Recording.fromJson(_unwrap(res.data ?? {}, 'recording'));
+    } on DioException catch (e) {
+      throw _toApiException(e);
+    }
+  }
+
+  Uri audioUrl(int id) {
+    final base = _dio.options.baseUrl;
+    return Uri.parse('$base/recordings/$id/audio');
+  }
+
+  // ── Tags ──────────────────────────────────────────────────────────────────
+  Future<List<Tag>> listTags() async {
+    final res = await _get<dynamic>('/tags');
+    final list = res is List
+        ? res
+        : (res is Map<String, dynamic> ? (res['tags'] as List? ?? []) : []);
+    return list
+        .whereType<Map<String, dynamic>>()
+        .map(Tag.fromJson)
+        .toList(growable: false);
+  }
+
+  Future<Tag> createTag({
+    required String name,
+    String? color,
+    String? customPrompt,
+  }) async {
+    final res = await _post<Map<String, dynamic>>('/tags', {
+      'name': name,
+      if (color != null) 'color': color,
+      if (customPrompt != null) 'custom_prompt': customPrompt,
+    });
+    return Tag.fromJson(_unwrap(res, 'tag'));
+  }
+
+  Future<void> addTagsToRecording(int recId, List<int> tagIds) async {
+    await _post<Map<String, dynamic>>(
+      '/recordings/$recId/tags',
+      {'tag_ids': tagIds},
+    );
+  }
+
+  // ── Settings ──────────────────────────────────────────────────────────────
+  Future<void> setAutoSummarization(bool enabled) async {
+    await _put<Map<String, dynamic>>('/settings/auto-summarization', {
+      'enabled': enabled,
+    });
+  }
+
+  // ── Stats ─────────────────────────────────────────────────────────────────
+  Future<StatsResponse> getStats({String scope = 'user'}) async {
+    final res =
+        await _get<Map<String, dynamic>>('/stats', query: {'scope': scope});
+    return StatsResponse.fromJson(res);
+  }
+
+  /// Lightweight reachability/auth check used by the onboarding screen.
+  Future<bool> ping() async {
+    try {
+      await _get<dynamic>('/stats', query: {'scope': 'user'});
+      return true;
+    } on SpeakrApiException catch (e) {
+      if (e.statusCode != null && e.statusCode! >= 400 && e.statusCode! < 500) {
+        return false;
+      }
+      rethrow;
+    }
+  }
+
+  // ── Internals ─────────────────────────────────────────────────────────────
+  Future<T> _get<T>(String path, {Map<String, dynamic>? query}) =>
+      _request<T>(() => _dio.get<T>(path, queryParameters: query));
+  Future<T> _post<T>(String path, dynamic body) =>
+      _request<T>(() => _dio.post<T>(path, data: body));
+  Future<T> _put<T>(String path, dynamic body) =>
+      _request<T>(() => _dio.put<T>(path, data: body));
+  Future<T> _patch<T>(String path, dynamic body) =>
+      _request<T>(() => _dio.patch<T>(path, data: body));
+  Future<T> _delete<T>(String path) =>
+      _request<T>(() => _dio.delete<T>(path));
+
+  Future<T> _request<T>(Future<Response<T>> Function() send) async {
+    try {
+      final res = await send();
+      return res.data as T;
+    } on DioException catch (e) {
+      throw _toApiException(e);
+    }
+  }
+
+  // Some endpoints wrap the entity in `{recording: {...}}` or `{tag: {...}}`.
+  // Accept either shape.
+  Map<String, dynamic> _unwrap(Map<String, dynamic> body, String key) {
+    final inner = body[key];
+    if (inner is Map<String, dynamic>) return inner;
+    return body;
+  }
+
+  SpeakrApiException _toApiException(DioException e) {
+    final code = e.response?.statusCode;
+    final data = e.response?.data;
+    String msg = e.message ?? 'Network error';
+    if (data is Map<String, dynamic>) {
+      msg = (data['error'] ?? data['message'] ?? msg).toString();
+    } else if (data is String && data.isNotEmpty) {
+      msg = data;
+    }
+    return SpeakrApiException(code, msg, e);
+  }
+}

@@ -1,0 +1,91 @@
+name: speakr_app
+description: "Mobile and desktop client for self-hosted Speakr."
+publish_to: "none"
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.11.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+
+  # State management
+  flutter_riverpod: ^2.5.1
+
+  # Networking
+  dio: ^5.7.0
+
+  # Routing
+  go_router: ^14.2.7
+
+  # Persistence
+  flutter_secure_storage: ^10.0.0
+  shared_preferences: ^2.3.2
+
+  # Audio
+  just_audio: ^0.10.5
+  just_audio_media_kit: ^2.1.0
+  media_kit_libs_windows_audio: any
+  record: ^6.2.0
+
+  # UI
+  google_fonts: ^6.2.1
+  flutter_svg: ^2.0.10+1
+  flutter_markdown_plus: ^1.0.2
+  intl: ^0.20.2
+
+  # Platform integration
+  permission_handler: ^12.0.1
+  path_provider: ^2.1.4
+  file_picker: ^11.0.2
+  workmanager: ^0.9.0+3
+
+  # Models
+  freezed_annotation: ^2.4.4
+  json_annotation: ^4.9.0
+
+  # Utility
+  collection: ^1.18.0
+  path: ^1.9.0
+  rxdart: ^0.28.0
+  audio_metadata_reader: ^1.5.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+  build_runner: ^2.4.13
+  freezed: ^2.5.7
+  json_serializable: ^6.8.0
+
+  # App icon generation (see tools/build_icon_sources.dart and the
+  # flutter_launcher_icons config block below).
+  image: ^4.2.0
+  flutter_launcher_icons: ^0.14.1
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - openapi/speakr-openapi.json
+    - speakr-mark-square.svg
+
+flutter_launcher_icons:
+  image_path: "assets/icon/icon.png"
+  remove_alpha_ios: true
+
+  ios: true
+
+  android: "ic_launcher"
+  adaptive_icon_background: "#FAFAF7"
+  adaptive_icon_foreground: "assets/icon/icon_foreground.png"
+  min_sdk_android: 21
+
+  # Windows icon is generated directly by tools/build_icon_sources.dart so
+  # we can embed multiple sub-image sizes (16/24/32/48/64/128/256) — each
+  # rendered fresh from the SVG primitives rather than downscaled from a
+  # single source. flutter_launcher_icons would only embed one size.
