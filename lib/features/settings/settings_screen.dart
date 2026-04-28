@@ -1,8 +1,13 @@
+import 'dart:io';
+
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../api/models.dart';
 import '../../api/providers.dart';
+import '../../api/speakr_api.dart';
 import '../../services/credentials_store.dart';
 import '../../theme/colors.dart';
 import '../../theme/typography.dart';
@@ -44,20 +49,51 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       });
     }
     setState(() => _checkingServer = true);
+
+    bool reachable = false;
+    StatsResponse? stats;
     try {
-      final stats = await ref.read(speakrApiProvider).getStats();
-      if (!mounted) return;
-      setState(() {
-        _serverOk = true;
-        _version = stats.version;
-        _storageBytes = stats.storageUsedBytes;
-        _recordingsCount = stats.recordings ?? stats.totalRecordings;
-      });
-    } catch (_) {
-      if (mounted) setState(() => _serverOk = false);
-    } finally {
-      if (mounted) setState(() => _checkingServer = false);
+      stats = await ref.read(speakrApiProvider).getStats();
+      reachable = true;
+    } on SpeakrApiException catch (e) {
+      // A non-null statusCode means the server replied — still reachable.
+      // Otherwise the underlying DioException tells us whether the failure
+      // was network-level.
+      reachable = e.statusCode != null || !_isNetworkFailure(e.cause);
+      debugPrint('Settings status: stats call failed: $e');
+    } catch (e, st) {
+      // Anything else (e.g. type/cast errors from a payload we cannot parse)
+      // means we got past the network — treat the server as reachable.
+      reachable = true;
+      debugPrint('Settings status: stats parse failed: $e\n$st');
     }
+
+    if (!mounted) return;
+    setState(() {
+      _serverOk = reachable;
+      _version = stats?.version;
+      _storageBytes = stats?.storageUsedBytes;
+      _recordingsCount = stats?.recordings ?? stats?.totalRecordings;
+      _checkingServer = false;
+    });
+  }
+
+  bool _isNetworkFailure(Object? cause) {
+    if (cause is DioException) {
+      switch (cause.type) {
+        case DioExceptionType.connectionTimeout:
+        case DioExceptionType.sendTimeout:
+        case DioExceptionType.receiveTimeout:
+        case DioExceptionType.connectionError:
+        case DioExceptionType.badCertificate:
+          return true;
+        case DioExceptionType.cancel:
+        case DioExceptionType.badResponse:
+        case DioExceptionType.unknown:
+          return cause.error is SocketException;
+      }
+    }
+    return cause is SocketException;
   }
 
   String _maskToken(String t) {
