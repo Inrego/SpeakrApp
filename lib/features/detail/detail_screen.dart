@@ -406,7 +406,7 @@ class _MoreSheet extends ConsumerWidget {
 
 enum _ReprocessKind { transcription, summary }
 
-class _AudioPlayerBar extends StatelessWidget {
+class _AudioPlayerBar extends StatefulWidget {
   const _AudioPlayerBar({
     required this.player,
     required this.ready,
@@ -415,6 +415,30 @@ class _AudioPlayerBar extends StatelessWidget {
   final AudioPlayer player;
   final bool ready;
   final String totalLabel;
+
+  @override
+  State<_AudioPlayerBar> createState() => _AudioPlayerBarState();
+}
+
+class _AudioPlayerBarState extends State<_AudioPlayerBar> {
+  double? _dragFraction;
+
+  void _seekToFraction(double f, Duration dur, {bool drag = false}) {
+    if (!widget.ready || dur.inMilliseconds == 0) return;
+    final clamped = f.clamp(0.0, 1.0);
+    if (drag) {
+      setState(() => _dragFraction = clamped);
+    }
+    widget.player.seek(Duration(
+      milliseconds: (dur.inMilliseconds * clamped).round(),
+    ));
+  }
+
+  void _clearDrag() {
+    if (_dragFraction != null) {
+      setState(() => _dragFraction = null);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -428,20 +452,22 @@ class _AudioPlayerBar extends StatelessWidget {
       child: Row(
         children: [
           StreamBuilder<PlayerState>(
-            stream: player.playerStateStream,
+            stream: widget.player.playerStateStream,
             builder: (context, snap) {
               final playing = snap.data?.playing ?? false;
               return InkWell(
                 customBorder: const CircleBorder(),
-                onTap: !ready
+                onTap: !widget.ready
                     ? null
-                    : () => playing ? player.pause() : player.play(),
+                    : () => playing
+                        ? widget.player.pause()
+                        : widget.player.play(),
                 child: Container(
                   width: 40,
                   height: 40,
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
-                    color: ready
+                    color: widget.ready
                         ? SpeakrColors.ink
                         : SpeakrColors.muted.withValues(alpha: 0.5),
                     shape: BoxShape.circle,
@@ -458,37 +484,69 @@ class _AudioPlayerBar extends StatelessWidget {
           const SizedBox(width: 14),
           Expanded(
             child: StreamBuilder<Duration>(
-              stream: player.positionStream,
+              stream: widget.player.positionStream,
               builder: (context, posSnap) {
                 final pos = posSnap.data ?? Duration.zero;
-                final dur = player.duration ?? Duration.zero;
-                final progress = dur.inMilliseconds == 0
+                final dur = widget.player.duration ?? Duration.zero;
+                final streamProgress = dur.inMilliseconds == 0
                     ? 0.0
                     : (pos.inMilliseconds / dur.inMilliseconds)
                         .clamp(0.0, 1.0)
                         .toDouble();
+                final progress = _dragFraction ?? streamProgress;
+                final displayedMs = _dragFraction != null
+                    ? (dur.inMilliseconds * _dragFraction!).round()
+                    : pos.inMilliseconds;
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    SizedBox(
-                      height: 4,
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(2),
-                        child: LinearProgressIndicator(
-                          value: progress,
-                          backgroundColor: SpeakrColors.line,
-                          valueColor: const AlwaysStoppedAnimation(
-                              SpeakrColors.ink),
-                          minHeight: 4,
-                        ),
-                      ),
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        final width = constraints.maxWidth;
+                        return MouseRegion(
+                          cursor: widget.ready
+                              ? SystemMouseCursors.click
+                              : MouseCursor.defer,
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTapDown: (d) => _seekToFraction(
+                                d.localPosition.dx / width, dur),
+                            onHorizontalDragStart: (d) => _seekToFraction(
+                                d.localPosition.dx / width, dur,
+                                drag: true),
+                            onHorizontalDragUpdate: (d) => _seekToFraction(
+                                d.localPosition.dx / width, dur,
+                                drag: true),
+                            onHorizontalDragEnd: (_) => _clearDrag(),
+                            onHorizontalDragCancel: _clearDrag,
+                            child: SizedBox(
+                              width: width,
+                              height: 24,
+                              child: Center(
+                                child: SizedBox(
+                                  height: 4,
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(2),
+                                    child: LinearProgressIndicator(
+                                      value: progress,
+                                      backgroundColor: SpeakrColors.line,
+                                      valueColor: const AlwaysStoppedAnimation(
+                                          SpeakrColors.ink),
+                                      minHeight: 4,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      },
                     ),
-                    const SizedBox(height: 8),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          formatDuration(pos.inMilliseconds / 1000.0),
+                          formatDuration(displayedMs / 1000.0),
                           style: SpeakrText.mono(
                               size: 10,
                               color: SpeakrColors.muted,
@@ -497,7 +555,7 @@ class _AudioPlayerBar extends StatelessWidget {
                         Text(
                           dur.inMilliseconds > 0
                               ? formatDuration(dur.inMilliseconds / 1000.0)
-                              : totalLabel,
+                              : widget.totalLabel,
                           style: SpeakrText.mono(
                               size: 10,
                               color: SpeakrColors.muted,
