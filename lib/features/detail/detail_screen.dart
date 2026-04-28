@@ -13,6 +13,7 @@ import '../../utils/formatters.dart';
 import '../../widgets/mono_eyebrow.dart';
 import '../../widgets/speakr_icons.dart';
 import '../../widgets/tag_chip.dart';
+import '../library/library_controller.dart';
 import 'detail_controller.dart';
 import 'speaker_review_screen.dart';
 import 'tabs/chat_tab.dart';
@@ -307,6 +308,19 @@ class _MoreSheet extends ConsumerWidget {
                 kind: _ReprocessKind.summary,
               ),
             ),
+            const Divider(color: SpeakrColors.line, height: 1),
+            ListTile(
+              leading: const SpeakrIconView(SpeakrIcon.trash),
+              title: Text(
+                'Delete recording',
+                style: SpeakrText.sans(size: 14, color: SpeakrColors.danger),
+              ),
+              subtitle: Text(
+                'Removes the recording, transcript, and audio',
+                style: SpeakrText.sans(size: 12, color: SpeakrColors.muted),
+              ),
+              onTap: () => _delete(context, ref),
+            ),
           ],
         ),
       ),
@@ -402,11 +416,66 @@ class _MoreSheet extends ConsumerWidget {
       messenger.showSnackBar(SnackBar(content: Text(e.toString())));
     }
   }
+
+  Future<void> _delete(BuildContext context, WidgetRef ref) async {
+    final navigator = Navigator.of(context);
+    final goRouter = GoRouter.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    final container = ProviderScope.containerOf(context, listen: false);
+    final api = container.read(speakrApiProvider);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: SpeakrColors.bg,
+        title: Text(
+          'Delete recording?',
+          style: SpeakrText.serif(size: 20),
+        ),
+        content: Text(
+          'This permanently deletes the recording, its transcript, and its audio. This cannot be undone.',
+          style: SpeakrText.sans(size: 14, height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text('Cancel',
+                style: SpeakrText.sans(
+                    size: 13, color: SpeakrColors.muted)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style:
+                TextButton.styleFrom(foregroundColor: SpeakrColors.danger),
+            child: Text('Delete',
+                style: SpeakrText.sans(
+                    size: 13,
+                    weight: FontWeight.w600,
+                    color: SpeakrColors.danger)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    navigator.pop(); // close the bottom sheet
+    try {
+      await api.deleteRecording(recording.id);
+      container.invalidate(libraryRecordingsProvider);
+      container.invalidate(recordingDetailProvider(recording.id));
+      if (goRouter.canPop()) goRouter.pop();
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Recording deleted')),
+      );
+    } on SpeakrApiException catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text(e.message)));
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text(e.toString())));
+    }
+  }
 }
 
 enum _ReprocessKind { transcription, summary }
 
-class _AudioPlayerBar extends StatelessWidget {
+class _AudioPlayerBar extends StatefulWidget {
   const _AudioPlayerBar({
     required this.player,
     required this.ready,
@@ -415,6 +484,30 @@ class _AudioPlayerBar extends StatelessWidget {
   final AudioPlayer player;
   final bool ready;
   final String totalLabel;
+
+  @override
+  State<_AudioPlayerBar> createState() => _AudioPlayerBarState();
+}
+
+class _AudioPlayerBarState extends State<_AudioPlayerBar> {
+  double? _dragFraction;
+
+  void _seekToFraction(double f, Duration dur, {bool drag = false}) {
+    if (!widget.ready || dur.inMilliseconds == 0) return;
+    final clamped = f.clamp(0.0, 1.0);
+    if (drag) {
+      setState(() => _dragFraction = clamped);
+    }
+    widget.player.seek(Duration(
+      milliseconds: (dur.inMilliseconds * clamped).round(),
+    ));
+  }
+
+  void _clearDrag() {
+    if (_dragFraction != null) {
+      setState(() => _dragFraction = null);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -428,20 +521,22 @@ class _AudioPlayerBar extends StatelessWidget {
       child: Row(
         children: [
           StreamBuilder<PlayerState>(
-            stream: player.playerStateStream,
+            stream: widget.player.playerStateStream,
             builder: (context, snap) {
               final playing = snap.data?.playing ?? false;
               return InkWell(
                 customBorder: const CircleBorder(),
-                onTap: !ready
+                onTap: !widget.ready
                     ? null
-                    : () => playing ? player.pause() : player.play(),
+                    : () => playing
+                        ? widget.player.pause()
+                        : widget.player.play(),
                 child: Container(
                   width: 40,
                   height: 40,
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
-                    color: ready
+                    color: widget.ready
                         ? SpeakrColors.ink
                         : SpeakrColors.muted.withValues(alpha: 0.5),
                     shape: BoxShape.circle,
@@ -458,37 +553,69 @@ class _AudioPlayerBar extends StatelessWidget {
           const SizedBox(width: 14),
           Expanded(
             child: StreamBuilder<Duration>(
-              stream: player.positionStream,
+              stream: widget.player.positionStream,
               builder: (context, posSnap) {
                 final pos = posSnap.data ?? Duration.zero;
-                final dur = player.duration ?? Duration.zero;
-                final progress = dur.inMilliseconds == 0
+                final dur = widget.player.duration ?? Duration.zero;
+                final streamProgress = dur.inMilliseconds == 0
                     ? 0.0
                     : (pos.inMilliseconds / dur.inMilliseconds)
                         .clamp(0.0, 1.0)
                         .toDouble();
+                final progress = _dragFraction ?? streamProgress;
+                final displayedMs = _dragFraction != null
+                    ? (dur.inMilliseconds * _dragFraction!).round()
+                    : pos.inMilliseconds;
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    SizedBox(
-                      height: 4,
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(2),
-                        child: LinearProgressIndicator(
-                          value: progress,
-                          backgroundColor: SpeakrColors.line,
-                          valueColor: const AlwaysStoppedAnimation(
-                              SpeakrColors.ink),
-                          minHeight: 4,
-                        ),
-                      ),
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        final width = constraints.maxWidth;
+                        return MouseRegion(
+                          cursor: widget.ready
+                              ? SystemMouseCursors.click
+                              : MouseCursor.defer,
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTapDown: (d) => _seekToFraction(
+                                d.localPosition.dx / width, dur),
+                            onHorizontalDragStart: (d) => _seekToFraction(
+                                d.localPosition.dx / width, dur,
+                                drag: true),
+                            onHorizontalDragUpdate: (d) => _seekToFraction(
+                                d.localPosition.dx / width, dur,
+                                drag: true),
+                            onHorizontalDragEnd: (_) => _clearDrag(),
+                            onHorizontalDragCancel: _clearDrag,
+                            child: SizedBox(
+                              width: width,
+                              height: 24,
+                              child: Center(
+                                child: SizedBox(
+                                  height: 4,
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(2),
+                                    child: LinearProgressIndicator(
+                                      value: progress,
+                                      backgroundColor: SpeakrColors.line,
+                                      valueColor: const AlwaysStoppedAnimation(
+                                          SpeakrColors.ink),
+                                      minHeight: 4,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      },
                     ),
-                    const SizedBox(height: 8),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          formatDuration(pos.inMilliseconds / 1000.0),
+                          formatDuration(displayedMs / 1000.0),
                           style: SpeakrText.mono(
                               size: 10,
                               color: SpeakrColors.muted,
@@ -497,7 +624,7 @@ class _AudioPlayerBar extends StatelessWidget {
                         Text(
                           dur.inMilliseconds > 0
                               ? formatDuration(dur.inMilliseconds / 1000.0)
-                              : totalLabel,
+                              : widget.totalLabel,
                           style: SpeakrText.mono(
                               size: 10,
                               color: SpeakrColors.muted,

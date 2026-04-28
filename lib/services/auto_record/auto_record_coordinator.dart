@@ -89,6 +89,12 @@ class AutoRecordCoordinator {
   String? _activeTriggerLabel;
   String? get activeTriggerLabel => _activeTriggerLabel;
 
+  /// Trigger the user explicitly stopped/discarded. Suppresses
+  /// auto-restart for the same trigger until it releases the mic
+  /// (i.e., the meeting ends). Cleared in [_onMicUpdate].
+  String? _dismissedTriggerKey;
+  AllowlistKind? _dismissedTriggerKind;
+
   /// Bookkeeping for the silence/mic-released stop heuristic.
   DateTime? _silentSinceUtc;
   DateTime? _micReleasedSinceUtc;
@@ -153,12 +159,31 @@ class AutoRecordCoordinator {
       return;
     }
 
+    // Clear a pending dismissal once the trigger app has released the
+    // mic — that's the "this meeting ended" boundary, after which a new
+    // acquisition should auto-start as before.
+    if (_dismissedTriggerKey != null && _dismissedTriggerKind != null) {
+      final stillInUse = users.any((u) =>
+          u.isInUse &&
+          _userMatchesTrigger(u, _dismissedTriggerKey!, _dismissedTriggerKind!));
+      if (!stillInUse) {
+        _dismissedTriggerKey = null;
+        _dismissedTriggerKind = null;
+      }
+    }
+
     // Idle: try to find a fresh allowlist match to start.
     final cutoff = DateTime.now().subtract(const Duration(hours: 12));
     for (final user in users) {
       if (!user.isInUse) continue;
       if (user.lastStart.isBefore(cutoff)) continue;
       if (_isSelf(user)) continue;
+      if (_dismissedTriggerKey != null &&
+          _dismissedTriggerKind != null &&
+          _userMatchesTrigger(
+              user, _dismissedTriggerKey!, _dismissedTriggerKind!)) {
+        continue;
+      }
       final entry = _firstAllowlistMatch(settings.allowlist, user);
       if (entry == null) continue;
       await _startAutoRecording(user, entry);
@@ -172,13 +197,7 @@ class AutoRecordCoordinator {
     if (key == null || kind == null) return;
     MicUser? trigger;
     for (final u in users) {
-      if (u.kind != kind) continue;
-      final mine = u.key.toLowerCase();
-      final theirs = key.toLowerCase();
-      final hit = kind == AllowlistKind.packagedPrefix
-          ? mine.startsWith(theirs)
-          : mine == theirs;
-      if (hit) {
+      if (_userMatchesTrigger(u, key, kind)) {
         trigger = u;
         break;
       }
@@ -204,6 +223,13 @@ class AutoRecordCoordinator {
       // Session finished (or was cancelled). Clear auto-session state.
       _meterSub?.cancel();
       _meterSub = null;
+      if (_autoSession) {
+        // Remember the trigger so we don't auto-restart for the same
+        // meeting if the user just stopped/discarded. Cleared once the
+        // trigger app releases the mic (see [_onMicUpdate]).
+        _dismissedTriggerKey = _activeTriggerKey;
+        _dismissedTriggerKind = _activeTriggerKind;
+      }
       _autoSession = false;
       _activeTriggerKey = null;
       _activeTriggerKind = null;
@@ -353,6 +379,15 @@ class AutoRecordCoordinator {
   bool _isSelf(MicUser user) {
     if (user.kind != AllowlistKind.exeBasename) return false;
     return user.key.toLowerCase() == _selfBasename.toLowerCase();
+  }
+
+  bool _userMatchesTrigger(MicUser u, String key, AllowlistKind kind) {
+    if (u.kind != kind) return false;
+    final mine = u.key.toLowerCase();
+    final theirs = key.toLowerCase();
+    return kind == AllowlistKind.packagedPrefix
+        ? mine.startsWith(theirs)
+        : mine == theirs;
   }
 
   static String _basename(String path) {

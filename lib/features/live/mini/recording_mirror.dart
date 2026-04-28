@@ -61,6 +61,7 @@ class RecordingMirror extends StateNotifier<RecordingState> {
   Future<void> togglePause() => _send(MiniIpc.cmdTogglePause);
   Future<void> stop() => _send(MiniIpc.cmdStop);
   Future<void> cancel() => _send(MiniIpc.cmdCancel);
+  Future<void> hideMini() => _send(MiniIpc.cmdHideMini);
   Future<void> setSpeakers(int v) =>
       _send(MiniIpc.cmdSetSpeakers, {'value': v});
   Future<void> toggleTag(String name) =>

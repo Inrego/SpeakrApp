@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -108,6 +110,10 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
   Widget build(BuildContext context) {
     final state = ref.watch(recordingControllerProvider);
     final controller = ref.read(recordingControllerProvider.notifier);
+    final canOpenMini = !kIsWeb &&
+        Platform.isWindows &&
+        state.started &&
+        !state.miniOpen;
 
     return Scaffold(
       backgroundColor: SpeakrColors.bg,
@@ -117,6 +123,7 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
             _TopBar(
               onMinimize: _minimize,
               onDiscard: _confirmDiscard,
+              onShowMini: canOpenMini ? controller.openMini : null,
             ),
             const SizedBox(height: 4),
             LiveIndicator(paused: state.paused),
@@ -163,9 +170,14 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
 }
 
 class _TopBar extends StatelessWidget {
-  const _TopBar({required this.onMinimize, required this.onDiscard});
+  const _TopBar({
+    required this.onMinimize,
+    required this.onDiscard,
+    this.onShowMini,
+  });
   final VoidCallback onMinimize;
   final Future<void> Function() onDiscard;
+  final Future<void> Function()? onShowMini;
 
   @override
   Widget build(BuildContext context) {
@@ -174,7 +186,16 @@ class _TopBar extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          GhostIconButton(icon: SpeakrIcon.minimize, onTap: onMinimize),
+          Row(
+            children: [
+              GhostIconButton(icon: SpeakrIcon.minimize, onTap: onMinimize),
+              if (onShowMini != null)
+                GhostIconButton(
+                  icon: SpeakrIcon.pip,
+                  onTap: () => onShowMini!(),
+                ),
+            ],
+          ),
           const MonoEyebrow('Recording', size: 10),
           GhostIconButton(icon: SpeakrIcon.trash, onTap: () => onDiscard()),
         ],
