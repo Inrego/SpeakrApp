@@ -6,7 +6,7 @@ part 'credentials_store.freezed.dart';
 part 'credentials_store.g.dart';
 
 @freezed
-class SpeakrCredentials with _$SpeakrCredentials {
+sealed class SpeakrCredentials with _$SpeakrCredentials {
   const factory SpeakrCredentials({
     required String baseUrl,
     required String token,

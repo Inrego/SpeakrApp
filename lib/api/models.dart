@@ -65,7 +65,7 @@ RecordingStatus _parseRecordingStatus(Object? raw) {
 }
 
 @freezed
-class Tag with _$Tag {
+sealed class Tag with _$Tag {
   const factory Tag({
     required int id,
     required String name,
@@ -80,7 +80,7 @@ class Tag with _$Tag {
 }
 
 @freezed
-class Speaker with _$Speaker {
+sealed class Speaker with _$Speaker {
   const factory Speaker({
     required int id,
     required String name,
@@ -94,7 +94,7 @@ class Speaker with _$Speaker {
 }
 
 @freezed
-class Recording with _$Recording {
+sealed class Recording with _$Recording {
   const factory Recording({
     required int id,
     String? title,
@@ -130,7 +130,7 @@ class Recording with _$Recording {
 }
 
 @freezed
-class RecordingPage with _$RecordingPage {
+sealed class RecordingPage with _$RecordingPage {
   const factory RecordingPage({
     @Default(<Recording>[]) List<Recording> recordings,
     @Default(1) int page,
@@ -144,7 +144,7 @@ class RecordingPage with _$RecordingPage {
 }
 
 @freezed
-class TranscriptSegment with _$TranscriptSegment {
+sealed class TranscriptSegment with _$TranscriptSegment {
   const factory TranscriptSegment({
     String? speaker,
     @JsonKey(name: 'start_time') double? startTime,
@@ -157,7 +157,7 @@ class TranscriptSegment with _$TranscriptSegment {
 }
 
 @freezed
-class RecordingStatusResponse with _$RecordingStatusResponse {
+sealed class RecordingStatusResponse with _$RecordingStatusResponse {
   const factory RecordingStatusResponse({
     @JsonKey(fromJson: _parseRecordingStatus) required RecordingStatus status,
     @JsonKey(name: 'queue_position') int? queuePosition,
@@ -169,7 +169,7 @@ class RecordingStatusResponse with _$RecordingStatusResponse {
 }
 
 @freezed
-class ChatMessage with _$ChatMessage {
+sealed class ChatMessage with _$ChatMessage {
   const factory ChatMessage({
     required String role, // "user" | "assistant"
     required String text,
@@ -180,7 +180,7 @@ class ChatMessage with _$ChatMessage {
 }
 
 @freezed
-class ChatResponse with _$ChatResponse {
+sealed class ChatResponse with _$ChatResponse {
   const factory ChatResponse({
     @JsonKey(name: 'response') required String response,
   }) = _ChatResponse;
@@ -190,7 +190,7 @@ class ChatResponse with _$ChatResponse {
 }
 
 @freezed
-class StatsResponse with _$StatsResponse {
+sealed class StatsResponse with _$StatsResponse {
   const factory StatsResponse({
     StatsActivity? activity,
     StatsQueue? queue,
@@ -205,7 +205,7 @@ class StatsResponse with _$StatsResponse {
 }
 
 @freezed
-class StatsActivity with _$StatsActivity {
+sealed class StatsActivity with _$StatsActivity {
   const factory StatsActivity({
     @JsonKey(name: 'last_transcription') DateTime? lastTranscription,
     @JsonKey(name: 'recordings_today') int? recordingsToday,
@@ -216,7 +216,7 @@ class StatsActivity with _$StatsActivity {
 }
 
 @freezed
-class StatsQueue with _$StatsQueue {
+sealed class StatsQueue with _$StatsQueue {
   const factory StatsQueue({
     @JsonKey(name: 'jobs_processing') int? jobsProcessing,
     @JsonKey(name: 'jobs_queued') int? jobsQueued,
@@ -227,7 +227,7 @@ class StatsQueue with _$StatsQueue {
 }
 
 @freezed
-class StatsRecordings with _$StatsRecordings {
+sealed class StatsRecordings with _$StatsRecordings {
   const factory StatsRecordings({
     int? completed,
     int? failed,
@@ -241,7 +241,7 @@ class StatsRecordings with _$StatsRecordings {
 }
 
 @freezed
-class StatsStorage with _$StatsStorage {
+sealed class StatsStorage with _$StatsStorage {
   const factory StatsStorage({
     @JsonKey(name: 'used_bytes') int? usedBytes,
     @JsonKey(name: 'used_human') String? usedHuman,
@@ -252,7 +252,7 @@ class StatsStorage with _$StatsStorage {
 }
 
 @freezed
-class StatsTokens with _$StatsTokens {
+sealed class StatsTokens with _$StatsTokens {
   const factory StatsTokens({
     int? budget,
     double? percentage,
@@ -264,7 +264,7 @@ class StatsTokens with _$StatsTokens {
 }
 
 @freezed
-class StatsTranscription with _$StatsTranscription {
+sealed class StatsTranscription with _$StatsTranscription {
   const factory StatsTranscription({
     @JsonKey(name: 'budget_minutes') int? budgetMinutes,
     @JsonKey(name: 'budget_seconds') int? budgetSeconds,

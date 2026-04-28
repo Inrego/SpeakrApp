@@ -6,7 +6,7 @@ part 'recording_state.g.dart';
 /// State shared between the main recording UI and the Windows-only
 /// always-on-top mini window. Serializable for IPC.
 @freezed
-class RecordingState with _$RecordingState {
+sealed class RecordingState with _$RecordingState {
   const RecordingState._();
 
   const factory RecordingState({
