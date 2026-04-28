@@ -138,28 +138,10 @@ class _Header extends StatelessWidget {
             icon: searching ? SpeakrIcon.close : SpeakrIcon.search,
             onTap: onToggleSearch,
           ),
-          InkWell(
-            customBorder: const CircleBorder(),
+          GhostIconButton(
+            icon: SpeakrIcon.settings,
             onTap: onSettings,
-            child: Container(
-              width: 28,
-              height: 28,
-              alignment: Alignment.center,
-              decoration: const BoxDecoration(
-                color: SpeakrColors.ink,
-                shape: BoxShape.circle,
-              ),
-              child: Text(
-                'ME',
-                style: SpeakrText.sans(
-                  size: 11,
-                  weight: FontWeight.w600,
-                  color: SpeakrColors.bg,
-                ),
-              ),
-            ),
           ),
-          const SizedBox(width: 4),
         ],
       ),
     );

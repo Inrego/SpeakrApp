@@ -2,6 +2,8 @@
 // Implemented as CustomPainters so they pick up `currentColor` from the
 // IconTheme exactly like the SVGs in the React mock.
 
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../theme/colors.dart';
@@ -21,6 +23,7 @@ enum SpeakrIcon {
   close,
   play,
   flagBookmark,
+  settings,
 }
 
 class SpeakrIconView extends StatelessWidget {
@@ -170,6 +173,19 @@ class _IconPainter extends CustomPainter {
           ..lineTo(6, 16)
           ..close();
         canvas.drawPath(p, fill);
+        break;
+      case SpeakrIcon.settings:
+        canvas.drawCircle(const Offset(10, 10), 2.6, stroke);
+        for (var i = 0; i < 8; i++) {
+          final angle = i * (math.pi / 4);
+          final dx = math.cos(angle);
+          final dy = math.sin(angle);
+          canvas.drawLine(
+            Offset(10 + dx * 4.6, 10 + dy * 4.6),
+            Offset(10 + dx * 7.2, 10 + dy * 7.2),
+            stroke,
+          );
+        }
         break;
     }
   }
