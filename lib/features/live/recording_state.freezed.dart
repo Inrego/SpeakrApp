@@ -229,7 +229,7 @@ class _$RecordingStateImpl extends _RecordingState {
     this.uploading = false,
     this.error,
     this.speakers = 2,
-    final List<String> activeTags = const <String>['Internal'],
+    final List<String> activeTags = const <String>[],
     this.miniOpen = false,
     this.miniWindowId,
   }) : _activeTags = activeTags,

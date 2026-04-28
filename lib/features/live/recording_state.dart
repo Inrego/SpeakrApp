@@ -16,7 +16,7 @@ class RecordingState with _$RecordingState {
     @Default(false) bool uploading,
     String? error,
     @Default(2) int speakers,
-    @Default(<String>['Internal']) List<String> activeTags,
+    @Default(<String>[]) List<String> activeTags,
     @Default(false) bool miniOpen,
     int? miniWindowId,
   }) = _RecordingState;

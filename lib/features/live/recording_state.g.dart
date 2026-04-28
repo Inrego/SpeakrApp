@@ -18,7 +18,7 @@ _$RecordingStateImpl _$$RecordingStateImplFromJson(Map<String, dynamic> json) =>
           (json['activeTags'] as List<dynamic>?)
               ?.map((e) => e as String)
               .toList() ??
-          const <String>['Internal'],
+          const <String>[],
       miniOpen: json['miniOpen'] as bool? ?? false,
       miniWindowId: (json['miniWindowId'] as num?)?.toInt(),
     );
