@@ -208,6 +208,37 @@ class SpeakrApi {
         .toList(growable: false);
   }
 
+  // GET /api/speakers/suggestions/{recording_id} — root API (no /v1).
+  // Returns label → ranked list (best first). Empty list and missing key are
+  // treated identically by callers.
+  // GET /speakers/suggestions/{recording_id} — bare host path, no /api prefix.
+  // Returns label → ranked list (best first). Empty list and missing key are
+  // treated identically by callers.
+  Future<Map<String, List<SpeakerSuggestion>>> getSpeakerSuggestions(
+      int recordingId) async {
+    final res = await _request<Map<String, dynamic>>(
+      () => _dio.get<Map<String, dynamic>>(
+        '/speakers/suggestions/$recordingId',
+        options: Options(extra: {'noApiPrefix': true}),
+      ),
+    );
+    if (res['success'] == false) {
+      throw SpeakrApiException(
+          null, (res['error'] ?? 'Failed to load suggestions').toString());
+    }
+    final raw = res['suggestions'];
+    if (raw is! Map) return const {};
+    final out = <String, List<SpeakerSuggestion>>{};
+    raw.forEach((key, value) {
+      if (key is! String || value is! List) return;
+      out[key] = value
+          .whereType<Map<String, dynamic>>()
+          .map(SpeakerSuggestion.fromJson)
+          .toList(growable: false);
+    });
+    return out;
+  }
+
   // ── Settings ──────────────────────────────────────────────────────────────
   Future<void> setAutoSummarization(bool enabled) async {
     await _put<Map<String, dynamic>>('/settings/auto-summarization', {

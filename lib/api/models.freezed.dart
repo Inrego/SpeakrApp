@@ -557,6 +557,275 @@ as DateTime?,
 
 
 /// @nodoc
+mixin _$SpeakerSuggestion {
+
+@JsonKey(name: 'speaker_id') int get speakerId; String get name; double get confidence; double get similarity;@JsonKey(name: 'embedding_count') int get embeddingCount;
+/// Create a copy of SpeakerSuggestion
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$SpeakerSuggestionCopyWith<SpeakerSuggestion> get copyWith => _$SpeakerSuggestionCopyWithImpl<SpeakerSuggestion>(this as SpeakerSuggestion, _$identity);
+
+  /// Serializes this SpeakerSuggestion to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SpeakerSuggestion&&(identical(other.speakerId, speakerId) || other.speakerId == speakerId)&&(identical(other.name, name) || other.name == name)&&(identical(other.confidence, confidence) || other.confidence == confidence)&&(identical(other.similarity, similarity) || other.similarity == similarity)&&(identical(other.embeddingCount, embeddingCount) || other.embeddingCount == embeddingCount));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,speakerId,name,confidence,similarity,embeddingCount);
+
+@override
+String toString() {
+  return 'SpeakerSuggestion(speakerId: $speakerId, name: $name, confidence: $confidence, similarity: $similarity, embeddingCount: $embeddingCount)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $SpeakerSuggestionCopyWith<$Res>  {
+  factory $SpeakerSuggestionCopyWith(SpeakerSuggestion value, $Res Function(SpeakerSuggestion) _then) = _$SpeakerSuggestionCopyWithImpl;
+@useResult
+$Res call({
+@JsonKey(name: 'speaker_id') int speakerId, String name, double confidence, double similarity,@JsonKey(name: 'embedding_count') int embeddingCount
+});
+
+
+
+
+}
+/// @nodoc
+class _$SpeakerSuggestionCopyWithImpl<$Res>
+    implements $SpeakerSuggestionCopyWith<$Res> {
+  _$SpeakerSuggestionCopyWithImpl(this._self, this._then);
+
+  final SpeakerSuggestion _self;
+  final $Res Function(SpeakerSuggestion) _then;
+
+/// Create a copy of SpeakerSuggestion
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? speakerId = null,Object? name = null,Object? confidence = null,Object? similarity = null,Object? embeddingCount = null,}) {
+  return _then(_self.copyWith(
+speakerId: null == speakerId ? _self.speakerId : speakerId // ignore: cast_nullable_to_non_nullable
+as int,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
+as String,confidence: null == confidence ? _self.confidence : confidence // ignore: cast_nullable_to_non_nullable
+as double,similarity: null == similarity ? _self.similarity : similarity // ignore: cast_nullable_to_non_nullable
+as double,embeddingCount: null == embeddingCount ? _self.embeddingCount : embeddingCount // ignore: cast_nullable_to_non_nullable
+as int,
+  ));
+}
+
+}
+
+
+/// Adds pattern-matching-related methods to [SpeakerSuggestion].
+extension SpeakerSuggestionPatterns on SpeakerSuggestion {
+/// A variant of `map` that fallback to returning `orElse`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _SpeakerSuggestion value)?  $default,{required TResult orElse(),}){
+final _that = this;
+switch (_that) {
+case _SpeakerSuggestion() when $default != null:
+return $default(_that);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// Callbacks receives the raw object, upcasted.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case final Subclass2 value:
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _SpeakerSuggestion value)  $default,){
+final _that = this;
+switch (_that) {
+case _SpeakerSuggestion():
+return $default(_that);}
+}
+/// A variant of `map` that fallback to returning `null`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _SpeakerSuggestion value)?  $default,){
+final _that = this;
+switch (_that) {
+case _SpeakerSuggestion() when $default != null:
+return $default(_that);case _:
+  return null;
+
+}
+}
+/// A variant of `when` that fallback to an `orElse` callback.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: 'speaker_id')  int speakerId,  String name,  double confidence,  double similarity, @JsonKey(name: 'embedding_count')  int embeddingCount)?  $default,{required TResult orElse(),}) {final _that = this;
+switch (_that) {
+case _SpeakerSuggestion() when $default != null:
+return $default(_that.speakerId,_that.name,_that.confidence,_that.similarity,_that.embeddingCount);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// As opposed to `map`, this offers destructuring.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case Subclass2(:final field2):
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: 'speaker_id')  int speakerId,  String name,  double confidence,  double similarity, @JsonKey(name: 'embedding_count')  int embeddingCount)  $default,) {final _that = this;
+switch (_that) {
+case _SpeakerSuggestion():
+return $default(_that.speakerId,_that.name,_that.confidence,_that.similarity,_that.embeddingCount);}
+}
+/// A variant of `when` that fallback to returning `null`
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: 'speaker_id')  int speakerId,  String name,  double confidence,  double similarity, @JsonKey(name: 'embedding_count')  int embeddingCount)?  $default,) {final _that = this;
+switch (_that) {
+case _SpeakerSuggestion() when $default != null:
+return $default(_that.speakerId,_that.name,_that.confidence,_that.similarity,_that.embeddingCount);case _:
+  return null;
+
+}
+}
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class _SpeakerSuggestion implements SpeakerSuggestion {
+  const _SpeakerSuggestion({@JsonKey(name: 'speaker_id') required this.speakerId, required this.name, this.confidence = 0.0, this.similarity = 0.0, @JsonKey(name: 'embedding_count') this.embeddingCount = 0});
+  factory _SpeakerSuggestion.fromJson(Map<String, dynamic> json) => _$SpeakerSuggestionFromJson(json);
+
+@override@JsonKey(name: 'speaker_id') final  int speakerId;
+@override final  String name;
+@override@JsonKey() final  double confidence;
+@override@JsonKey() final  double similarity;
+@override@JsonKey(name: 'embedding_count') final  int embeddingCount;
+
+/// Create a copy of SpeakerSuggestion
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$SpeakerSuggestionCopyWith<_SpeakerSuggestion> get copyWith => __$SpeakerSuggestionCopyWithImpl<_SpeakerSuggestion>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$SpeakerSuggestionToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SpeakerSuggestion&&(identical(other.speakerId, speakerId) || other.speakerId == speakerId)&&(identical(other.name, name) || other.name == name)&&(identical(other.confidence, confidence) || other.confidence == confidence)&&(identical(other.similarity, similarity) || other.similarity == similarity)&&(identical(other.embeddingCount, embeddingCount) || other.embeddingCount == embeddingCount));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,speakerId,name,confidence,similarity,embeddingCount);
+
+@override
+String toString() {
+  return 'SpeakerSuggestion(speakerId: $speakerId, name: $name, confidence: $confidence, similarity: $similarity, embeddingCount: $embeddingCount)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$SpeakerSuggestionCopyWith<$Res> implements $SpeakerSuggestionCopyWith<$Res> {
+  factory _$SpeakerSuggestionCopyWith(_SpeakerSuggestion value, $Res Function(_SpeakerSuggestion) _then) = __$SpeakerSuggestionCopyWithImpl;
+@override @useResult
+$Res call({
+@JsonKey(name: 'speaker_id') int speakerId, String name, double confidence, double similarity,@JsonKey(name: 'embedding_count') int embeddingCount
+});
+
+
+
+
+}
+/// @nodoc
+class __$SpeakerSuggestionCopyWithImpl<$Res>
+    implements _$SpeakerSuggestionCopyWith<$Res> {
+  __$SpeakerSuggestionCopyWithImpl(this._self, this._then);
+
+  final _SpeakerSuggestion _self;
+  final $Res Function(_SpeakerSuggestion) _then;
+
+/// Create a copy of SpeakerSuggestion
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? speakerId = null,Object? name = null,Object? confidence = null,Object? similarity = null,Object? embeddingCount = null,}) {
+  return _then(_SpeakerSuggestion(
+speakerId: null == speakerId ? _self.speakerId : speakerId // ignore: cast_nullable_to_non_nullable
+as int,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
+as String,confidence: null == confidence ? _self.confidence : confidence // ignore: cast_nullable_to_non_nullable
+as double,similarity: null == similarity ? _self.similarity : similarity // ignore: cast_nullable_to_non_nullable
+as double,embeddingCount: null == embeddingCount ? _self.embeddingCount : embeddingCount // ignore: cast_nullable_to_non_nullable
+as int,
+  ));
+}
+
+
+}
+
+
+/// @nodoc
 mixin _$Recording {
 
  int get id; String? get title;@JsonKey(name: 'meeting_date', fromJson: _parseFlexibleDate) DateTime? get meetingDate;@JsonKey(name: 'created_at', fromJson: _parseFlexibleDate) DateTime? get createdAt; String? get participants;@JsonKey(name: 'file_size') int? get fileSize;@JsonKey(name: 'is_highlighted') bool get isHighlighted;@JsonKey(name: 'is_inbox') bool get isInbox;@JsonKey(fromJson: _parseRecordingStatus) RecordingStatus get status; List<Tag> get tags;// Returned by the v1 list endpoint.
