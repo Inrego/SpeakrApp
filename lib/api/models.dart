@@ -86,6 +86,7 @@ class Speaker with _$Speaker {
     required String name,
     @JsonKey(name: 'has_voice_profile') @Default(false) bool hasVoiceProfile,
     @JsonKey(name: 'use_count') @Default(0) int useCount,
+    @JsonKey(name: 'last_used') DateTime? lastUsed,
   }) = _Speaker;
 
   factory Speaker.fromJson(Map<String, dynamic> json) =>

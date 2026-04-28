@@ -32,6 +32,9 @@ _$SpeakerImpl _$$SpeakerImplFromJson(Map<String, dynamic> json) =>
       name: json['name'] as String,
       hasVoiceProfile: json['has_voice_profile'] as bool? ?? false,
       useCount: (json['use_count'] as num?)?.toInt() ?? 0,
+      lastUsed: json['last_used'] == null
+          ? null
+          : DateTime.parse(json['last_used'] as String),
     );
 
 Map<String, dynamic> _$$SpeakerImplToJson(_$SpeakerImpl instance) =>
@@ -40,6 +43,7 @@ Map<String, dynamic> _$$SpeakerImplToJson(_$SpeakerImpl instance) =>
       'name': instance.name,
       'has_voice_profile': instance.hasVoiceProfile,
       'use_count': instance.useCount,
+      'last_used': instance.lastUsed?.toIso8601String(),
     };
 
 _$RecordingImpl _$$RecordingImplFromJson(Map<String, dynamic> json) =>

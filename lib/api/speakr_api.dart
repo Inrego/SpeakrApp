@@ -197,6 +197,17 @@ class SpeakrApi {
     });
   }
 
+  Future<List<Speaker>> listSpeakers() async {
+    final res = await _get<dynamic>('/speakers');
+    final list = res is List
+        ? res
+        : (res is Map<String, dynamic> ? (res['speakers'] as List? ?? []) : []);
+    return list
+        .whereType<Map<String, dynamic>>()
+        .map(Speaker.fromJson)
+        .toList(growable: false);
+  }
+
   // ── Settings ──────────────────────────────────────────────────────────────
   Future<void> setAutoSummarization(bool enabled) async {
     await _put<Map<String, dynamic>>('/settings/auto-summarization', {
