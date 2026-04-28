@@ -53,8 +53,8 @@ dependencies:
   win32_registry: ^1.1.5
 
   # Models
-  freezed_annotation: ^2.4.4
-  json_annotation: ^4.9.0
+  freezed_annotation: ^3.1.0
+  json_annotation: ^4.11.0
 
   # Utility
   collection: ^1.19.1
@@ -67,9 +67,9 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^6.0.0
 
-  build_runner: ^2.5.4
-  freezed: ^2.5.8
-  json_serializable: ^6.9.5
+  build_runner: ^2.14.1
+  freezed: ^3.2.5
+  json_serializable: ^6.13.1
 
   # App icon generation (see tools/build_icon_sources.dart and the
   # flutter_launcher_icons config block below).
