@@ -14,6 +14,7 @@ import 'features/auto_upload/auto_upload_worker.dart';
 import 'features/auto_upload/workmanager_callback.dart';
 import 'features/live/mini/mini_ipc.dart';
 import 'features/live/mini/mini_recorder_app.dart';
+import 'services/auto_record/auto_record_bootstrap.dart';
 
 Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -64,6 +65,17 @@ Future<void> main(List<String> args) async {
     });
   }
 
+  // Build the provider container ourselves so the auto-record bootstrap
+  // and the UI share state. Without this, ProviderScope would create
+  // its own container and the bootstrap couldn't reach into it.
+  final container = ProviderContainer();
+
+  if (!kIsWeb && Platform.isWindows) {
+    // Fire and forget — the bootstrap is only relevant on Windows and
+    // failures are non-fatal (the rest of the app works without it).
+    unawaited(AutoRecordBootstrap.start(container));
+  }
+
   // Drop two error-level mpv log lines that media_kit / libmpv emit on every
   // player init — `osc` (video-only property doesn't exist in libmpv) and
   // `lavf: Failed to create file cache` (HTTP stream cache falls back to the
@@ -71,7 +83,10 @@ Future<void> main(List<String> args) async {
   // so we filter at the print boundary. Real playback failures still surface
   // via AudioPlayer's error stream.
   runZoned(
-    () => runApp(const ProviderScope(child: SpeakrApp())),
+    () => runApp(UncontrolledProviderScope(
+      container: container,
+      child: const SpeakrApp(),
+    )),
     zoneSpecification: ZoneSpecification(
       print: (self, parent, zone, line) {
         if (line.startsWith('MPV: [error]')) return;

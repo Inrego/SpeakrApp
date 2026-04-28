@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import '../../api/models.dart';
 import '../../api/providers.dart';
 import '../../api/speakr_api.dart';
+import '../../services/auto_record/auto_record_providers.dart';
 import '../../services/credentials_store.dart';
 import '../../theme/colors.dart';
 import '../../theme/typography.dart';
@@ -227,6 +228,26 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   toggleValue: _autoSummarize,
                   onToggle: _toggleAutoSummarize,
                 ),
+                if (Platform.isWindows)
+                  Consumer(
+                    builder: (context, ref, _) {
+                      final s = ref.watch(autoRecordSettingsProvider);
+                      final summary = s.maybeWhen(
+                        data: (settings) {
+                          if (!settings.enabled) return 'Off';
+                          final n = settings.allowlist.length;
+                          if (n == 0) return 'On · no apps';
+                          return n == 1 ? 'On · 1 app' : 'On · $n apps';
+                        },
+                        orElse: () => '—',
+                      );
+                      return SettingsRow(
+                        label: 'Auto-record on mic activity',
+                        value: summary,
+                        onTap: () => context.push('/settings/auto-record'),
+                      );
+                    },
+                  ),
               ],
             ),
             Consumer(

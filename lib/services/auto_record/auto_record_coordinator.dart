@@ -1,0 +1,363 @@
+import 'dart:async';
+import 'dart:io' show Platform;
+
+import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../features/live/recording_state.dart';
+import 'auto_record_settings.dart';
+import 'auto_record_settings_store.dart';
+import 'mic_monitor.dart';
+import 'mic_user.dart';
+import 'output_meter.dart';
+
+/// Reason the coordinator wants the UI to ask the user whether to stop.
+class StopPromptRequest {
+  StopPromptRequest({required this.triggerLabel, required this.elapsed});
+  final String triggerLabel;
+  final Duration elapsed;
+}
+
+/// Owns the auto-record decision logic. Watches mic monitor + settings +
+/// recording controller + output meter; calls the controller's
+/// [RecordingController.start] / [RecordingController.stopAndUpload] /
+/// [RecordingController.cancel] when appropriate and emits
+/// [StopPromptRequest]s for the UI to render.
+///
+/// The coordinator does not own recording state itself — it drives the
+/// app-wide [RecordingController] that the live screen also uses. A
+/// session started by auto-record is indistinguishable to the rest of
+/// the app from a manual session, except for the trigger label which
+/// the coordinator tracks internally for the banner + prompt.
+class AutoRecordCoordinator {
+  AutoRecordCoordinator({
+    required this.micMonitor,
+    required this.outputMeter,
+    required this.recording,
+    required this.startRecording,
+    required this.stopAndUpload,
+    required this.cancelRecording,
+    required this.store,
+    required this.onSettingsChanged,
+  });
+
+  final MicMonitor micMonitor;
+  final OutputMeter outputMeter;
+
+  /// State source for the underlying recording session. The bootstrap
+  /// passes the app-wide [RecordingController]; tests pass a stub.
+  final StateNotifier<RecordingState> recording;
+
+  /// Action callbacks. Provided by the bootstrap; tests pass closures
+  /// over a stub controller. Decouples the coordinator from the
+  /// concrete plugin-using controller so unit tests don't need
+  /// `record` / `permission_handler` / `desktop_multi_window` set up.
+  final Future<void> Function() startRecording;
+  final Future<void> Function() stopAndUpload;
+  final Future<void> Function() cancelRecording;
+
+  final AutoRecordSettingsStore store;
+
+  /// Latest state from [recording], mirrored here so the coordinator
+  /// can read it synchronously (the underlying [StateNotifier.state]
+  /// getter is protected). Updated by [_onRecordingState] via the
+  /// listener registered in [start].
+  RecordingState _recordingState = const RecordingState();
+
+  /// Called whenever the coordinator writes back to the store (e.g.
+  /// updating "recently seen"). The bootstrap wires this to
+  /// `container.invalidate(autoRecordSettingsProvider)` so the settings
+  /// screen rebuilds.
+  final void Function() onSettingsChanged;
+
+  StreamSubscription<List<MicUser>>? _micSub;
+  VoidCallback? _removeRecListener;
+  StreamSubscription<double>? _meterSub;
+
+  /// True iff the currently-running session was started by the
+  /// coordinator (vs. the live screen / user). The banner and the
+  /// stop-prompt look at this rather than the controller's state, since
+  /// `RecordingState` itself doesn't carry a "source" field.
+  bool _autoSession = false;
+  bool get isAutoSession => _autoSession;
+
+  /// Allowlist key (case-insensitive) of the app whose mic-acquire
+  /// triggered the current auto-recording. Used to decide when "the
+  /// trigger app released the mic" for stop-prompt purposes.
+  String? _activeTriggerKey;
+  AllowlistKind? _activeTriggerKind;
+  String? _activeTriggerLabel;
+  String? get activeTriggerLabel => _activeTriggerLabel;
+
+  /// Bookkeeping for the silence/mic-released stop heuristic.
+  DateTime? _silentSinceUtc;
+  DateTime? _micReleasedSinceUtc;
+  DateTime? _suppressPromptsUntilUtc;
+  bool _promptOpen = false;
+
+  final _prompts = StreamController<StopPromptRequest>.broadcast();
+  Stream<StopPromptRequest> get prompts => _prompts.stream;
+
+  // Self-suppression: don't trigger on Speakr itself when its exe is
+  // surfaced via "Recently seen" and added to the allowlist.
+  late final String _selfBasename = _basename(Platform.resolvedExecutable);
+
+  /// Used by the UI binding to mark a prompt as currently visible.
+  void notePromptShown() => _promptOpen = true;
+  void notePromptDismissed({required bool keepRecording}) {
+    _promptOpen = false;
+    if (keepRecording) {
+      // Suppress further prompts for ~2x silence window so the user
+      // isn't nagged repeatedly during a quiet stretch they explicitly
+      // chose to keep.
+      final secs = store.read().silenceSeconds * 2;
+      _suppressPromptsUntilUtc =
+          DateTime.now().toUtc().add(Duration(seconds: secs));
+      _silentSinceUtc = null;
+      _micReleasedSinceUtc = null;
+    }
+  }
+
+  bool get isPromptVisible => _promptOpen;
+
+  void start() {
+    _micSub = micMonitor.usersStream.listen(_onMicUpdate);
+    _removeRecListener = recording.addListener(_onRecordingState);
+  }
+
+  Future<void> dispose() async {
+    await _micSub?.cancel();
+    _removeRecListener?.call();
+    await _meterSub?.cancel();
+    await _prompts.close();
+  }
+
+  // ── Mic-monitor handler ───────────────────────────────────────────────────
+
+  Future<void> _onMicUpdate(List<MicUser> users) async {
+    final settings = store.read();
+
+    // Always update "recently seen" — even when disabled — so the user
+    // can browse what's happening when they later open settings.
+    await _recordRecentlySeen(users, settings);
+
+    // While a non-auto recording is in progress, do nothing.
+    if (_recordingState.started && !_autoSession) return;
+    if (!settings.enabled) return;
+
+    if (_autoSession &&
+        (_recordingState.started || _recordingState.uploading)) {
+      // We're already auto-recording. Track the trigger app's release
+      // for the stop heuristic.
+      _trackTriggerRelease(users);
+      return;
+    }
+
+    // Idle: try to find a fresh allowlist match to start.
+    final cutoff = DateTime.now().subtract(const Duration(hours: 12));
+    for (final user in users) {
+      if (!user.isInUse) continue;
+      if (user.lastStart.isBefore(cutoff)) continue;
+      if (_isSelf(user)) continue;
+      final entry = _firstAllowlistMatch(settings.allowlist, user);
+      if (entry == null) continue;
+      await _startAutoRecording(user, entry);
+      return; // first match wins
+    }
+  }
+
+  void _trackTriggerRelease(List<MicUser> users) {
+    final key = _activeTriggerKey;
+    final kind = _activeTriggerKind;
+    if (key == null || kind == null) return;
+    MicUser? trigger;
+    for (final u in users) {
+      if (u.kind != kind) continue;
+      final mine = u.key.toLowerCase();
+      final theirs = key.toLowerCase();
+      final hit = kind == AllowlistKind.packagedPrefix
+          ? mine.startsWith(theirs)
+          : mine == theirs;
+      if (hit) {
+        trigger = u;
+        break;
+      }
+    }
+    final now = DateTime.now().toUtc();
+    if (trigger != null && trigger.isInUse) {
+      // Trigger app re-acquired the mic. Reset the released window and
+      // dismiss any visible prompt — the meeting resumed.
+      _micReleasedSinceUtc = null;
+      if (_promptOpen) _promptOpen = false;
+    } else {
+      _micReleasedSinceUtc ??= now;
+    }
+  }
+
+  // ── Recording-state handler ───────────────────────────────────────────────
+
+  void _onRecordingState(RecordingState state) {
+    _recordingState = state;
+    if (_autoSession && state.started && !state.uploading) {
+      _meterSub ??= outputMeter.peaks.listen(_onPeak);
+    } else if (!state.started && !state.uploading) {
+      // Session finished (or was cancelled). Clear auto-session state.
+      _meterSub?.cancel();
+      _meterSub = null;
+      _autoSession = false;
+      _activeTriggerKey = null;
+      _activeTriggerKind = null;
+      _activeTriggerLabel = null;
+      _silentSinceUtc = null;
+      _micReleasedSinceUtc = null;
+      _promptOpen = false;
+    }
+  }
+
+  void _onPeak(double peak) {
+    final settings = store.read();
+    const silenceThreshold = 0.005;
+    final now = DateTime.now().toUtc();
+
+    if (peak < silenceThreshold) {
+      _silentSinceUtc ??= now;
+    } else {
+      _silentSinceUtc = null;
+    }
+
+    _maybeFireStopPrompt(settings, now);
+  }
+
+  void _maybeFireStopPrompt(AutoRecordSettings settings, DateTime now) {
+    if (_promptOpen) return;
+    if (!_autoSession) return;
+    if (_suppressPromptsUntilUtc != null &&
+        now.isBefore(_suppressPromptsUntilUtc!)) {
+      return;
+    }
+    final silentSince = _silentSinceUtc;
+    final releasedSince = _micReleasedSinceUtc;
+    if (silentSince == null || releasedSince == null) return;
+
+    // Require the trigger to have been released for at least 5 s — handles
+    // Teams' brief device-switching drops without firing a premature prompt.
+    final silenceFor = now.difference(silentSince);
+    final releasedFor = now.difference(releasedSince);
+    final silenceWindow = Duration(seconds: settings.silenceSeconds);
+    if (silenceFor < silenceWindow) return;
+    if (releasedFor < const Duration(seconds: 5)) return;
+
+    final label = _activeTriggerLabel ?? 'recording';
+    debugPrint(
+        '[auto-record] silence=${silenceFor.inSeconds}s released=${releasedFor.inSeconds}s → prompt');
+    _prompts.add(StopPromptRequest(
+      triggerLabel: label,
+      elapsed: Duration(seconds: _recordingState.elapsedSeconds),
+    ));
+  }
+
+  // ── User-confirmed stop ───────────────────────────────────────────────────
+
+  /// Stops the in-progress auto session. If the recording is shorter
+  /// than [AutoRecordSettings.minKeepSeconds], the file is discarded
+  /// silently via [RecordingController.cancel] — no library entry.
+  Future<void> stopAutoSession() async {
+    if (!_autoSession) return;
+    final settings = store.read();
+    final elapsed = _recordingState.elapsedSeconds;
+    if (elapsed < settings.minKeepSeconds) {
+      debugPrint(
+          '[auto-record] discarded short clip (${elapsed}s < ${settings.minKeepSeconds}s)');
+      await cancelRecording();
+    } else {
+      await stopAndUpload();
+    }
+  }
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
+
+  Future<void> _startAutoRecording(MicUser user, AllowlistEntry entry) async {
+    debugPrint(
+        '[auto-record] start trigger=${user.key} kind=${user.kind.name}');
+    _autoSession = true;
+    _activeTriggerKey = entry.key;
+    _activeTriggerKind = entry.kind;
+    _activeTriggerLabel = entry.displayName;
+    _silentSinceUtc = null;
+    _micReleasedSinceUtc = null;
+
+    await startRecording();
+    if (!_recordingState.started) {
+      // Permission denied or another error — bail.
+      _autoSession = false;
+      _activeTriggerKey = null;
+      _activeTriggerKind = null;
+      _activeTriggerLabel = null;
+      return;
+    }
+    await store.recordLastTrigger(entry.displayName);
+  }
+
+  Future<void> _recordRecentlySeen(
+    List<MicUser> users,
+    AutoRecordSettings settings,
+  ) async {
+    if (users.isEmpty) return;
+    final byKey = <(String, AllowlistKind), RecentlySeenEntry>{
+      for (final r in settings.recentlySeen)
+        (r.key.toLowerCase(), r.kind): r,
+    };
+    var dirty = false;
+    final nowMs = DateTime.now().millisecondsSinceEpoch;
+    for (final u in users) {
+      if (_isSelf(u)) continue;
+      final id = (u.key.toLowerCase(), u.kind);
+      final existing = byKey[id];
+      if (existing == null) {
+        byKey[id] = RecentlySeenEntry(
+          key: u.key,
+          displayName: u.displayName,
+          kind: u.kind,
+          lastSeenMs: nowMs,
+        );
+        dirty = true;
+      } else if (u.isInUse) {
+        byKey[id] = RecentlySeenEntry(
+          key: existing.key,
+          displayName: existing.displayName,
+          kind: existing.kind,
+          lastSeenMs: nowMs,
+        );
+        dirty = true;
+      }
+    }
+    if (!dirty) return;
+    // Keep at most the 30 most recent.
+    final list = byKey.values.toList()
+      ..sort((a, b) => b.lastSeenMs.compareTo(a.lastSeenMs));
+    final trimmed = list.length > 30 ? list.sublist(0, 30) : list;
+    await store.write(settings.copyWith(recentlySeen: trimmed));
+    onSettingsChanged();
+  }
+
+  AllowlistEntry? _firstAllowlistMatch(
+    List<AllowlistEntry> allowlist,
+    MicUser user,
+  ) {
+    for (final e in allowlist) {
+      if (user.matches(e)) return e;
+    }
+    return null;
+  }
+
+  bool _isSelf(MicUser user) {
+    if (user.kind != AllowlistKind.exeBasename) return false;
+    return user.key.toLowerCase() == _selfBasename.toLowerCase();
+  }
+
+  static String _basename(String path) {
+    var sep = path.lastIndexOf('\\');
+    if (sep < 0) sep = path.lastIndexOf('/');
+    return sep < 0 ? path : path.substring(sep + 1);
+  }
+}

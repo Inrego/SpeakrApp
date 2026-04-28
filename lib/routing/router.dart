@@ -7,6 +7,7 @@ import '../features/detail/detail_screen.dart';
 import '../features/library/library_screen.dart';
 import '../features/live/live_screen.dart';
 import '../features/onboarding/onboarding_screen.dart';
+import '../features/settings/auto_record_settings_screen.dart';
 import '../features/settings/settings_screen.dart';
 import '../services/credentials_store.dart';
 import '../theme/colors.dart';
@@ -60,6 +61,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/settings/auto-upload',
         builder: (_, __) => const AutoUploadSettingsScreen(),
+      ),
+      GoRoute(
+        path: '/settings/auto-record',
+        builder: (_, __) => const AutoRecordSettingsScreen(),
       ),
     ],
     errorBuilder: (_, state) => Scaffold(
