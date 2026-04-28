@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../api/models.dart';
 import '../../api/providers.dart';
 import '../../api/speakr_api.dart';
 import '../../theme/colors.dart';
@@ -36,6 +37,7 @@ class _SpeakerReviewScreenState extends ConsumerState<SpeakerReviewScreen> {
   void dispose() {
     for (final r in _rows) {
       r.controller.dispose();
+      r.focusNode.dispose();
     }
     super.dispose();
   }
@@ -52,6 +54,7 @@ class _SpeakerReviewScreenState extends ConsumerState<SpeakerReviewScreen> {
       final parsed = _parseSpeakers(body);
       for (final r in _rows) {
         r.controller.dispose();
+        r.focusNode.dispose();
       }
       _rows
         ..clear()
@@ -65,6 +68,7 @@ class _SpeakerReviewScreenState extends ConsumerState<SpeakerReviewScreen> {
             identifiedName: s.identifiedName,
             segmentCount: s.segmentCount,
             controller: TextEditingController(text: initial),
+            focusNode: FocusNode(),
           );
         }));
       setState(() => _loading = false);
@@ -141,6 +145,7 @@ class _SpeakerReviewScreenState extends ConsumerState<SpeakerReviewScreen> {
         regenerateSummary: _regenerateSummary,
       );
       container.invalidate(recordingDetailProvider(widget.recordingId));
+      container.invalidate(allSpeakersProvider);
       if (!mounted) return;
       navigator.pop();
       messenger.showSnackBar(
@@ -336,21 +341,28 @@ class _SpeakerRow {
     required this.identifiedName,
     required this.segmentCount,
     required this.controller,
+    required this.focusNode,
   });
 
   final String label;
   final String? identifiedName;
   final int? segmentCount;
   final TextEditingController controller;
+  final FocusNode focusNode;
 }
 
-class _SpeakerField extends StatelessWidget {
+class _SpeakerField extends ConsumerWidget {
   const _SpeakerField({required this.row});
   final _SpeakerRow row;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final segs = row.segmentCount;
+    final speakers = ref.watch(allSpeakersProvider).maybeWhen(
+          data: (list) => list,
+          orElse: () => const <Speaker>[],
+        );
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -367,29 +379,96 @@ class _SpeakerField extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 6),
-        TextField(
-          controller: row.controller,
-          style: SpeakrText.sans(size: 14),
-          decoration: InputDecoration(
-            isDense: true,
-            hintText: row.identifiedName ?? row.label,
-            hintStyle:
-                SpeakrText.sans(size: 14, color: SpeakrColors.muted),
-            contentPadding: const EdgeInsets.symmetric(
-                horizontal: 14, vertical: 12),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(4),
-              borderSide: const BorderSide(color: SpeakrColors.line),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(4),
-              borderSide: const BorderSide(color: SpeakrColors.line),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(4),
-              borderSide: const BorderSide(color: SpeakrColors.ink, width: 1.2),
-            ),
-          ),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final fieldWidth = constraints.maxWidth;
+            return RawAutocomplete<Speaker>(
+              textEditingController: row.controller,
+              focusNode: row.focusNode,
+              displayStringForOption: (s) => s.name,
+              optionsBuilder: (TextEditingValue value) {
+                if (speakers.isEmpty) return const Iterable<Speaker>.empty();
+                final q = value.text.trim().toLowerCase();
+                if (q.isEmpty) return speakers;
+                return speakers
+                    .where((s) => s.name.toLowerCase().contains(q));
+              },
+              fieldViewBuilder:
+                  (context, controller, focusNode, onSubmitted) {
+                return TextField(
+                  controller: controller,
+                  focusNode: focusNode,
+                  style: SpeakrText.sans(size: 14),
+                  onSubmitted: (_) => onSubmitted(),
+                  decoration: InputDecoration(
+                    isDense: true,
+                    hintText: row.identifiedName ?? row.label,
+                    hintStyle:
+                        SpeakrText.sans(size: 14, color: SpeakrColors.muted),
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 12),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(4),
+                      borderSide: const BorderSide(color: SpeakrColors.line),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(4),
+                      borderSide: const BorderSide(color: SpeakrColors.line),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(4),
+                      borderSide: const BorderSide(
+                          color: SpeakrColors.ink, width: 1.2),
+                    ),
+                  ),
+                );
+              },
+              optionsViewBuilder: (context, onSelected, options) {
+                return Align(
+                  alignment: Alignment.topLeft,
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Material(
+                      elevation: 4,
+                      borderRadius: BorderRadius.circular(4),
+                      color: SpeakrColors.bg,
+                      child: SizedBox(
+                        width: fieldWidth,
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxHeight: 280),
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border.all(color: SpeakrColors.line),
+                            ),
+                            child: ListView.builder(
+                              padding: EdgeInsets.zero,
+                              shrinkWrap: true,
+                              itemCount: options.length,
+                              itemBuilder: (context, index) {
+                                final option = options.elementAt(index);
+                                return InkWell(
+                                  onTap: () => onSelected(option),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 14, vertical: 10),
+                                    child: Text(
+                                      option.name,
+                                      style: SpeakrText.sans(size: 14),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            );
+          },
         ),
       ],
     );

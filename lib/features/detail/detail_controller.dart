@@ -16,6 +16,19 @@ final summaryProvider =
   return r.summary ?? '';
 });
 
+final allSpeakersProvider =
+    FutureProvider.autoDispose<List<Speaker>>((ref) async {
+  final list = await ref.watch(speakrApiProvider).listSpeakers();
+  // Most-used first, then alphabetical for stable ordering across the dropdown.
+  final sorted = [...list]..sort((a, b) {
+      final byCount = b.useCount.compareTo(a.useCount);
+      return byCount != 0
+          ? byCount
+          : a.name.toLowerCase().compareTo(b.name.toLowerCase());
+    });
+  return sorted;
+});
+
 final transcriptProvider = FutureProvider.autoDispose
     .family<List<TranscriptSegment>, int>((ref, id) async {
   final r = await ref.watch(recordingDetailProvider(id).future);

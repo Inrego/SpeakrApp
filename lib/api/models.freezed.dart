@@ -324,6 +324,8 @@ mixin _$Speaker {
   bool get hasVoiceProfile => throw _privateConstructorUsedError;
   @JsonKey(name: 'use_count')
   int get useCount => throw _privateConstructorUsedError;
+  @JsonKey(name: 'last_used')
+  DateTime? get lastUsed => throw _privateConstructorUsedError;
 
   /// Serializes this Speaker to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -344,6 +346,7 @@ abstract class $SpeakerCopyWith<$Res> {
     String name,
     @JsonKey(name: 'has_voice_profile') bool hasVoiceProfile,
     @JsonKey(name: 'use_count') int useCount,
+    @JsonKey(name: 'last_used') DateTime? lastUsed,
   });
 }
 
@@ -366,6 +369,7 @@ class _$SpeakerCopyWithImpl<$Res, $Val extends Speaker>
     Object? name = null,
     Object? hasVoiceProfile = null,
     Object? useCount = null,
+    Object? lastUsed = freezed,
   }) {
     return _then(
       _value.copyWith(
@@ -385,6 +389,10 @@ class _$SpeakerCopyWithImpl<$Res, $Val extends Speaker>
                 ? _value.useCount
                 : useCount // ignore: cast_nullable_to_non_nullable
                       as int,
+            lastUsed: freezed == lastUsed
+                ? _value.lastUsed
+                : lastUsed // ignore: cast_nullable_to_non_nullable
+                      as DateTime?,
           )
           as $Val,
     );
@@ -404,6 +412,7 @@ abstract class _$$SpeakerImplCopyWith<$Res> implements $SpeakerCopyWith<$Res> {
     String name,
     @JsonKey(name: 'has_voice_profile') bool hasVoiceProfile,
     @JsonKey(name: 'use_count') int useCount,
+    @JsonKey(name: 'last_used') DateTime? lastUsed,
   });
 }
 
@@ -425,6 +434,7 @@ class __$$SpeakerImplCopyWithImpl<$Res>
     Object? name = null,
     Object? hasVoiceProfile = null,
     Object? useCount = null,
+    Object? lastUsed = freezed,
   }) {
     return _then(
       _$SpeakerImpl(
@@ -444,6 +454,10 @@ class __$$SpeakerImplCopyWithImpl<$Res>
             ? _value.useCount
             : useCount // ignore: cast_nullable_to_non_nullable
                   as int,
+        lastUsed: freezed == lastUsed
+            ? _value.lastUsed
+            : lastUsed // ignore: cast_nullable_to_non_nullable
+                  as DateTime?,
       ),
     );
   }
@@ -457,6 +471,7 @@ class _$SpeakerImpl implements _Speaker {
     required this.name,
     @JsonKey(name: 'has_voice_profile') this.hasVoiceProfile = false,
     @JsonKey(name: 'use_count') this.useCount = 0,
+    @JsonKey(name: 'last_used') this.lastUsed,
   });
 
   factory _$SpeakerImpl.fromJson(Map<String, dynamic> json) =>
@@ -472,10 +487,13 @@ class _$SpeakerImpl implements _Speaker {
   @override
   @JsonKey(name: 'use_count')
   final int useCount;
+  @override
+  @JsonKey(name: 'last_used')
+  final DateTime? lastUsed;
 
   @override
   String toString() {
-    return 'Speaker(id: $id, name: $name, hasVoiceProfile: $hasVoiceProfile, useCount: $useCount)';
+    return 'Speaker(id: $id, name: $name, hasVoiceProfile: $hasVoiceProfile, useCount: $useCount, lastUsed: $lastUsed)';
   }
 
   @override
@@ -488,13 +506,15 @@ class _$SpeakerImpl implements _Speaker {
             (identical(other.hasVoiceProfile, hasVoiceProfile) ||
                 other.hasVoiceProfile == hasVoiceProfile) &&
             (identical(other.useCount, useCount) ||
-                other.useCount == useCount));
+                other.useCount == useCount) &&
+            (identical(other.lastUsed, lastUsed) ||
+                other.lastUsed == lastUsed));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   int get hashCode =>
-      Object.hash(runtimeType, id, name, hasVoiceProfile, useCount);
+      Object.hash(runtimeType, id, name, hasVoiceProfile, useCount, lastUsed);
 
   /// Create a copy of Speaker
   /// with the given fields replaced by the non-null parameter values.
@@ -516,6 +536,7 @@ abstract class _Speaker implements Speaker {
     required final String name,
     @JsonKey(name: 'has_voice_profile') final bool hasVoiceProfile,
     @JsonKey(name: 'use_count') final int useCount,
+    @JsonKey(name: 'last_used') final DateTime? lastUsed,
   }) = _$SpeakerImpl;
 
   factory _Speaker.fromJson(Map<String, dynamic> json) = _$SpeakerImpl.fromJson;
@@ -530,6 +551,9 @@ abstract class _Speaker implements Speaker {
   @override
   @JsonKey(name: 'use_count')
   int get useCount;
+  @override
+  @JsonKey(name: 'last_used')
+  DateTime? get lastUsed;
 
   /// Create a copy of Speaker
   /// with the given fields replaced by the non-null parameter values.
