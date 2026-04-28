@@ -558,6 +558,7 @@ mixin _$Recording {
   bool get isHighlighted => throw _privateConstructorUsedError;
   @JsonKey(name: 'is_inbox')
   bool get isInbox => throw _privateConstructorUsedError;
+  @JsonKey(fromJson: _parseRecordingStatus)
   RecordingStatus get status => throw _privateConstructorUsedError;
   List<Tag> get tags =>
       throw _privateConstructorUsedError; // Returned by the v1 list endpoint.
@@ -603,7 +604,7 @@ abstract class $RecordingCopyWith<$Res> {
     @JsonKey(name: 'file_size') int? fileSize,
     @JsonKey(name: 'is_highlighted') bool isHighlighted,
     @JsonKey(name: 'is_inbox') bool isInbox,
-    RecordingStatus status,
+    @JsonKey(fromJson: _parseRecordingStatus) RecordingStatus status,
     List<Tag> tags,
     @JsonKey(name: 'audio_available') bool? audioAvailable,
     @JsonKey(name: 'error_message') String? errorMessage,
@@ -756,7 +757,7 @@ abstract class _$$RecordingImplCopyWith<$Res>
     @JsonKey(name: 'file_size') int? fileSize,
     @JsonKey(name: 'is_highlighted') bool isHighlighted,
     @JsonKey(name: 'is_inbox') bool isInbox,
-    RecordingStatus status,
+    @JsonKey(fromJson: _parseRecordingStatus) RecordingStatus status,
     List<Tag> tags,
     @JsonKey(name: 'audio_available') bool? audioAvailable,
     @JsonKey(name: 'error_message') String? errorMessage,
@@ -900,6 +901,7 @@ class _$RecordingImpl implements _Recording {
     @JsonKey(name: 'file_size') this.fileSize,
     @JsonKey(name: 'is_highlighted') this.isHighlighted = false,
     @JsonKey(name: 'is_inbox') this.isInbox = false,
+    @JsonKey(fromJson: _parseRecordingStatus)
     this.status = RecordingStatus.completed,
     final List<Tag> tags = const <Tag>[],
     @JsonKey(name: 'audio_available') this.audioAvailable,
@@ -938,7 +940,7 @@ class _$RecordingImpl implements _Recording {
   @JsonKey(name: 'is_inbox')
   final bool isInbox;
   @override
-  @JsonKey()
+  @JsonKey(fromJson: _parseRecordingStatus)
   final RecordingStatus status;
   final List<Tag> _tags;
   @override
@@ -1070,7 +1072,7 @@ abstract class _Recording implements Recording {
     @JsonKey(name: 'file_size') final int? fileSize,
     @JsonKey(name: 'is_highlighted') final bool isHighlighted,
     @JsonKey(name: 'is_inbox') final bool isInbox,
-    final RecordingStatus status,
+    @JsonKey(fromJson: _parseRecordingStatus) final RecordingStatus status,
     final List<Tag> tags,
     @JsonKey(name: 'audio_available') final bool? audioAvailable,
     @JsonKey(name: 'error_message') final String? errorMessage,
@@ -1108,6 +1110,7 @@ abstract class _Recording implements Recording {
   @JsonKey(name: 'is_inbox')
   bool get isInbox;
   @override
+  @JsonKey(fromJson: _parseRecordingStatus)
   RecordingStatus get status;
   @override
   List<Tag> get tags; // Returned by the v1 list endpoint.
@@ -1656,6 +1659,7 @@ RecordingStatusResponse _$RecordingStatusResponseFromJson(
 
 /// @nodoc
 mixin _$RecordingStatusResponse {
+  @JsonKey(fromJson: _parseRecordingStatus)
   RecordingStatus get status => throw _privateConstructorUsedError;
   @JsonKey(name: 'queue_position')
   int? get queuePosition => throw _privateConstructorUsedError;
@@ -1679,7 +1683,7 @@ abstract class $RecordingStatusResponseCopyWith<$Res> {
   ) = _$RecordingStatusResponseCopyWithImpl<$Res, RecordingStatusResponse>;
   @useResult
   $Res call({
-    RecordingStatus status,
+    @JsonKey(fromJson: _parseRecordingStatus) RecordingStatus status,
     @JsonKey(name: 'queue_position') int? queuePosition,
     String? message,
   });
@@ -1737,7 +1741,7 @@ abstract class _$$RecordingStatusResponseImplCopyWith<$Res>
   @override
   @useResult
   $Res call({
-    RecordingStatus status,
+    @JsonKey(fromJson: _parseRecordingStatus) RecordingStatus status,
     @JsonKey(name: 'queue_position') int? queuePosition,
     String? message,
   });
@@ -1788,7 +1792,7 @@ class __$$RecordingStatusResponseImplCopyWithImpl<$Res>
 @JsonSerializable()
 class _$RecordingStatusResponseImpl implements _RecordingStatusResponse {
   const _$RecordingStatusResponseImpl({
-    required this.status,
+    @JsonKey(fromJson: _parseRecordingStatus) required this.status,
     @JsonKey(name: 'queue_position') this.queuePosition,
     this.message,
   });
@@ -1797,6 +1801,7 @@ class _$RecordingStatusResponseImpl implements _RecordingStatusResponse {
       _$$RecordingStatusResponseImplFromJson(json);
 
   @override
+  @JsonKey(fromJson: _parseRecordingStatus)
   final RecordingStatus status;
   @override
   @JsonKey(name: 'queue_position')
@@ -1843,6 +1848,7 @@ class _$RecordingStatusResponseImpl implements _RecordingStatusResponse {
 
 abstract class _RecordingStatusResponse implements RecordingStatusResponse {
   const factory _RecordingStatusResponse({
+    @JsonKey(fromJson: _parseRecordingStatus)
     required final RecordingStatus status,
     @JsonKey(name: 'queue_position') final int? queuePosition,
     final String? message,
@@ -1852,6 +1858,7 @@ abstract class _RecordingStatusResponse implements RecordingStatusResponse {
       _$RecordingStatusResponseImpl.fromJson;
 
   @override
+  @JsonKey(fromJson: _parseRecordingStatus)
   RecordingStatus get status;
   @override
   @JsonKey(name: 'queue_position')

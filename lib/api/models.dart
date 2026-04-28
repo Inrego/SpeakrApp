@@ -26,6 +26,8 @@ DateTime? _parseFlexibleDate(Object? raw) {
 enum RecordingStatus {
   @JsonValue('PENDING')
   pending,
+  @JsonValue('QUEUED')
+  queued,
   @JsonValue('PROCESSING')
   processing,
   @JsonValue('SUMMARIZING')
@@ -37,16 +39,29 @@ enum RecordingStatus {
 
   bool get isInProgress =>
       this == RecordingStatus.pending ||
+      this == RecordingStatus.queued ||
       this == RecordingStatus.processing ||
       this == RecordingStatus.summarizing;
 
   String get displayLabel => switch (this) {
         RecordingStatus.pending => 'Pending',
+        RecordingStatus.queued => 'Queued',
         RecordingStatus.processing => 'Processing',
         RecordingStatus.summarizing => 'Summarizing',
         RecordingStatus.completed => 'Completed',
         RecordingStatus.failed => 'Failed',
       };
+}
+
+// Tolerant decoder so an unknown server-side status (e.g. a future addition
+// the client doesn't know yet) shows up as in-progress instead of crashing
+// the recordings list with an ArgumentError from $enumDecode.
+RecordingStatus _parseRecordingStatus(Object? raw) {
+  if (raw is! String) return RecordingStatus.pending;
+  for (final v in RecordingStatus.values) {
+    if (_$RecordingStatusEnumMap[v] == raw) return v;
+  }
+  return RecordingStatus.pending;
 }
 
 @freezed
@@ -90,7 +105,9 @@ class Recording with _$Recording {
     @JsonKey(name: 'file_size') int? fileSize,
     @JsonKey(name: 'is_highlighted') @Default(false) bool isHighlighted,
     @JsonKey(name: 'is_inbox') @Default(false) bool isInbox,
-    @Default(RecordingStatus.completed) RecordingStatus status,
+    @JsonKey(fromJson: _parseRecordingStatus)
+    @Default(RecordingStatus.completed)
+    RecordingStatus status,
     @Default(<Tag>[]) List<Tag> tags,
 
     // Returned by the v1 list endpoint.
@@ -141,7 +158,7 @@ class TranscriptSegment with _$TranscriptSegment {
 @freezed
 class RecordingStatusResponse with _$RecordingStatusResponse {
   const factory RecordingStatusResponse({
-    required RecordingStatus status,
+    @JsonKey(fromJson: _parseRecordingStatus) required RecordingStatus status,
     @JsonKey(name: 'queue_position') int? queuePosition,
     String? message,
   }) = _RecordingStatusResponse;

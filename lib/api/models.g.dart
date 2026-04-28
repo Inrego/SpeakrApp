@@ -52,9 +52,9 @@ _$RecordingImpl _$$RecordingImplFromJson(Map<String, dynamic> json) =>
       fileSize: (json['file_size'] as num?)?.toInt(),
       isHighlighted: json['is_highlighted'] as bool? ?? false,
       isInbox: json['is_inbox'] as bool? ?? false,
-      status:
-          $enumDecodeNullable(_$RecordingStatusEnumMap, json['status']) ??
-          RecordingStatus.completed,
+      status: json['status'] == null
+          ? RecordingStatus.completed
+          : _parseRecordingStatus(json['status']),
       tags:
           (json['tags'] as List<dynamic>?)
               ?.map((e) => Tag.fromJson(e as Map<String, dynamic>))
@@ -96,6 +96,7 @@ Map<String, dynamic> _$$RecordingImplToJson(_$RecordingImpl instance) =>
 
 const _$RecordingStatusEnumMap = {
   RecordingStatus.pending: 'PENDING',
+  RecordingStatus.queued: 'QUEUED',
   RecordingStatus.processing: 'PROCESSING',
   RecordingStatus.summarizing: 'SUMMARIZING',
   RecordingStatus.completed: 'COMPLETED',
@@ -145,7 +146,7 @@ Map<String, dynamic> _$$TranscriptSegmentImplToJson(
 _$RecordingStatusResponseImpl _$$RecordingStatusResponseImplFromJson(
   Map<String, dynamic> json,
 ) => _$RecordingStatusResponseImpl(
-  status: $enumDecode(_$RecordingStatusEnumMap, json['status']),
+  status: _parseRecordingStatus(json['status']),
   queuePosition: (json['queue_position'] as num?)?.toInt(),
   message: json['message'] as String?,
 );
