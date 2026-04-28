@@ -32,6 +32,7 @@ class RecordingController extends StateNotifier<RecordingState> {
   Timer? _ticker;
   WindowController? _miniController;
   bool _ipcRegistered = false;
+  DateTime? _recordingStartedAt;
 
   final _navController = StreamController<RecordingNav>.broadcast();
   Stream<RecordingNav> get navStream => _navController.stream;
@@ -116,6 +117,7 @@ class RecordingController extends StateNotifier<RecordingState> {
         ),
         path: path,
       );
+      _recordingStartedAt = DateTime.now();
       _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
         if (!state.paused) {
           state = state.copyWith(elapsedSeconds: state.elapsedSeconds + 1);
@@ -164,13 +166,23 @@ class RecordingController extends StateNotifier<RecordingState> {
       ];
 
       final stat = await file.stat();
-      await api.uploadRecording(
+      final recording = await api.uploadRecording(
         file: file,
         minSpeakers: state.speakers,
         maxSpeakers: state.speakers,
         tagIds: tagIds,
         fileLastModified: stat.modified,
       );
+      final startedAt = _recordingStartedAt;
+      if (startedAt != null) {
+        try {
+          await api.updateRecording(recording.id, {
+            'meeting_date': startedAt.toUtc().toIso8601String(),
+          });
+        } catch (e) {
+          debugPrint('meeting_date PATCH failed for ${recording.id}: $e');
+        }
+      }
       _ref.invalidate(libraryRecordingsProvider);
       try {
         await file.delete();
@@ -286,6 +298,7 @@ class RecordingController extends StateNotifier<RecordingState> {
   }
 
   void _resetSession() {
+    _recordingStartedAt = null;
     state = const RecordingState();
   }
 
