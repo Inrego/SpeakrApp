@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import 'package:just_audio/just_audio.dart';
 
 import '../../api/models.dart';
+import '../../api/providers.dart';
+import '../../api/speakr_api.dart';
 import '../../services/credentials_store.dart';
 import '../../theme/colors.dart';
 import '../../theme/typography.dart';
@@ -12,6 +14,7 @@ import '../../widgets/mono_eyebrow.dart';
 import '../../widgets/speakr_icons.dart';
 import '../../widgets/tag_chip.dart';
 import 'detail_controller.dart';
+import 'speaker_review_screen.dart';
 import 'tabs/chat_tab.dart';
 import 'tabs/summary_tab.dart';
 import 'tabs/transcript_tab.dart';
@@ -74,7 +77,7 @@ class _DetailScreenState extends ConsumerState<DetailScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _TopBar(date: '', onBack: () => context.pop()),
+                _TopBar(date: '', onBack: () => context.pop(), recording: null),
                 const SizedBox(height: 12),
                 const MonoEyebrow('Couldn’t load recording'),
                 const SizedBox(height: 8),
@@ -118,6 +121,7 @@ class _DetailBody extends StatelessWidget {
               recording.createdAt ??
               DateTime.now()),
           onBack: () => context.pop(),
+          recording: recording,
         ),
         Padding(
           padding: const EdgeInsets.fromLTRB(24, 4, 24, 14),
@@ -176,12 +180,15 @@ class _TopBar extends StatelessWidget {
   const _TopBar({
     required this.date,
     required this.onBack,
+    required this.recording,
   });
   final String date;
   final VoidCallback onBack;
+  final Recording? recording;
 
   @override
   Widget build(BuildContext context) {
+    final r = recording;
     return Padding(
       padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
       child: Row(
@@ -192,23 +199,32 @@ class _TopBar extends StatelessWidget {
               child: MonoEyebrow(date, size: 10),
             ),
           ),
-          GhostIconButton(icon: SpeakrIcon.more, onTap: () {
-            showModalBottomSheet(
-              context: context,
-              backgroundColor: SpeakrColors.bg,
-              builder: (_) => const _MoreSheet(),
-            );
-          }),
+          GhostIconButton(
+            icon: SpeakrIcon.more,
+            onTap: r == null
+                ? null
+                : () {
+                    showModalBottomSheet(
+                      context: context,
+                      backgroundColor: SpeakrColors.bg,
+                      builder: (_) => _MoreSheet(recording: r),
+                    );
+                  },
+          ),
         ],
       ),
     );
   }
 }
 
-class _MoreSheet extends StatelessWidget {
-  const _MoreSheet();
+class _MoreSheet extends ConsumerWidget {
+  const _MoreSheet({required this.recording});
+  final Recording recording;
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final inInbox = recording.isInbox;
+    final highlighted = recording.isHighlighted;
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 8),
@@ -217,21 +233,178 @@ class _MoreSheet extends StatelessWidget {
           children: [
             ListTile(
               leading: const SpeakrIconView(SpeakrIcon.star),
-              title: Text('Toggle highlight',
-                  style: SpeakrText.sans(size: 14)),
-              onTap: () => Navigator.of(context).pop(),
+              title: Text(
+                highlighted ? 'Remove highlight' : 'Highlight recording',
+                style: SpeakrText.sans(size: 14),
+              ),
+              onTap: () => _toggleField(
+                context,
+                ref,
+                patch: {'is_highlighted': !highlighted},
+                successMessage:
+                    highlighted ? 'Highlight removed' : 'Highlighted',
+              ),
             ),
             ListTile(
               leading: const SpeakrIconView(SpeakrIcon.flag),
-              title: Text('Move to inbox', style: SpeakrText.sans(size: 14)),
-              onTap: () => Navigator.of(context).pop(),
+              title: Text(
+                inInbox ? 'Remove from inbox' : 'Move to inbox',
+                style: SpeakrText.sans(size: 14),
+              ),
+              onTap: () => _toggleField(
+                context,
+                ref,
+                patch: {'is_inbox': !inInbox},
+                successMessage:
+                    inInbox ? 'Removed from inbox' : 'Moved to inbox',
+              ),
+            ),
+            const Divider(color: SpeakrColors.line, height: 1),
+            ListTile(
+              leading: const SpeakrIconView(SpeakrIcon.search),
+              title: Text('Edit speakers',
+                  style: SpeakrText.sans(size: 14)),
+              subtitle: Text(
+                'Rename detected speakers',
+                style: SpeakrText.sans(size: 12, color: SpeakrColors.muted),
+              ),
+              onTap: () {
+                final navigator = Navigator.of(context);
+                navigator.pop();
+                navigator.push(
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        SpeakerReviewScreen(recordingId: recording.id),
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: const SpeakrIconView(SpeakrIcon.mic),
+              title: Text('Reprocess transcription',
+                  style: SpeakrText.sans(size: 14)),
+              subtitle: Text(
+                'Replaces the current transcript',
+                style: SpeakrText.sans(size: 12, color: SpeakrColors.muted),
+              ),
+              onTap: () => _reprocess(
+                context,
+                ref,
+                kind: _ReprocessKind.transcription,
+              ),
+            ),
+            ListTile(
+              leading: const SpeakrIconView(SpeakrIcon.flagBookmark),
+              title: Text('Reprocess summary',
+                  style: SpeakrText.sans(size: 14)),
+              subtitle: Text(
+                'Regenerates the summary from the transcript',
+                style: SpeakrText.sans(size: 12, color: SpeakrColors.muted),
+              ),
+              onTap: () => _reprocess(
+                context,
+                ref,
+                kind: _ReprocessKind.summary,
+              ),
             ),
           ],
         ),
       ),
     );
   }
+
+  Future<void> _toggleField(
+    BuildContext context,
+    WidgetRef ref, {
+    required Map<String, dynamic> patch,
+    required String successMessage,
+  }) async {
+    // Capture before popping the sheet — otherwise ref/context become stale.
+    final messenger = ScaffoldMessenger.of(context);
+    final container = ProviderScope.containerOf(context, listen: false);
+    final api = container.read(speakrApiProvider);
+    Navigator.of(context).pop();
+    try {
+      await api.updateRecording(recording.id, patch);
+      container.invalidate(recordingDetailProvider(recording.id));
+      messenger.showSnackBar(SnackBar(content: Text(successMessage)));
+    } on SpeakrApiException catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text(e.message)));
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text(e.toString())));
+    }
+  }
+
+  Future<void> _reprocess(
+    BuildContext context,
+    WidgetRef ref, {
+    required _ReprocessKind kind,
+  }) async {
+    final navigator = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    final container = ProviderScope.containerOf(context, listen: false);
+    final api = container.read(speakrApiProvider);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: SpeakrColors.bg,
+        title: Text(
+          kind == _ReprocessKind.transcription
+              ? 'Reprocess transcription?'
+              : 'Reprocess summary?',
+          style: SpeakrText.serif(size: 20),
+        ),
+        content: Text(
+          kind == _ReprocessKind.transcription
+              ? 'The current transcript and any speaker labels will be replaced. Processing happens on the server and may take a few minutes.'
+              : 'The current summary will be replaced. Processing happens on the server and may take a few minutes.',
+          style: SpeakrText.sans(size: 14, height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text('Cancel',
+                style: SpeakrText.sans(
+                    size: 13, color: SpeakrColors.muted)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text('Reprocess',
+                style: SpeakrText.sans(
+                    size: 13,
+                    weight: FontWeight.w600,
+                    color: SpeakrColors.ink)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    navigator.pop(); // close the bottom sheet
+    try {
+      if (kind == _ReprocessKind.transcription) {
+        await api.reprocessTranscription(recording.id);
+      } else {
+        await api.reprocessSummary(recording.id);
+      }
+      container.invalidate(recordingDetailProvider(recording.id));
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            kind == _ReprocessKind.transcription
+                ? 'Transcription queued — refresh in a moment'
+                : 'Summary queued — refresh in a moment',
+          ),
+        ),
+      );
+    } on SpeakrApiException catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text(e.message)));
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text(e.toString())));
+    }
+  }
 }
+
+enum _ReprocessKind { transcription, summary }
 
 class _AudioPlayerBar extends StatelessWidget {
   const _AudioPlayerBar({

@@ -156,6 +156,47 @@ class SpeakrApi {
     );
   }
 
+  // ── Processing ────────────────────────────────────────────────────────────
+  Future<void> reprocessTranscription(
+    int id, {
+    String? language,
+    int? minSpeakers,
+    int? maxSpeakers,
+  }) async {
+    await _post<Map<String, dynamic>>('/recordings/$id/transcribe', {
+      if (language != null) 'language': language,
+      if (minSpeakers != null) 'min_speakers': minSpeakers,
+      if (maxSpeakers != null) 'max_speakers': maxSpeakers,
+    });
+  }
+
+  Future<void> reprocessSummary(int id, {String? customPrompt}) async {
+    await _post<Map<String, dynamic>>('/recordings/$id/summarize', {
+      if (customPrompt != null) 'custom_prompt': customPrompt,
+    });
+  }
+
+  // ── Speakers ──────────────────────────────────────────────────────────────
+  // Response shape isn't in the OpenAPI schema, so the raw map is returned
+  // and parsed defensively at the call site. Example body:
+  //   {"speakers": [{"label": "...", "identified_name": null,
+  //                   "segment_count": 13, "speaker_id": null}, ...],
+  //    "suggestions": {}}
+  Future<Map<String, dynamic>> getRecordingSpeakers(int id) async {
+    return _get<Map<String, dynamic>>('/recordings/$id/speakers');
+  }
+
+  Future<void> assignSpeakers(
+    int id, {
+    required Map<String, dynamic> speakerMap,
+    bool regenerateSummary = false,
+  }) async {
+    await _put<Map<String, dynamic>>('/recordings/$id/speakers/assign', {
+      'speaker_map': speakerMap,
+      'regenerate_summary': regenerateSummary,
+    });
+  }
+
   // ── Settings ──────────────────────────────────────────────────────────────
   Future<void> setAutoSummarization(bool enabled) async {
     await _put<Map<String, dynamic>>('/settings/auto-summarization', {
