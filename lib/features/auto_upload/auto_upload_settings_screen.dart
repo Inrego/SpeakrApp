@@ -72,7 +72,8 @@ class _AutoUploadSettingsScreenState
       body: SafeArea(
         child: configsAsync.when(
           loading: () => const Center(
-              child: CircularProgressIndicator(color: SpeakrColors.ink)),
+            child: CircularProgressIndicator(color: SpeakrColors.ink),
+          ),
           error: (e, _) => Center(child: Text('Could not load settings: $e')),
           data: (configs) {
             final canScan = configs.any((c) => c.enabled && c.hasFolder);
@@ -83,7 +84,9 @@ class _AutoUploadSettingsScreenState
                   child: Row(
                     children: [
                       GhostIconButton(
-                          icon: SpeakrIcon.back, onTap: () => context.pop()),
+                        icon: SpeakrIcon.back,
+                        onTap: () => context.pop(),
+                      ),
                       const Padding(
                         padding: EdgeInsets.only(left: 4),
                         child: MonoEyebrow('Auto-upload', size: 10),
@@ -96,8 +99,10 @@ class _AutoUploadSettingsScreenState
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Auto-upload from folders',
-                          style: SpeakrText.serif(size: 28, height: 1.1)),
+                      Text(
+                        'Auto-upload from folders',
+                        style: SpeakrText.serif(size: 28, height: 1.1),
+                      ),
                       const SizedBox(height: 6),
                       Text(
                         'Watch one or more folders for new audio recordings '
@@ -105,49 +110,66 @@ class _AutoUploadSettingsScreenState
                         'tag, language, and parsing rules. Files are deleted '
                         'locally once they reach the server.',
                         style: SpeakrText.sans(
-                            size: 13, color: SpeakrColors.ink2, height: 1.45),
+                          size: 13,
+                          color: SpeakrColors.ink2,
+                          height: 1.45,
+                        ),
                       ),
                     ],
                   ),
                 ),
                 if (Platform.isAndroid) const _PermissionsBanner(),
-                SettingsGroup(label: 'Folders', children: [
-                  for (final c in configs)
+                SettingsGroup(
+                  label: 'Folders',
+                  children: [
+                    for (final c in configs)
+                      SettingsRow(
+                        label: _folderLabel(c),
+                        subtitle: c.folderPath,
+                        value: c.enabled ? 'On' : 'Off',
+                        valueColor: c.enabled
+                            ? SpeakrColors.ok
+                            : SpeakrColors.muted,
+                        mono: false,
+                        onTap: () => _openEditor(c.id),
+                      ),
                     SettingsRow(
-                      label: _folderLabel(c),
-                      subtitle: c.folderPath,
-                      value: c.enabled ? 'On' : 'Off',
-                      valueColor:
-                          c.enabled ? SpeakrColors.ok : SpeakrColors.muted,
-                      mono: false,
-                      onTap: () => _openEditor(c.id),
+                      label: 'Add folder…',
+                      trailing: const Icon(
+                        Icons.add,
+                        size: 20,
+                        color: SpeakrColors.ink,
+                      ),
+                      onTap: _addFolder,
                     ),
-                  SettingsRow(
-                    label: 'Add folder…',
-                    trailing: const Icon(Icons.add,
-                        size: 20, color: SpeakrColors.ink),
-                    onTap: _addFolder,
-                  ),
-                ]),
-                SettingsGroup(label: 'Run', children: [
-                  SettingsRow(
-                    label: _scanning ? 'Scanning…' : 'Scan now',
-                    trailing: _scanning
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(
-                                strokeWidth: 2, color: SpeakrColors.ink),
-                          )
-                        : Icon(Icons.play_arrow_rounded,
-                            size: 22,
-                            color: canScan
-                                ? SpeakrColors.ink
-                                : SpeakrColors.muted),
-                    onTap: (canScan && !_scanning) ? _scanNow : null,
-                  ),
-                  _LastScanRow(),
-                ]),
+                  ],
+                ),
+                SettingsGroup(
+                  label: 'Run',
+                  children: [
+                    SettingsRow(
+                      label: _scanning ? 'Scanning…' : 'Scan now',
+                      trailing: _scanning
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: SpeakrColors.ink,
+                              ),
+                            )
+                          : Icon(
+                              Icons.play_arrow_rounded,
+                              size: 22,
+                              color: canScan
+                                  ? SpeakrColors.ink
+                                  : SpeakrColors.muted,
+                            ),
+                      onTap: (canScan && !_scanning) ? _scanNow : null,
+                    ),
+                    _LastScanRow(),
+                  ],
+                ),
                 const SizedBox(height: 32),
               ],
             );
@@ -243,9 +265,7 @@ class _FolderUploadEditScreenState
       ),
     );
     if (ok != true) return;
-    await ref
-        .read(folderConfigsControllerProvider)
-        .removeFolder(config.id);
+    await ref.read(folderConfigsControllerProvider).removeFolder(config.id);
     if (mounted) Navigator.of(context).pop();
   }
 
@@ -257,7 +277,8 @@ class _FolderUploadEditScreenState
       body: SafeArea(
         child: configsAsync.when(
           loading: () => const Center(
-              child: CircularProgressIndicator(color: SpeakrColors.ink)),
+            child: CircularProgressIndicator(color: SpeakrColors.ink),
+          ),
           error: (e, _) => Center(child: Text('Could not load settings: $e')),
           data: (configs) {
             FolderUploadConfig? c;
@@ -278,8 +299,9 @@ class _FolderUploadEditScreenState
                   child: Row(
                     children: [
                       GhostIconButton(
-                          icon: SpeakrIcon.back,
-                          onTap: () => Navigator.of(context).pop()),
+                        icon: SpeakrIcon.back,
+                        onTap: () => Navigator.of(context).pop(),
+                      ),
                       const Padding(
                         padding: EdgeInsets.only(left: 4),
                         child: MonoEyebrow('Folder', size: 10),
@@ -295,9 +317,9 @@ class _FolderUploadEditScreenState
                       Text(
                         config.hasFolder
                             ? config.folderPath!
-                                .split(RegExp(r'[\\/]'))
-                                .where((s) => s.isNotEmpty)
-                                .last
+                                  .split(RegExp(r'[\\/]'))
+                                  .where((s) => s.isNotEmpty)
+                                  .last
                             : 'New folder',
                         style: SpeakrText.serif(size: 24, height: 1.1),
                         maxLines: 1,
@@ -308,101 +330,123 @@ class _FolderUploadEditScreenState
                         Text(
                           config.folderPath!,
                           style: SpeakrText.mono(
-                              size: 12,
-                              color: SpeakrColors.muted,
-                              letterSpacing: 0),
+                            size: 12,
+                            color: SpeakrColors.muted,
+                            letterSpacing: 0,
+                          ),
                         ),
                       ],
                     ],
                   ),
                 ),
                 if (Platform.isAndroid) const _PermissionsBanner(),
-                SettingsGroup(label: 'Watcher', children: [
-                  SettingsRow(
-                    label: 'Enabled',
-                    toggleValue: config.enabled,
-                    onToggle: (v) => ref
-                        .read(folderConfigsControllerProvider)
-                        .setEnabled(config.id, v),
-                  ),
-                  SettingsRow(
-                    label: 'Folder',
-                    value: config.folderPath == null
-                        ? 'Not set'
-                        : config.folderPath!.split(RegExp(r'[\\/]')).last,
-                    subtitle: config.folderPath,
-                    mono: false,
-                    onTap: _pickFolder,
-                  ),
-                  SettingsRow(
-                    label: 'Type folder path manually',
-                    trailing: const Icon(Icons.edit_outlined,
-                        size: 18, color: SpeakrColors.muted),
-                    onTap: () => _typeFolder(config),
-                  ),
-                ]),
-                SettingsGroup(label: 'Datetime parsing', children: [
-                  SettingsRow(
-                    label: 'Pattern',
-                    value: _parseLabel(config),
-                    onTap: () => _showPresetSheet(config),
-                  ),
-                ]),
-                SettingsGroup(label: 'Defaults applied to uploads', children: [
-                  SettingsRow(
-                    label: 'Tag',
-                    value: _TagLabel.of(ref, config.tagId),
-                    onTap: () => _showTagSheet(config),
-                  ),
-                  SettingsRow(
-                    label: 'Language',
-                    value: config.language ?? 'auto',
-                    onTap: () => _editLanguage(config),
-                  ),
-                  SettingsRow(
-                    label: 'Min speakers',
-                    trailing: _Stepper(
-                      value: config.minSpeakers ?? 1,
-                      min: 1,
-                      max: 12,
-                      onChanged: (v) => ref
+                SettingsGroup(
+                  label: 'Watcher',
+                  children: [
+                    SettingsRow(
+                      label: 'Enabled',
+                      toggleValue: config.enabled,
+                      onToggle: (v) => ref
                           .read(folderConfigsControllerProvider)
-                          .setMinSpeakers(config.id, v),
+                          .setEnabled(config.id, v),
                     ),
-                  ),
-                  SettingsRow(
-                    label: 'Max speakers',
-                    trailing: _Stepper(
-                      value: config.maxSpeakers ?? 1,
-                      min: 1,
-                      max: 12,
-                      onChanged: (v) => ref
-                          .read(folderConfigsControllerProvider)
-                          .setMaxSpeakers(config.id, v),
+                    SettingsRow(
+                      label: 'Folder',
+                      value: config.folderPath == null
+                          ? 'Not set'
+                          : config.folderPath!.split(RegExp(r'[\\/]')).last,
+                      subtitle: config.folderPath,
+                      mono: false,
+                      onTap: _pickFolder,
                     ),
-                  ),
-                ]),
-                SettingsGroup(label: 'Filtering', children: [
-                  SettingsRow(
-                    label: 'Auto-delete shorter than',
-                    value: config.autoDeleteShorterThanSeconds == null
-                        ? 'Off'
-                        : '${config.autoDeleteShorterThanSeconds} s',
-                    subtitle:
-                        'Recordings under this length are deleted from disk '
-                        'instead of being uploaded.',
-                    onTap: () => _editAutoDeleteThreshold(config),
-                  ),
-                ]),
-                SettingsGroup(label: 'Danger zone', children: [
-                  SettingsRow(
-                    label: 'Delete folder',
-                    valueColor: SpeakrColors.danger,
-                    trailing: const Icon(Icons.delete_outline,
-                        size: 20, color: SpeakrColors.danger),
-                    onTap: () => _confirmDelete(config),
-                  ),
-                ]),
+                    SettingsRow(
+                      label: 'Type folder path manually',
+                      trailing: const Icon(
+                        Icons.edit_outlined,
+                        size: 18,
+                        color: SpeakrColors.muted,
+                      ),
+                      onTap: () => _typeFolder(config),
+                    ),
+                  ],
+                ),
+                SettingsGroup(
+                  label: 'Datetime parsing',
+                  children: [
+                    SettingsRow(
+                      label: 'Pattern',
+                      value: _parseLabel(config),
+                      onTap: () => _showPresetSheet(config),
+                    ),
+                  ],
+                ),
+                SettingsGroup(
+                  label: 'Defaults applied to uploads',
+                  children: [
+                    SettingsRow(
+                      label: 'Tag',
+                      value: _TagLabel.of(ref, config.tagId),
+                      onTap: () => _showTagSheet(config),
+                    ),
+                    SettingsRow(
+                      label: 'Language',
+                      value: config.language ?? 'auto',
+                      onTap: () => _editLanguage(config),
+                    ),
+                    SettingsRow(
+                      label: 'Min speakers',
+                      trailing: _Stepper(
+                        value: config.minSpeakers ?? 1,
+                        min: 1,
+                        max: 12,
+                        onChanged: (v) => ref
+                            .read(folderConfigsControllerProvider)
+                            .setMinSpeakers(config.id, v),
+                      ),
+                    ),
+                    SettingsRow(
+                      label: 'Max speakers',
+                      trailing: _Stepper(
+                        value: config.maxSpeakers ?? 1,
+                        min: 1,
+                        max: 12,
+                        onChanged: (v) => ref
+                            .read(folderConfigsControllerProvider)
+                            .setMaxSpeakers(config.id, v),
+                      ),
+                    ),
+                  ],
+                ),
+                SettingsGroup(
+                  label: 'Filtering',
+                  children: [
+                    SettingsRow(
+                      label: 'Auto-delete shorter than',
+                      value: config.autoDeleteShorterThanSeconds == null
+                          ? 'Off'
+                          : '${config.autoDeleteShorterThanSeconds} s',
+                      subtitle:
+                          'Recordings under this length are deleted from disk '
+                          'instead of being uploaded.',
+                      onTap: () => _editAutoDeleteThreshold(config),
+                    ),
+                  ],
+                ),
+                SettingsGroup(
+                  label: 'Danger zone',
+                  children: [
+                    SettingsRow(
+                      label: 'Delete folder',
+                      valueColor: SpeakrColors.danger,
+                      trailing: const Icon(
+                        Icons.delete_outline,
+                        size: 20,
+                        color: SpeakrColors.danger,
+                      ),
+                      onTap: () => _confirmDelete(config),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 32),
               ],
             );
@@ -428,9 +472,7 @@ class _FolderUploadEditScreenState
         content: TextField(
           controller: ctrl,
           autofocus: true,
-          decoration: const InputDecoration(
-            hintText: 'auto, en, da, …',
-          ),
+          decoration: const InputDecoration(hintText: 'auto, en, da, …'),
         ),
         actions: [
           TextButton(
@@ -452,15 +494,18 @@ class _FolderUploadEditScreenState
 
   Future<void> _editAutoDeleteThreshold(FolderUploadConfig s) async {
     final ctrl = TextEditingController(
-        text: s.autoDeleteShorterThanSeconds?.toString() ?? '');
+      text: s.autoDeleteShorterThanSeconds?.toString() ?? '',
+    );
 
     // Three-way result: 'save' with new value (or null = Off), or null = cancel.
     final result = await showDialog<int?>(
       context: context,
       builder: (dialogCtx) => AlertDialog(
         backgroundColor: SpeakrColors.bg,
-        title: Text('Auto-delete shorter than',
-            style: SpeakrText.serif(size: 20)),
+        title: Text(
+          'Auto-delete shorter than',
+          style: SpeakrText.serif(size: 20),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -469,7 +514,10 @@ class _FolderUploadEditScreenState
               'Recordings under this many seconds are deleted from disk '
               'instead of being uploaded. Leave blank or set 0 to disable.',
               style: SpeakrText.sans(
-                  size: 12, color: SpeakrColors.ink2, height: 1.4),
+                size: 12,
+                color: SpeakrColors.ink2,
+                height: 1.4,
+              ),
             ),
             const SizedBox(height: 12),
             TextField(
@@ -545,8 +593,9 @@ class _MissingConfigView extends StatelessWidget {
           Row(
             children: [
               GhostIconButton(
-                  icon: SpeakrIcon.back,
-                  onTap: () => Navigator.of(context).pop()),
+                icon: SpeakrIcon.back,
+                onTap: () => Navigator.of(context).pop(),
+              ),
               const Padding(
                 padding: EdgeInsets.only(left: 4),
                 child: MonoEyebrow('Folder', size: 10),
@@ -555,8 +604,10 @@ class _MissingConfigView extends StatelessWidget {
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(24, 32, 24, 18),
-            child: Text('This folder no longer exists.',
-                style: SpeakrText.serif(size: 22)),
+            child: Text(
+              'This folder no longer exists.',
+              style: SpeakrText.serif(size: 22),
+            ),
           ),
         ],
       ),
@@ -587,6 +638,7 @@ class _PermissionsBannerState extends State<_PermissionsBanner> {
     final wanted = <Permission>[
       Permission.phone,
       Permission.audio,
+      Permission.manageExternalStorage,
       Permission.notification,
     ];
     final missing = <Permission>[];
@@ -621,14 +673,22 @@ class _PermissionsBannerState extends State<_PermissionsBanner> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Permissions needed',
-              style: SpeakrText.sans(
-                  size: 13, weight: FontWeight.w600, color: SpeakrColors.ink)),
+          Text(
+            'Permissions needed',
+            style: SpeakrText.sans(
+              size: 13,
+              weight: FontWeight.w600,
+              color: SpeakrColors.ink,
+            ),
+          ),
           const SizedBox(height: 4),
           Text(
             _description(_missing),
             style: SpeakrText.sans(
-                size: 12, color: SpeakrColors.ink2, height: 1.4),
+              size: 12,
+              color: SpeakrColors.ink2,
+              height: 1.4,
+            ),
           ),
           const SizedBox(height: 8),
           Align(
@@ -651,6 +711,11 @@ class _PermissionsBannerState extends State<_PermissionsBanner> {
     }
     if (missing.contains(Permission.audio)) {
       parts.add('Audio files — to read recordings on the device.');
+    }
+    if (missing.contains(Permission.manageExternalStorage)) {
+      parts.add(
+        'All files access — to delete recordings after successful upload.',
+      );
     }
     if (missing.contains(Permission.notification)) {
       parts.add('Notifications — required for background uploads.');
@@ -679,7 +744,9 @@ class _Stepper extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         _StepperBtn(
-            label: '−', onTap: value > min ? () => onChanged(value - 1) : null),
+          label: '−',
+          onTap: value > min ? () => onChanged(value - 1) : null,
+        ),
         SizedBox(
           width: 30,
           child: Text(
@@ -689,7 +756,9 @@ class _Stepper extends StatelessWidget {
           ),
         ),
         _StepperBtn(
-            label: '+', onTap: value < max ? () => onChanged(value + 1) : null),
+          label: '+',
+          onTap: value < max ? () => onChanged(value + 1) : null,
+        ),
       ],
     );
   }
@@ -713,12 +782,14 @@ class _StepperBtn extends StatelessWidget {
           border: Border.all(color: SpeakrColors.line),
         ),
         alignment: Alignment.center,
-        child: Text(label,
-            style: SpeakrText.serif(
-              size: 16,
-              color: onTap == null ? SpeakrColors.muted : SpeakrColors.ink,
-              height: 1,
-            )),
+        child: Text(
+          label,
+          style: SpeakrText.serif(
+            size: 16,
+            color: onTap == null ? SpeakrColors.muted : SpeakrColors.ink,
+            height: 1,
+          ),
+        ),
       ),
     );
   }
@@ -756,12 +827,15 @@ class _PresetSheet extends ConsumerStatefulWidget {
 
 class _PresetSheetState extends ConsumerState<_PresetSheet> {
   late String? _selected = widget.current.parsePresetId;
-  late final _regex =
-      TextEditingController(text: widget.current.customRegex ?? '');
+  late final _regex = TextEditingController(
+    text: widget.current.customRegex ?? '',
+  );
   late final _group = TextEditingController(
-      text: (widget.current.customCaptureGroup ?? 1).toString());
-  late final _format =
-      TextEditingController(text: widget.current.customFormat ?? '');
+    text: (widget.current.customCaptureGroup ?? 1).toString(),
+  );
+  late final _format = TextEditingController(
+    text: widget.current.customFormat ?? '',
+  );
   String? _customError;
 
   @override
@@ -787,7 +861,9 @@ class _PresetSheetState extends ConsumerState<_PresetSheet> {
       }
       final group = int.tryParse(groupStr);
       if (group == null || group < 1) {
-        setState(() => _customError = 'Capture group must be a positive integer.');
+        setState(
+          () => _customError = 'Capture group must be a positive integer.',
+        );
         return;
       }
       try {
@@ -797,7 +873,11 @@ class _PresetSheetState extends ConsumerState<_PresetSheet> {
         return;
       }
       await ctrl.setCustomParse(
-          id: id, regex: regex, captureGroup: group, format: format);
+        id: id,
+        regex: regex,
+        captureGroup: group,
+        format: format,
+      );
     } else {
       await ctrl.setPreset(id, _selected);
     }
@@ -808,7 +888,8 @@ class _PresetSheetState extends ConsumerState<_PresetSheet> {
   Widget build(BuildContext context) {
     return Padding(
       padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).viewInsets.bottom),
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
       child: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -816,18 +897,24 @@ class _PresetSheetState extends ConsumerState<_PresetSheet> {
             const SizedBox(height: 14),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Text('Datetime pattern',
-                  style: SpeakrText.serif(size: 22)),
+              child: Text(
+                'Datetime pattern',
+                style: SpeakrText.serif(size: 22),
+              ),
             ),
             const SizedBox(height: 6),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Text(
-                  'Parse the recording datetime out of the filename. '
-                  'Falls back to file modification time if the pattern '
-                  'doesn\'t match.',
-                  style: SpeakrText.sans(
-                      size: 12, color: SpeakrColors.ink2, height: 1.4)),
+                'Parse the recording datetime out of the filename. '
+                'Falls back to file modification time if the pattern '
+                'doesn\'t match.',
+                style: SpeakrText.sans(
+                  size: 12,
+                  color: SpeakrColors.ink2,
+                  height: 1.4,
+                ),
+              ),
             ),
             const SizedBox(height: 14),
             _PresetTile(
@@ -856,19 +943,25 @@ class _PresetSheetState extends ConsumerState<_PresetSheet> {
                     _CustomField(label: 'Regex', controller: _regex),
                     const SizedBox(height: 10),
                     _CustomField(
-                        label: 'Capture group (1-based)',
-                        controller: _group,
-                        keyboardType: TextInputType.number),
+                      label: 'Capture group (1-based)',
+                      controller: _group,
+                      keyboardType: TextInputType.number,
+                    ),
                     const SizedBox(height: 10),
                     _CustomField(
-                        label: 'DateFormat pattern',
-                        controller: _format,
-                        hint: 'yyyy-MM-dd HH-mm-ss'),
+                      label: 'DateFormat pattern',
+                      controller: _format,
+                      hint: 'yyyy-MM-dd HH-mm-ss',
+                    ),
                     if (_customError != null) ...[
                       const SizedBox(height: 8),
-                      Text(_customError!,
-                          style: SpeakrText.sans(
-                              size: 12, color: SpeakrColors.danger)),
+                      Text(
+                        _customError!,
+                        style: SpeakrText.sans(
+                          size: 12,
+                          color: SpeakrColors.danger,
+                        ),
+                      ),
                     ],
                   ],
                 ),
@@ -884,10 +977,7 @@ class _PresetSheetState extends ConsumerState<_PresetSheet> {
                     child: const Text('Cancel'),
                   ),
                   const Spacer(),
-                  FilledButton(
-                    onPressed: _save,
-                    child: const Text('Save'),
-                  ),
+                  FilledButton(onPressed: _save, child: const Text('Save')),
                 ],
               ),
             ),
@@ -932,9 +1022,7 @@ class _PresetTile extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 12),
-            Expanded(
-              child: Text(label, style: SpeakrText.sans(size: 14)),
-            ),
+            Expanded(child: Text(label, style: SpeakrText.sans(size: 14))),
           ],
         ),
       ),
@@ -959,8 +1047,10 @@ class _CustomField extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label,
-            style: SpeakrText.sans(size: 12, color: SpeakrColors.muted)),
+        Text(
+          label,
+          style: SpeakrText.sans(size: 12, color: SpeakrColors.muted),
+        ),
         const SizedBox(height: 4),
         TextField(
           controller: controller,
@@ -1004,20 +1094,22 @@ class _TagSheet extends ConsumerWidget {
         children: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
-            child:
-                Text('Default tag', style: SpeakrText.serif(size: 22)),
+            child: Text('Default tag', style: SpeakrText.serif(size: 22)),
           ),
           const SizedBox(height: 12),
           tagsAsync.when(
             loading: () => const Padding(
               padding: EdgeInsets.symmetric(vertical: 24),
               child: Center(
-                  child: CircularProgressIndicator(color: SpeakrColors.ink)),
+                child: CircularProgressIndicator(color: SpeakrColors.ink),
+              ),
             ),
             error: (e, _) => Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Text('Could not load tags: $e',
-                  style: SpeakrText.sans(size: 13)),
+              child: Text(
+                'Could not load tags: $e',
+                style: SpeakrText.sans(size: 13),
+              ),
             ),
             data: (tags) => Column(
               children: [
@@ -1079,10 +1171,7 @@ class _TagOption extends StatelessWidget {
               Container(
                 width: 10,
                 height: 10,
-                decoration: BoxDecoration(
-                  color: color,
-                  shape: BoxShape.circle,
-                ),
+                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
               ),
               const SizedBox(width: 8),
             ],

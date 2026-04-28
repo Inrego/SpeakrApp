@@ -6,7 +6,7 @@ part of 'models.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-_$TagImpl _$$TagImplFromJson(Map<String, dynamic> json) => _$TagImpl(
+_Tag _$TagFromJson(Map<String, dynamic> json) => _Tag(
   id: (json['id'] as num).toInt(),
   name: json['name'] as String,
   color: json['color'] as String?,
@@ -16,7 +16,7 @@ _$TagImpl _$$TagImplFromJson(Map<String, dynamic> json) => _$TagImpl(
   defaultMaxSpeakers: (json['default_max_speakers'] as num?)?.toInt(),
 );
 
-Map<String, dynamic> _$$TagImplToJson(_$TagImpl instance) => <String, dynamic>{
+Map<String, dynamic> _$TagToJson(_Tag instance) => <String, dynamic>{
   'id': instance.id,
   'name': instance.name,
   'color': instance.color,
@@ -26,76 +26,71 @@ Map<String, dynamic> _$$TagImplToJson(_$TagImpl instance) => <String, dynamic>{
   'default_max_speakers': instance.defaultMaxSpeakers,
 };
 
-_$SpeakerImpl _$$SpeakerImplFromJson(Map<String, dynamic> json) =>
-    _$SpeakerImpl(
-      id: (json['id'] as num).toInt(),
-      name: json['name'] as String,
-      hasVoiceProfile: json['has_voice_profile'] as bool? ?? false,
-      useCount: (json['use_count'] as num?)?.toInt() ?? 0,
-      lastUsed: json['last_used'] == null
-          ? null
-          : DateTime.parse(json['last_used'] as String),
-    );
-
-Map<String, dynamic> _$$SpeakerImplToJson(_$SpeakerImpl instance) =>
-    <String, dynamic>{
-      'id': instance.id,
-      'name': instance.name,
-      'has_voice_profile': instance.hasVoiceProfile,
-      'use_count': instance.useCount,
-      'last_used': instance.lastUsed?.toIso8601String(),
-    };
-
-_$SpeakerSuggestionImpl _$$SpeakerSuggestionImplFromJson(
-  Map<String, dynamic> json,
-) => _$SpeakerSuggestionImpl(
-  speakerId: (json['speaker_id'] as num).toInt(),
+_Speaker _$SpeakerFromJson(Map<String, dynamic> json) => _Speaker(
+  id: (json['id'] as num).toInt(),
   name: json['name'] as String,
-  confidence: (json['confidence'] as num?)?.toDouble() ?? 0.0,
-  similarity: (json['similarity'] as num?)?.toDouble() ?? 0.0,
-  embeddingCount: (json['embedding_count'] as num?)?.toInt() ?? 0,
+  hasVoiceProfile: json['has_voice_profile'] as bool? ?? false,
+  useCount: (json['use_count'] as num?)?.toInt() ?? 0,
+  lastUsed: json['last_used'] == null
+      ? null
+      : DateTime.parse(json['last_used'] as String),
 );
 
-Map<String, dynamic> _$$SpeakerSuggestionImplToJson(
-  _$SpeakerSuggestionImpl instance,
-) => <String, dynamic>{
-  'speaker_id': instance.speakerId,
+Map<String, dynamic> _$SpeakerToJson(_Speaker instance) => <String, dynamic>{
+  'id': instance.id,
   'name': instance.name,
-  'confidence': instance.confidence,
-  'similarity': instance.similarity,
-  'embedding_count': instance.embeddingCount,
+  'has_voice_profile': instance.hasVoiceProfile,
+  'use_count': instance.useCount,
+  'last_used': instance.lastUsed?.toIso8601String(),
 };
 
-_$RecordingImpl _$$RecordingImplFromJson(Map<String, dynamic> json) =>
-    _$RecordingImpl(
-      id: (json['id'] as num).toInt(),
-      title: json['title'] as String?,
-      meetingDate: _parseFlexibleDate(json['meeting_date']),
-      createdAt: _parseFlexibleDate(json['created_at']),
-      participants: json['participants'] as String?,
-      fileSize: (json['file_size'] as num?)?.toInt(),
-      isHighlighted: json['is_highlighted'] as bool? ?? false,
-      isInbox: json['is_inbox'] as bool? ?? false,
-      status: json['status'] == null
-          ? RecordingStatus.completed
-          : _parseRecordingStatus(json['status']),
-      tags:
-          (json['tags'] as List<dynamic>?)
-              ?.map((e) => Tag.fromJson(e as Map<String, dynamic>))
-              .toList() ??
-          const <Tag>[],
-      audioAvailable: json['audio_available'] as bool?,
-      errorMessage: json['error_message'] as String?,
-      hasSummary: json['has_summary'] as bool?,
-      hasTranscription: json['has_transcription'] as bool?,
-      originalFilename: json['original_filename'] as String?,
-      summary: json['summary'] as String?,
-      notes: json['notes'] as String?,
-      transcription: json['transcription'] as String?,
-      audioDuration: (json['audio_duration'] as num?)?.toDouble(),
+_SpeakerSuggestion _$SpeakerSuggestionFromJson(Map<String, dynamic> json) =>
+    _SpeakerSuggestion(
+      speakerId: (json['speaker_id'] as num).toInt(),
+      name: json['name'] as String,
+      confidence: (json['confidence'] as num?)?.toDouble() ?? 0.0,
+      similarity: (json['similarity'] as num?)?.toDouble() ?? 0.0,
+      embeddingCount: (json['embedding_count'] as num?)?.toInt() ?? 0,
     );
 
-Map<String, dynamic> _$$RecordingImplToJson(_$RecordingImpl instance) =>
+Map<String, dynamic> _$SpeakerSuggestionToJson(_SpeakerSuggestion instance) =>
+    <String, dynamic>{
+      'speaker_id': instance.speakerId,
+      'name': instance.name,
+      'confidence': instance.confidence,
+      'similarity': instance.similarity,
+      'embedding_count': instance.embeddingCount,
+    };
+
+_Recording _$RecordingFromJson(Map<String, dynamic> json) => _Recording(
+  id: (json['id'] as num).toInt(),
+  title: json['title'] as String?,
+  meetingDate: _parseFlexibleDate(json['meeting_date']),
+  createdAt: _parseFlexibleDate(json['created_at']),
+  participants: json['participants'] as String?,
+  fileSize: (json['file_size'] as num?)?.toInt(),
+  isHighlighted: json['is_highlighted'] as bool? ?? false,
+  isInbox: json['is_inbox'] as bool? ?? false,
+  status: json['status'] == null
+      ? RecordingStatus.completed
+      : _parseRecordingStatus(json['status']),
+  tags:
+      (json['tags'] as List<dynamic>?)
+          ?.map((e) => Tag.fromJson(e as Map<String, dynamic>))
+          .toList() ??
+      const <Tag>[],
+  audioAvailable: json['audio_available'] as bool?,
+  errorMessage: json['error_message'] as String?,
+  hasSummary: json['has_summary'] as bool?,
+  hasTranscription: json['has_transcription'] as bool?,
+  originalFilename: json['original_filename'] as String?,
+  summary: json['summary'] as String?,
+  notes: json['notes'] as String?,
+  transcription: json['transcription'] as String?,
+  audioDuration: (json['audio_duration'] as num?)?.toDouble(),
+);
+
+Map<String, dynamic> _$RecordingToJson(_Recording instance) =>
     <String, dynamic>{
       'id': instance.id,
       'title': instance.title,
@@ -127,8 +122,8 @@ const _$RecordingStatusEnumMap = {
   RecordingStatus.failed: 'FAILED',
 };
 
-_$RecordingPageImpl _$$RecordingPageImplFromJson(Map<String, dynamic> json) =>
-    _$RecordingPageImpl(
+_RecordingPage _$RecordingPageFromJson(Map<String, dynamic> json) =>
+    _RecordingPage(
       recordings:
           (json['recordings'] as List<dynamic>?)
               ?.map((e) => Recording.fromJson(e as Map<String, dynamic>))
@@ -140,7 +135,7 @@ _$RecordingPageImpl _$$RecordingPageImplFromJson(Map<String, dynamic> json) =>
       totalPages: (json['total_pages'] as num?)?.toInt() ?? 1,
     );
 
-Map<String, dynamic> _$$RecordingPageImplToJson(_$RecordingPageImpl instance) =>
+Map<String, dynamic> _$RecordingPageToJson(_RecordingPage instance) =>
     <String, dynamic>{
       'recordings': instance.recordings,
       'page': instance.page,
@@ -149,57 +144,52 @@ Map<String, dynamic> _$$RecordingPageImplToJson(_$RecordingPageImpl instance) =>
       'total_pages': instance.totalPages,
     };
 
-_$TranscriptSegmentImpl _$$TranscriptSegmentImplFromJson(
-  Map<String, dynamic> json,
-) => _$TranscriptSegmentImpl(
-  speaker: json['speaker'] as String?,
-  startTime: (json['start_time'] as num?)?.toDouble(),
-  endTime: (json['end_time'] as num?)?.toDouble(),
-  sentence: json['sentence'] as String?,
-);
+_TranscriptSegment _$TranscriptSegmentFromJson(Map<String, dynamic> json) =>
+    _TranscriptSegment(
+      speaker: json['speaker'] as String?,
+      startTime: (json['start_time'] as num?)?.toDouble(),
+      endTime: (json['end_time'] as num?)?.toDouble(),
+      sentence: json['sentence'] as String?,
+    );
 
-Map<String, dynamic> _$$TranscriptSegmentImplToJson(
-  _$TranscriptSegmentImpl instance,
-) => <String, dynamic>{
-  'speaker': instance.speaker,
-  'start_time': instance.startTime,
-  'end_time': instance.endTime,
-  'sentence': instance.sentence,
-};
+Map<String, dynamic> _$TranscriptSegmentToJson(_TranscriptSegment instance) =>
+    <String, dynamic>{
+      'speaker': instance.speaker,
+      'start_time': instance.startTime,
+      'end_time': instance.endTime,
+      'sentence': instance.sentence,
+    };
 
-_$RecordingStatusResponseImpl _$$RecordingStatusResponseImplFromJson(
+_RecordingStatusResponse _$RecordingStatusResponseFromJson(
   Map<String, dynamic> json,
-) => _$RecordingStatusResponseImpl(
+) => _RecordingStatusResponse(
   status: _parseRecordingStatus(json['status']),
   queuePosition: (json['queue_position'] as num?)?.toInt(),
   message: json['message'] as String?,
 );
 
-Map<String, dynamic> _$$RecordingStatusResponseImplToJson(
-  _$RecordingStatusResponseImpl instance,
+Map<String, dynamic> _$RecordingStatusResponseToJson(
+  _RecordingStatusResponse instance,
 ) => <String, dynamic>{
   'status': _$RecordingStatusEnumMap[instance.status]!,
   'queue_position': instance.queuePosition,
   'message': instance.message,
 };
 
-_$ChatMessageImpl _$$ChatMessageImplFromJson(Map<String, dynamic> json) =>
-    _$ChatMessageImpl(
-      role: json['role'] as String,
-      text: json['text'] as String,
-    );
+_ChatMessage _$ChatMessageFromJson(Map<String, dynamic> json) =>
+    _ChatMessage(role: json['role'] as String, text: json['text'] as String);
 
-Map<String, dynamic> _$$ChatMessageImplToJson(_$ChatMessageImpl instance) =>
+Map<String, dynamic> _$ChatMessageToJson(_ChatMessage instance) =>
     <String, dynamic>{'role': instance.role, 'text': instance.text};
 
-_$ChatResponseImpl _$$ChatResponseImplFromJson(Map<String, dynamic> json) =>
-    _$ChatResponseImpl(response: json['response'] as String);
+_ChatResponse _$ChatResponseFromJson(Map<String, dynamic> json) =>
+    _ChatResponse(response: json['response'] as String);
 
-Map<String, dynamic> _$$ChatResponseImplToJson(_$ChatResponseImpl instance) =>
+Map<String, dynamic> _$ChatResponseToJson(_ChatResponse instance) =>
     <String, dynamic>{'response': instance.response};
 
-_$StatsResponseImpl _$$StatsResponseImplFromJson(Map<String, dynamic> json) =>
-    _$StatsResponseImpl(
+_StatsResponse _$StatsResponseFromJson(Map<String, dynamic> json) =>
+    _StatsResponse(
       activity: json['activity'] == null
           ? null
           : StatsActivity.fromJson(json['activity'] as Map<String, dynamic>),
@@ -224,7 +214,7 @@ _$StatsResponseImpl _$$StatsResponseImplFromJson(Map<String, dynamic> json) =>
             ),
     );
 
-Map<String, dynamic> _$$StatsResponseImplToJson(_$StatsResponseImpl instance) =>
+Map<String, dynamic> _$StatsResponseToJson(_StatsResponse instance) =>
     <String, dynamic>{
       'activity': instance.activity,
       'queue': instance.queue,
@@ -234,96 +224,90 @@ Map<String, dynamic> _$$StatsResponseImplToJson(_$StatsResponseImpl instance) =>
       'transcription': instance.transcription,
     };
 
-_$StatsActivityImpl _$$StatsActivityImplFromJson(Map<String, dynamic> json) =>
-    _$StatsActivityImpl(
+_StatsActivity _$StatsActivityFromJson(Map<String, dynamic> json) =>
+    _StatsActivity(
       lastTranscription: json['last_transcription'] == null
           ? null
           : DateTime.parse(json['last_transcription'] as String),
       recordingsToday: (json['recordings_today'] as num?)?.toInt(),
     );
 
-Map<String, dynamic> _$$StatsActivityImplToJson(_$StatsActivityImpl instance) =>
+Map<String, dynamic> _$StatsActivityToJson(_StatsActivity instance) =>
     <String, dynamic>{
       'last_transcription': instance.lastTranscription?.toIso8601String(),
       'recordings_today': instance.recordingsToday,
     };
 
-_$StatsQueueImpl _$$StatsQueueImplFromJson(Map<String, dynamic> json) =>
-    _$StatsQueueImpl(
-      jobsProcessing: (json['jobs_processing'] as num?)?.toInt(),
-      jobsQueued: (json['jobs_queued'] as num?)?.toInt(),
-    );
+_StatsQueue _$StatsQueueFromJson(Map<String, dynamic> json) => _StatsQueue(
+  jobsProcessing: (json['jobs_processing'] as num?)?.toInt(),
+  jobsQueued: (json['jobs_queued'] as num?)?.toInt(),
+);
 
-Map<String, dynamic> _$$StatsQueueImplToJson(_$StatsQueueImpl instance) =>
+Map<String, dynamic> _$StatsQueueToJson(_StatsQueue instance) =>
     <String, dynamic>{
       'jobs_processing': instance.jobsProcessing,
       'jobs_queued': instance.jobsQueued,
     };
 
-_$StatsRecordingsImpl _$$StatsRecordingsImplFromJson(
-  Map<String, dynamic> json,
-) => _$StatsRecordingsImpl(
-  completed: (json['completed'] as num?)?.toInt(),
-  failed: (json['failed'] as num?)?.toInt(),
-  pending: (json['pending'] as num?)?.toInt(),
-  processing: (json['processing'] as num?)?.toInt(),
-  total: (json['total'] as num?)?.toInt(),
-);
+_StatsRecordings _$StatsRecordingsFromJson(Map<String, dynamic> json) =>
+    _StatsRecordings(
+      completed: (json['completed'] as num?)?.toInt(),
+      failed: (json['failed'] as num?)?.toInt(),
+      pending: (json['pending'] as num?)?.toInt(),
+      processing: (json['processing'] as num?)?.toInt(),
+      total: (json['total'] as num?)?.toInt(),
+    );
 
-Map<String, dynamic> _$$StatsRecordingsImplToJson(
-  _$StatsRecordingsImpl instance,
-) => <String, dynamic>{
-  'completed': instance.completed,
-  'failed': instance.failed,
-  'pending': instance.pending,
-  'processing': instance.processing,
-  'total': instance.total,
-};
+Map<String, dynamic> _$StatsRecordingsToJson(_StatsRecordings instance) =>
+    <String, dynamic>{
+      'completed': instance.completed,
+      'failed': instance.failed,
+      'pending': instance.pending,
+      'processing': instance.processing,
+      'total': instance.total,
+    };
 
-_$StatsStorageImpl _$$StatsStorageImplFromJson(Map<String, dynamic> json) =>
-    _$StatsStorageImpl(
+_StatsStorage _$StatsStorageFromJson(Map<String, dynamic> json) =>
+    _StatsStorage(
       usedBytes: (json['used_bytes'] as num?)?.toInt(),
       usedHuman: json['used_human'] as String?,
     );
 
-Map<String, dynamic> _$$StatsStorageImplToJson(_$StatsStorageImpl instance) =>
+Map<String, dynamic> _$StatsStorageToJson(_StatsStorage instance) =>
     <String, dynamic>{
       'used_bytes': instance.usedBytes,
       'used_human': instance.usedHuman,
     };
 
-_$StatsTokensImpl _$$StatsTokensImplFromJson(Map<String, dynamic> json) =>
-    _$StatsTokensImpl(
-      budget: (json['budget'] as num?)?.toInt(),
-      percentage: (json['percentage'] as num?)?.toDouble(),
-      usedThisMonth: (json['used_this_month'] as num?)?.toInt(),
-    );
+_StatsTokens _$StatsTokensFromJson(Map<String, dynamic> json) => _StatsTokens(
+  budget: (json['budget'] as num?)?.toInt(),
+  percentage: (json['percentage'] as num?)?.toDouble(),
+  usedThisMonth: (json['used_this_month'] as num?)?.toInt(),
+);
 
-Map<String, dynamic> _$$StatsTokensImplToJson(_$StatsTokensImpl instance) =>
+Map<String, dynamic> _$StatsTokensToJson(_StatsTokens instance) =>
     <String, dynamic>{
       'budget': instance.budget,
       'percentage': instance.percentage,
       'used_this_month': instance.usedThisMonth,
     };
 
-_$StatsTranscriptionImpl _$$StatsTranscriptionImplFromJson(
-  Map<String, dynamic> json,
-) => _$StatsTranscriptionImpl(
-  budgetMinutes: (json['budget_minutes'] as num?)?.toInt(),
-  budgetSeconds: (json['budget_seconds'] as num?)?.toInt(),
-  estimatedCost: (json['estimated_cost'] as num?)?.toDouble(),
-  percentage: (json['percentage'] as num?)?.toDouble(),
-  usedThisMonthMinutes: (json['used_this_month_minutes'] as num?)?.toInt(),
-  usedThisMonthSeconds: (json['used_this_month_seconds'] as num?)?.toInt(),
-);
+_StatsTranscription _$StatsTranscriptionFromJson(Map<String, dynamic> json) =>
+    _StatsTranscription(
+      budgetMinutes: (json['budget_minutes'] as num?)?.toInt(),
+      budgetSeconds: (json['budget_seconds'] as num?)?.toInt(),
+      estimatedCost: (json['estimated_cost'] as num?)?.toDouble(),
+      percentage: (json['percentage'] as num?)?.toDouble(),
+      usedThisMonthMinutes: (json['used_this_month_minutes'] as num?)?.toInt(),
+      usedThisMonthSeconds: (json['used_this_month_seconds'] as num?)?.toInt(),
+    );
 
-Map<String, dynamic> _$$StatsTranscriptionImplToJson(
-  _$StatsTranscriptionImpl instance,
-) => <String, dynamic>{
-  'budget_minutes': instance.budgetMinutes,
-  'budget_seconds': instance.budgetSeconds,
-  'estimated_cost': instance.estimatedCost,
-  'percentage': instance.percentage,
-  'used_this_month_minutes': instance.usedThisMonthMinutes,
-  'used_this_month_seconds': instance.usedThisMonthSeconds,
-};
+Map<String, dynamic> _$StatsTranscriptionToJson(_StatsTranscription instance) =>
+    <String, dynamic>{
+      'budget_minutes': instance.budgetMinutes,
+      'budget_seconds': instance.budgetSeconds,
+      'estimated_cost': instance.estimatedCost,
+      'percentage': instance.percentage,
+      'used_this_month_minutes': instance.usedThisMonthMinutes,
+      'used_this_month_seconds': instance.usedThisMonthSeconds,
+    };

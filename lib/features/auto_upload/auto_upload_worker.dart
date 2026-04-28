@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:audio_metadata_reader/audio_metadata_reader.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 
 import '../../api/auth_interceptor.dart';
@@ -15,7 +16,15 @@ import 'datetime_parser.dart';
 
 /// Audio extensions the watcher picks up. Lowercase, with leading dot.
 const Set<String> kAutoUploadAudioExtensions = {
-  '.m4a', '.mp3', '.wav', '.ogg', '.aac', '.opus', '.amr', '.3gp', '.flac',
+  '.m4a',
+  '.mp3',
+  '.wav',
+  '.ogg',
+  '.aac',
+  '.opus',
+  '.amr',
+  '.3gp',
+  '.flac',
 };
 
 /// Result of a single file's processing during a scan.
@@ -41,17 +50,23 @@ class AutoUploadResult {
   }
 }
 
+void _logAutoUpload(String message) {
+  debugPrint('[auto-upload] $message');
+}
+
 /// Build a fresh [SpeakrApi] for use inside a background isolate (no
 /// Riverpod). The interceptor reads credentials from secure storage on
 /// each request, so per-isolate construction is correct.
 SpeakrApi buildBackgroundApi() {
-  final dio = Dio(BaseOptions(
-    connectTimeout: const Duration(seconds: 15),
-    receiveTimeout: const Duration(seconds: 60),
-    sendTimeout: const Duration(minutes: 10),
-    contentType: 'application/json',
-    responseType: ResponseType.json,
-  ));
+  final dio = Dio(
+    BaseOptions(
+      connectTimeout: const Duration(seconds: 15),
+      receiveTimeout: const Duration(seconds: 60),
+      sendTimeout: const Duration(minutes: 10),
+      contentType: 'application/json',
+      responseType: ResponseType.json,
+    ),
+  );
   dio.interceptors.add(AuthInterceptor(CredentialsStore()));
   return SpeakrApi(dio);
 }
@@ -64,8 +79,11 @@ List<File> listCandidateFiles(String folderPath) {
   return dir
       .listSync(followLinks: false)
       .whereType<File>()
-      .where((f) => kAutoUploadAudioExtensions
-          .contains(p.extension(f.path).toLowerCase()))
+      .where(
+        (f) => kAutoUploadAudioExtensions.contains(
+          p.extension(f.path).toLowerCase(),
+        ),
+      )
       .toList();
 }
 
@@ -139,30 +157,150 @@ String _durationErrorMessage(File file, String detail) {
       'use an unsupported codec.\n\n$detail';
 }
 
+Future<String?> _fileSignature(File file) async {
+  try {
+    final stat = await file.stat();
+    return stat.size.toString();
+  } catch (_) {
+    return null;
+  }
+}
+
+bool _signatureMatches(String? stored, String current) {
+  return stored == current || (stored?.startsWith('$current:') ?? false);
+}
+
+String _deleteAfterUploadErrorMessage(File file, Object detail) {
+  final name = p.basename(file.path);
+  return '$name was uploaded to Speakr, but the app could not delete the '
+      'local copy. Automatic scans will skip this exact file to avoid '
+      'duplicate uploads.\n\nDelete it manually, or tap this item and choose '
+      'Delete file.\n\n$detail';
+}
+
+Future<void> _clearWindowsReadOnlyAttribute(File file) async {
+  if (!Platform.isWindows) return;
+  try {
+    final result = await Process.run('attrib', ['-R', file.path]);
+    if (result.exitCode != 0) {
+      _logAutoUpload(
+        'could not clear read-only attribute for ${file.path}: '
+        '${result.stderr}${result.stdout}',
+      );
+    }
+  } catch (e) {
+    _logAutoUpload('could not clear read-only attribute for ${file.path}: $e');
+  }
+}
+
+Future<Object?> deleteLocalAutoUploadFile(
+  File file, {
+  int attempts = 5,
+  Duration initialDelay = const Duration(milliseconds: 200),
+}) async {
+  Object? lastError;
+  for (var attempt = 0; attempt < attempts; attempt++) {
+    try {
+      if (!await file.exists()) return null;
+      await _clearWindowsReadOnlyAttribute(file);
+      await file.delete();
+      if (!await file.exists()) return null;
+    } catch (e) {
+      lastError = e;
+    }
+    if (attempt < attempts - 1) {
+      await Future<void>.delayed(initialDelay * (attempt + 1));
+    }
+  }
+  return lastError ?? 'File still exists after delete';
+}
+
+Future<File> _copyForUpload(File source) async {
+  final tempDir = await Directory.systemTemp.createTemp('speakr_upload_');
+  final target = File(p.join(tempDir.path, p.basename(source.path)));
+  return source.copy(target.path);
+}
+
+Future<void> _deleteUploadCopy(File copy) async {
+  try {
+    final parent = copy.parent;
+    if (await parent.exists()) {
+      await parent.delete(recursive: true);
+    } else if (await copy.exists()) {
+      await copy.delete();
+    }
+  } catch (e) {
+    _logAutoUpload('could not delete temp upload copy ${copy.path}: $e');
+  }
+}
+
+class _UploadAndDeleteResult {
+  const _UploadAndDeleteResult({
+    required this.recording,
+    required this.deleted,
+    this.deleteError,
+  });
+
+  final Recording recording;
+  final bool deleted;
+  final Object? deleteError;
+}
+
 /// Uploads one file via [api], using [config] to derive datetime and
 /// other multipart fields. Deletes the local file on success.
-Future<Recording> _uploadAndDelete(
+Future<_UploadAndDeleteResult> _uploadAndDelete(
   File file,
   FolderUploadConfig config,
   SpeakrApi api,
+  AutoUploadSettingsStore? store,
 ) async {
+  final signature = await _fileSignature(file);
   final dt = resolveDateTime(file, config);
   final tagIds = config.tagId == null ? const <int>[] : <int>[config.tagId!];
-  final recording = await api.uploadRecording(
-    file: file,
-    language: config.language,
-    minSpeakers: config.minSpeakers,
-    maxSpeakers: config.maxSpeakers,
-    tagIds: tagIds,
-    fileLastModified: dt,
-  );
+  final uploadCopy = await _copyForUpload(file);
+  Recording recording;
   try {
-    await file.delete();
-  } catch (_) {
-    // Mirror live_screen behaviour: a failed delete after a successful
-    // upload is non-fatal; the next scan will re-check stability and skip.
+    recording = await api.uploadRecording(
+      file: uploadCopy,
+      language: config.language,
+      minSpeakers: config.minSpeakers,
+      maxSpeakers: config.maxSpeakers,
+      tagIds: tagIds,
+      fileLastModified: dt,
+    );
+  } finally {
+    await _deleteUploadCopy(uploadCopy);
   }
-  return recording;
+  try {
+    await api.updateRecording(recording.id, {
+      'meeting_date': dt.toUtc().toIso8601String(),
+    });
+  } catch (e) {
+    _logAutoUpload('meeting_date PATCH failed for ${recording.id}: $e');
+  }
+  final deleteError = await deleteLocalAutoUploadFile(file);
+  if (deleteError == null) {
+    if (store != null) {
+      await store.clearUploadedFile(file.path);
+      await store.clearFileError(file.path);
+    }
+    _logAutoUpload('uploaded and deleted ${file.path}');
+  } else if (store != null && signature != null) {
+    await store.markUploadedFile(file.path, signature);
+    await store.setFileError(
+      file.path,
+      _deleteAfterUploadErrorMessage(file, deleteError),
+    );
+    _logAutoUpload(
+      'uploaded but could not delete ${file.path}; '
+      'signature=$signature error=$deleteError',
+    );
+  }
+  return _UploadAndDeleteResult(
+    recording: recording,
+    deleted: deleteError == null,
+    deleteError: deleteError,
+  );
 }
 
 class AutoUploadStillWritingException implements Exception {
@@ -172,6 +310,23 @@ class AutoUploadStillWritingException implements Exception {
   String toString() => message;
 }
 
+Future<AutoUploadLock> _acquireAutoUploadLock(
+  AutoUploadSettingsStore store, {
+  Duration waitFor = Duration.zero,
+}) async {
+  final deadline = DateTime.now().add(waitFor);
+  while (true) {
+    final lock = await store.tryAcquireLock();
+    if (lock != null) return lock;
+    if (!DateTime.now().isBefore(deadline)) {
+      throw AutoUploadStillWritingException(
+        'A scan is already in progress. Try again in a moment.',
+      );
+    }
+    await Future<void>.delayed(const Duration(milliseconds: 750));
+  }
+}
+
 /// Single-file upload entry point used by the Library "Upload now" tap.
 /// Returns the new server-side [Recording] on success. Throws on failure.
 ///
@@ -179,21 +334,23 @@ class AutoUploadStillWritingException implements Exception {
 /// background scan and a manual tap can't race.
 Future<Recording> uploadOneFile(File file, FolderUploadConfig config) async {
   final store = await AutoUploadSettingsStore.open();
-  final acquired = await store.tryAcquireLock();
-  if (!acquired) {
-    throw AutoUploadStillWritingException(
-        'A scan is already in progress. Try again in a moment.');
-  }
+  final lock = await _acquireAutoUploadLock(
+    store,
+    waitFor: const Duration(seconds: 20),
+  );
+  lock.startHeartbeat();
   try {
     final stable = await _checkFileStable(file);
     if (stable != AutoUploadOutcome.uploaded) {
       throw AutoUploadStillWritingException(
-          'This recording is still being written. Try again shortly.');
+        'This recording is still being written. Try again shortly.',
+      );
     }
     final api = buildBackgroundApi();
-    return await _uploadAndDelete(file, config, api);
+    final result = await _uploadAndDelete(file, config, api, store);
+    return result.recording;
   } finally {
-    await store.releaseLock();
+    await lock.release();
   }
 }
 
@@ -207,6 +364,7 @@ Future<Recording> uploadOneFile(File file, FolderUploadConfig config) async {
 /// them, so a `Result.retry()` would just double-schedule.
 Future<bool> runAutoUploadScan({required String trigger}) async {
   final store = await AutoUploadSettingsStore.open();
+  await store.reload();
   final configs = store
       .readAll()
       .where((c) => c.enabled && c.hasFolder)
@@ -216,11 +374,16 @@ Future<bool> runAutoUploadScan({required String trigger}) async {
     return true;
   }
 
-  final acquired = await store.tryAcquireLock();
-  if (!acquired) return true;
+  final lock = await store.tryAcquireLock();
+  if (lock == null) {
+    _logAutoUpload('skip trigger=$trigger; scan already in progress');
+    return true;
+  }
+  lock.startHeartbeat();
 
   final result = AutoUploadResult(trigger: trigger);
   try {
+    await store.reload();
     final api = buildBackgroundApi();
 
     // Drop persisted errors for files the user has deleted or moved away
@@ -229,11 +392,42 @@ Future<bool> runAutoUploadScan({required String trigger}) async {
       for (final config in configs)
         for (final file in listCandidateFiles(config.folderPath!)) file.path,
     };
+    final seenSignatures = <String, String>{};
+    for (final config in configs) {
+      for (final file in listCandidateFiles(config.folderPath!)) {
+        final signature = await _fileSignature(file);
+        if (signature != null) seenSignatures[file.path] = signature;
+      }
+    }
     await store.pruneFileErrors(seenPaths);
+    await store.pruneUploadedFiles(seenSignatures);
+    final uploadedFiles = store.readUploadedFiles();
+    final processedPaths = <String>{};
 
     for (final config in configs) {
       for (final file in listCandidateFiles(config.folderPath!)) {
+        if (!processedPaths.add(file.path)) continue;
         try {
+          final signature = await _fileSignature(file);
+          if (signature != null &&
+              _signatureMatches(uploadedFiles[file.path], signature)) {
+            final deleteError = await deleteLocalAutoUploadFile(file);
+            if (deleteError == null) {
+              await store.clearUploadedFile(file.path);
+              await store.clearFileError(file.path);
+              _logAutoUpload(
+                'deleted already-uploaded local copy ${file.path}',
+              );
+              result.skipped++;
+              continue;
+            }
+            _logAutoUpload(
+              'skip already-uploaded local copy ${file.path}; '
+              'signature=$signature deleteError=$deleteError',
+            );
+            result.skipped++;
+            continue;
+          }
           final stable = await _checkFileStable(file);
           if (stable != AutoUploadOutcome.uploaded) {
             result.skipped++;
@@ -253,22 +447,33 @@ Future<bool> runAutoUploadScan({required String trigger}) async {
             if (probe.isKnown &&
                 probe.duration!.inSeconds <
                     config.autoDeleteShorterThanSeconds!) {
-              try {
-                await file.delete();
-              } catch (_) {
-                // Mirror the post-upload delete: a failed delete is
-                // non-fatal; the next scan will retry.
+              final deleteError = await deleteLocalAutoUploadFile(file);
+              if (deleteError == null) {
+                await store.clearFileError(file.path);
+              } else {
+                await store.setFileError(
+                  file.path,
+                  'Could not delete ${p.basename(file.path)} after the '
+                  'auto-delete duration rule matched.\n\n$deleteError',
+                );
+                result.failed++;
+                result.lastError = deleteError.toString();
+                continue;
               }
-              await store.clearFileError(file.path);
               result.skipped++;
               continue;
             }
             // Format not supported by reader, or duration above threshold:
             // fall through to upload normally.
           }
-          await _uploadAndDelete(file, config, api);
-          await store.clearFileError(file.path);
+          final upload = await _uploadAndDelete(file, config, api, store);
           result.uploaded++;
+          if (!upload.deleted) {
+            result.failed++;
+            result.lastError =
+                'Uploaded but could not delete '
+                '${p.basename(file.path)}: ${upload.deleteError}';
+          }
         } catch (e) {
           result.failed++;
           result.lastError = e.toString();
@@ -276,8 +481,9 @@ Future<bool> runAutoUploadScan({required String trigger}) async {
       }
     }
     await store.recordScanResult(result.summary);
+    _logAutoUpload(result.summary);
     return true;
   } finally {
-    await store.releaseLock();
+    await lock.release();
   }
 }

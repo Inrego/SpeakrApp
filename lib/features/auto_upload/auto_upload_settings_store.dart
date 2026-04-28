@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
@@ -19,14 +20,18 @@ class AutoUploadSettingsStore {
   static Future<AutoUploadSettingsStore> open() async =>
       AutoUploadSettingsStore(await SharedPreferences.getInstance());
 
+  Future<void> reload() => _prefs.reload();
+
   // ── Settings ──────────────────────────────────────────────────────────────
   static const _kFolders = 'auto_upload.folders';
 
   // ── Runtime ───────────────────────────────────────────────────────────────
   static const _kLockMs = 'auto_upload.lock_ms';
+  static const _kLockToken = 'auto_upload.lock_token';
   static const _kLastScanMs = 'auto_upload.last_scan_ms';
   static const _kLastScanResult = 'auto_upload.last_scan_result';
   static const _kFileErrors = 'auto_upload.file_errors';
+  static const _kUploadedFiles = 'auto_upload.uploaded_files';
 
   List<FolderUploadConfig> readAll() {
     final raw = _prefs.getString(_kFolders);
@@ -56,18 +61,36 @@ class AutoUploadSettingsStore {
   }
 
   // ── Concurrency lock ──────────────────────────────────────────────────────
-  /// Returns true if the lock was acquired. Stale (>10 min) locks are
-  /// auto-released. Calls [release] whether or not the work succeeds.
-  Future<bool> tryAcquireLock({Duration staleAfter = const Duration(minutes: 10)}) async {
+  /// Returns a lock handle if acquired. Active workers refresh the timestamp;
+  /// stale locks are assumed to be abandoned by a killed isolate/process.
+  Future<AutoUploadLock?> tryAcquireLock({
+    Duration staleAfter = const Duration(seconds: 90),
+  }) async {
     await _prefs.reload();
     final now = DateTime.now().millisecondsSinceEpoch;
     final held = _prefs.getInt(_kLockMs) ?? 0;
-    if (held > 0 && now - held < staleAfter.inMilliseconds) return false;
-    return _prefs.setInt(_kLockMs, now);
+    if (held > 0 && now - held < staleAfter.inMilliseconds) return null;
+
+    final token =
+        '$now-${DateTime.now().microsecondsSinceEpoch}-${identityHashCode(this)}';
+    await _prefs.setInt(_kLockMs, now);
+    await _prefs.setString(_kLockToken, token);
+    await _prefs.reload();
+    if (_prefs.getString(_kLockToken) != token) return null;
+    return AutoUploadLock._(this, token);
   }
 
-  Future<void> releaseLock() async {
+  Future<bool> refreshLock(String token) async {
+    await _prefs.reload();
+    if (_prefs.getString(_kLockToken) != token) return false;
+    return _prefs.setInt(_kLockMs, DateTime.now().millisecondsSinceEpoch);
+  }
+
+  Future<void> releaseLock({String? token}) async {
+    await _prefs.reload();
+    if (token != null && _prefs.getString(_kLockToken) != token) return;
     await _prefs.setInt(_kLockMs, 0);
+    await _prefs.remove(_kLockToken);
   }
 
   // ── Last-scan record ──────────────────────────────────────────────────────
@@ -139,5 +162,83 @@ class AutoUploadSettingsStore {
     };
     if (next.length == current.length) return;
     await _writeFileErrors(next);
+  }
+
+  // ── Uploaded-but-not-deleted guard ────────────────────────────────────────
+  /// Paths whose upload completed, but whose local delete failed. The value is
+  /// a lightweight file signature so a replaced file at the same path can
+  /// still upload normally.
+  Map<String, String> readUploadedFiles() {
+    final raw = _prefs.getString(_kUploadedFiles);
+    if (raw == null || raw.isEmpty) return const {};
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map) return const {};
+      return {
+        for (final entry in decoded.entries)
+          if (entry.key is String && entry.value is String)
+            entry.key as String: entry.value as String,
+      };
+    } catch (_) {
+      return const {};
+    }
+  }
+
+  Future<void> _writeUploadedFiles(Map<String, String> files) async {
+    if (files.isEmpty) {
+      await _prefs.remove(_kUploadedFiles);
+      return;
+    }
+    await _prefs.setString(_kUploadedFiles, jsonEncode(files));
+  }
+
+  Future<void> markUploadedFile(String path, String signature) async {
+    final next = Map<String, String>.from(readUploadedFiles());
+    next[path] = signature;
+    await _writeUploadedFiles(next);
+  }
+
+  Future<void> clearUploadedFile(String path) async {
+    final current = readUploadedFiles();
+    if (!current.containsKey(path)) return;
+    final next = Map<String, String>.from(current)..remove(path);
+    await _writeUploadedFiles(next);
+  }
+
+  /// Keeps markers only for files that still exist with the same signature.
+  Future<void> pruneUploadedFiles(Map<String, String> existing) async {
+    final current = readUploadedFiles();
+    if (current.isEmpty) return;
+    final next = <String, String>{
+      for (final e in current.entries)
+        if (_signaturesMatch(existing[e.key], e.value)) e.key: e.value,
+    };
+    if (next.length == current.length) return;
+    await _writeUploadedFiles(next);
+  }
+
+  bool _signaturesMatch(String? current, String stored) {
+    if (current == null) return false;
+    return stored == current || stored.startsWith('$current:');
+  }
+}
+
+class AutoUploadLock {
+  AutoUploadLock._(this._store, this.token);
+
+  final AutoUploadSettingsStore _store;
+  final String token;
+  Timer? _heartbeat;
+
+  void startHeartbeat({Duration interval = const Duration(seconds: 20)}) {
+    _heartbeat ??= Timer.periodic(interval, (_) {
+      unawaited(_store.refreshLock(token));
+    });
+  }
+
+  Future<void> release() async {
+    _heartbeat?.cancel();
+    _heartbeat = null;
+    await _store.releaseLock(token: token);
   }
 }

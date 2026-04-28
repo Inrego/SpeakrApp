@@ -11,7 +11,9 @@
 // Win32 helper that registers the `speakr/mini_window_native` MethodChannel
 // on the main Flutter engine. It enforces always-on-top, tool-window styles,
 // and a fixed compact frame on the secondary (mini-recorder) sub-window
-// created via the desktop_multi_window plugin.
+// created via the desktop_multi_window plugin. The same channel also exposes
+// `setMainWindowTitle` so Dart can rewrite the main HWND's caption (used in
+// dev mode to differentiate worktrees).
 class MiniWindowNative {
  public:
   MiniWindowNative(flutter::FlutterEngine* engine, HWND main_hwnd);
