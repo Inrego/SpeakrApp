@@ -61,6 +61,49 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
     super.dispose();
   }
 
+  void _minimize() {
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go('/library');
+    }
+  }
+
+  Future<void> _confirmDiscard() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      builder: (_) => AlertDialog(
+        backgroundColor: SpeakrColors.bg,
+        title: Text('Discard recording?', style: SpeakrText.serif(size: 20)),
+        content: Text(
+          'This will stop the recording and delete the audio. '
+          'This cannot be undone.',
+          style: SpeakrText.sans(size: 14, color: SpeakrColors.ink2),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(
+              'Keep recording',
+              style: SpeakrText.sans(size: 14, color: SpeakrColors.ink),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text(
+              'Discard',
+              style: SpeakrText.sans(size: 14, color: SpeakrColors.danger),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true && mounted) {
+      await ref.read(recordingControllerProvider.notifier).cancel();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(recordingControllerProvider);
@@ -71,7 +114,10 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            _TopBar(onCancel: controller.cancel),
+            _TopBar(
+              onMinimize: _minimize,
+              onDiscard: _confirmDiscard,
+            ),
             const SizedBox(height: 4),
             LiveIndicator(paused: state.paused),
             const SizedBox(height: 18),
@@ -117,8 +163,9 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
 }
 
 class _TopBar extends StatelessWidget {
-  const _TopBar({required this.onCancel});
-  final Future<void> Function() onCancel;
+  const _TopBar({required this.onMinimize, required this.onDiscard});
+  final VoidCallback onMinimize;
+  final Future<void> Function() onDiscard;
 
   @override
   Widget build(BuildContext context) {
@@ -127,9 +174,9 @@ class _TopBar extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          GhostIconButton(icon: SpeakrIcon.close, onTap: () => onCancel()),
+          GhostIconButton(icon: SpeakrIcon.minimize, onTap: onMinimize),
           const MonoEyebrow('Recording', size: 10),
-          const SizedBox(width: 36),
+          GhostIconButton(icon: SpeakrIcon.trash, onTap: () => onDiscard()),
         ],
       ),
     );

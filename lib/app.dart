@@ -6,6 +6,7 @@ import 'services/credentials_store.dart';
 import 'theme/colors.dart';
 import 'theme/typography.dart';
 import 'widgets/auto_record_banner.dart';
+import 'widgets/recording_mini_player.dart';
 
 class SpeakrApp extends ConsumerWidget {
   const SpeakrApp({super.key});
@@ -26,7 +27,7 @@ class SpeakrApp extends ConsumerWidget {
           theme: buildSpeakrTheme(),
           routerConfig: router,
           builder: (context, child) => AutoRecordPromptListener(
-            child: AutoRecordBanner(child: child ?? const SizedBox.shrink()),
+            child: RecordingMiniPlayer(child: child ?? const SizedBox.shrink()),
           ),
         );
       },

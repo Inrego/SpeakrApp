@@ -24,6 +24,8 @@ enum SpeakrIcon {
   play,
   flagBookmark,
   settings,
+  minimize,
+  trash,
 }
 
 class SpeakrIconView extends StatelessWidget {
@@ -208,6 +210,35 @@ class _IconPainter extends CustomPainter {
         cog.close();
         canvas.drawPath(cog, stroke);
         canvas.drawCircle(const Offset(cx, cy), 2.0, stroke);
+        break;
+      case SpeakrIcon.minimize:
+        // Chevron pointing down — communicates "collapse to bottom".
+        final p = Path()
+          ..moveTo(5, 8)
+          ..lineTo(10, 13)
+          ..lineTo(15, 8);
+        canvas.drawPath(p, stroke);
+        break;
+      case SpeakrIcon.trash:
+        // Lid
+        canvas.drawLine(const Offset(3.5, 5.5), const Offset(16.5, 5.5), stroke);
+        // Handle on lid
+        final handle = Path()
+          ..moveTo(8, 5.5)
+          ..lineTo(8, 3.5)
+          ..lineTo(12, 3.5)
+          ..lineTo(12, 5.5);
+        canvas.drawPath(handle, stroke);
+        // Bin body
+        final bin = Path()
+          ..moveTo(5.5, 5.5)
+          ..lineTo(6.3, 16.5)
+          ..lineTo(13.7, 16.5)
+          ..lineTo(14.5, 5.5);
+        canvas.drawPath(bin, stroke);
+        // Inner ribs
+        canvas.drawLine(const Offset(8.5, 8.5), const Offset(8.5, 14), stroke);
+        canvas.drawLine(const Offset(11.5, 8.5), const Offset(11.5, 14), stroke);
         break;
     }
   }

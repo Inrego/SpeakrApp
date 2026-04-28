@@ -14,6 +14,7 @@ import '../../widgets/tag_chip.dart';
 import '../auto_upload/auto_upload_controller.dart';
 import '../auto_upload/auto_upload_settings_store.dart';
 import '../auto_upload/auto_upload_worker.dart';
+import '../live/live_controller.dart';
 import 'library_controller.dart';
 
 class LibraryScreen extends ConsumerStatefulWidget {
@@ -38,9 +39,13 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
     final asyncItems = ref.watch(libraryItemsProvider);
     final filter = ref.watch(libraryFilterProvider);
     final totalCount = asyncItems.value?.length ?? 0;
+    final recording = ref.watch(recordingControllerProvider);
+    final isRecording = recording.started || recording.uploading;
     return Scaffold(
       backgroundColor: SpeakrColors.bg,
-      floatingActionButton: _RecordFab(onTap: () => context.push('/live')),
+      floatingActionButton: isRecording
+          ? null
+          : _RecordFab(onTap: () => context.push('/live')),
       body: SafeArea(
         bottom: false,
         child: Column(
