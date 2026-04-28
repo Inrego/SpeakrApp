@@ -563,6 +563,271 @@ abstract class _Speaker implements Speaker {
       throw _privateConstructorUsedError;
 }
 
+SpeakerSuggestion _$SpeakerSuggestionFromJson(Map<String, dynamic> json) {
+  return _SpeakerSuggestion.fromJson(json);
+}
+
+/// @nodoc
+mixin _$SpeakerSuggestion {
+  @JsonKey(name: 'speaker_id')
+  int get speakerId => throw _privateConstructorUsedError;
+  String get name => throw _privateConstructorUsedError;
+  double get confidence => throw _privateConstructorUsedError;
+  double get similarity => throw _privateConstructorUsedError;
+  @JsonKey(name: 'embedding_count')
+  int get embeddingCount => throw _privateConstructorUsedError;
+
+  /// Serializes this SpeakerSuggestion to a JSON map.
+  Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
+
+  /// Create a copy of SpeakerSuggestion
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  $SpeakerSuggestionCopyWith<SpeakerSuggestion> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class $SpeakerSuggestionCopyWith<$Res> {
+  factory $SpeakerSuggestionCopyWith(
+    SpeakerSuggestion value,
+    $Res Function(SpeakerSuggestion) then,
+  ) = _$SpeakerSuggestionCopyWithImpl<$Res, SpeakerSuggestion>;
+  @useResult
+  $Res call({
+    @JsonKey(name: 'speaker_id') int speakerId,
+    String name,
+    double confidence,
+    double similarity,
+    @JsonKey(name: 'embedding_count') int embeddingCount,
+  });
+}
+
+/// @nodoc
+class _$SpeakerSuggestionCopyWithImpl<$Res, $Val extends SpeakerSuggestion>
+    implements $SpeakerSuggestionCopyWith<$Res> {
+  _$SpeakerSuggestionCopyWithImpl(this._value, this._then);
+
+  // ignore: unused_field
+  final $Val _value;
+  // ignore: unused_field
+  final $Res Function($Val) _then;
+
+  /// Create a copy of SpeakerSuggestion
+  /// with the given fields replaced by the non-null parameter values.
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? speakerId = null,
+    Object? name = null,
+    Object? confidence = null,
+    Object? similarity = null,
+    Object? embeddingCount = null,
+  }) {
+    return _then(
+      _value.copyWith(
+            speakerId: null == speakerId
+                ? _value.speakerId
+                : speakerId // ignore: cast_nullable_to_non_nullable
+                      as int,
+            name: null == name
+                ? _value.name
+                : name // ignore: cast_nullable_to_non_nullable
+                      as String,
+            confidence: null == confidence
+                ? _value.confidence
+                : confidence // ignore: cast_nullable_to_non_nullable
+                      as double,
+            similarity: null == similarity
+                ? _value.similarity
+                : similarity // ignore: cast_nullable_to_non_nullable
+                      as double,
+            embeddingCount: null == embeddingCount
+                ? _value.embeddingCount
+                : embeddingCount // ignore: cast_nullable_to_non_nullable
+                      as int,
+          )
+          as $Val,
+    );
+  }
+}
+
+/// @nodoc
+abstract class _$$SpeakerSuggestionImplCopyWith<$Res>
+    implements $SpeakerSuggestionCopyWith<$Res> {
+  factory _$$SpeakerSuggestionImplCopyWith(
+    _$SpeakerSuggestionImpl value,
+    $Res Function(_$SpeakerSuggestionImpl) then,
+  ) = __$$SpeakerSuggestionImplCopyWithImpl<$Res>;
+  @override
+  @useResult
+  $Res call({
+    @JsonKey(name: 'speaker_id') int speakerId,
+    String name,
+    double confidence,
+    double similarity,
+    @JsonKey(name: 'embedding_count') int embeddingCount,
+  });
+}
+
+/// @nodoc
+class __$$SpeakerSuggestionImplCopyWithImpl<$Res>
+    extends _$SpeakerSuggestionCopyWithImpl<$Res, _$SpeakerSuggestionImpl>
+    implements _$$SpeakerSuggestionImplCopyWith<$Res> {
+  __$$SpeakerSuggestionImplCopyWithImpl(
+    _$SpeakerSuggestionImpl _value,
+    $Res Function(_$SpeakerSuggestionImpl) _then,
+  ) : super(_value, _then);
+
+  /// Create a copy of SpeakerSuggestion
+  /// with the given fields replaced by the non-null parameter values.
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? speakerId = null,
+    Object? name = null,
+    Object? confidence = null,
+    Object? similarity = null,
+    Object? embeddingCount = null,
+  }) {
+    return _then(
+      _$SpeakerSuggestionImpl(
+        speakerId: null == speakerId
+            ? _value.speakerId
+            : speakerId // ignore: cast_nullable_to_non_nullable
+                  as int,
+        name: null == name
+            ? _value.name
+            : name // ignore: cast_nullable_to_non_nullable
+                  as String,
+        confidence: null == confidence
+            ? _value.confidence
+            : confidence // ignore: cast_nullable_to_non_nullable
+                  as double,
+        similarity: null == similarity
+            ? _value.similarity
+            : similarity // ignore: cast_nullable_to_non_nullable
+                  as double,
+        embeddingCount: null == embeddingCount
+            ? _value.embeddingCount
+            : embeddingCount // ignore: cast_nullable_to_non_nullable
+                  as int,
+      ),
+    );
+  }
+}
+
+/// @nodoc
+@JsonSerializable()
+class _$SpeakerSuggestionImpl implements _SpeakerSuggestion {
+  const _$SpeakerSuggestionImpl({
+    @JsonKey(name: 'speaker_id') required this.speakerId,
+    required this.name,
+    this.confidence = 0.0,
+    this.similarity = 0.0,
+    @JsonKey(name: 'embedding_count') this.embeddingCount = 0,
+  });
+
+  factory _$SpeakerSuggestionImpl.fromJson(Map<String, dynamic> json) =>
+      _$$SpeakerSuggestionImplFromJson(json);
+
+  @override
+  @JsonKey(name: 'speaker_id')
+  final int speakerId;
+  @override
+  final String name;
+  @override
+  @JsonKey()
+  final double confidence;
+  @override
+  @JsonKey()
+  final double similarity;
+  @override
+  @JsonKey(name: 'embedding_count')
+  final int embeddingCount;
+
+  @override
+  String toString() {
+    return 'SpeakerSuggestion(speakerId: $speakerId, name: $name, confidence: $confidence, similarity: $similarity, embeddingCount: $embeddingCount)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$SpeakerSuggestionImpl &&
+            (identical(other.speakerId, speakerId) ||
+                other.speakerId == speakerId) &&
+            (identical(other.name, name) || other.name == name) &&
+            (identical(other.confidence, confidence) ||
+                other.confidence == confidence) &&
+            (identical(other.similarity, similarity) ||
+                other.similarity == similarity) &&
+            (identical(other.embeddingCount, embeddingCount) ||
+                other.embeddingCount == embeddingCount));
+  }
+
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  int get hashCode => Object.hash(
+    runtimeType,
+    speakerId,
+    name,
+    confidence,
+    similarity,
+    embeddingCount,
+  );
+
+  /// Create a copy of SpeakerSuggestion
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$SpeakerSuggestionImplCopyWith<_$SpeakerSuggestionImpl> get copyWith =>
+      __$$SpeakerSuggestionImplCopyWithImpl<_$SpeakerSuggestionImpl>(
+        this,
+        _$identity,
+      );
+
+  @override
+  Map<String, dynamic> toJson() {
+    return _$$SpeakerSuggestionImplToJson(this);
+  }
+}
+
+abstract class _SpeakerSuggestion implements SpeakerSuggestion {
+  const factory _SpeakerSuggestion({
+    @JsonKey(name: 'speaker_id') required final int speakerId,
+    required final String name,
+    final double confidence,
+    final double similarity,
+    @JsonKey(name: 'embedding_count') final int embeddingCount,
+  }) = _$SpeakerSuggestionImpl;
+
+  factory _SpeakerSuggestion.fromJson(Map<String, dynamic> json) =
+      _$SpeakerSuggestionImpl.fromJson;
+
+  @override
+  @JsonKey(name: 'speaker_id')
+  int get speakerId;
+  @override
+  String get name;
+  @override
+  double get confidence;
+  @override
+  double get similarity;
+  @override
+  @JsonKey(name: 'embedding_count')
+  int get embeddingCount;
+
+  /// Create a copy of SpeakerSuggestion
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  _$$SpeakerSuggestionImplCopyWith<_$SpeakerSuggestionImpl> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
 Recording _$RecordingFromJson(Map<String, dynamic> json) {
   return _Recording.fromJson(json);
 }

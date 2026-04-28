@@ -46,6 +46,26 @@ Map<String, dynamic> _$$SpeakerImplToJson(_$SpeakerImpl instance) =>
       'last_used': instance.lastUsed?.toIso8601String(),
     };
 
+_$SpeakerSuggestionImpl _$$SpeakerSuggestionImplFromJson(
+  Map<String, dynamic> json,
+) => _$SpeakerSuggestionImpl(
+  speakerId: (json['speaker_id'] as num).toInt(),
+  name: json['name'] as String,
+  confidence: (json['confidence'] as num?)?.toDouble() ?? 0.0,
+  similarity: (json['similarity'] as num?)?.toDouble() ?? 0.0,
+  embeddingCount: (json['embedding_count'] as num?)?.toInt() ?? 0,
+);
+
+Map<String, dynamic> _$$SpeakerSuggestionImplToJson(
+  _$SpeakerSuggestionImpl instance,
+) => <String, dynamic>{
+  'speaker_id': instance.speakerId,
+  'name': instance.name,
+  'confidence': instance.confidence,
+  'similarity': instance.similarity,
+  'embedding_count': instance.embeddingCount,
+};
+
 _$RecordingImpl _$$RecordingImplFromJson(Map<String, dynamic> json) =>
     _$RecordingImpl(
       id: (json['id'] as num).toInt(),

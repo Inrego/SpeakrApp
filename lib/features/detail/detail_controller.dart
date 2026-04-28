@@ -29,6 +29,11 @@ final allSpeakersProvider =
   return sorted;
 });
 
+final speakerSuggestionsProvider = FutureProvider.autoDispose
+    .family<Map<String, List<SpeakerSuggestion>>, int>((ref, id) async {
+  return ref.watch(speakrApiProvider).getSpeakerSuggestions(id);
+});
+
 final transcriptProvider = FutureProvider.autoDispose
     .family<List<TranscriptSegment>, int>((ref, id) async {
   final r = await ref.watch(recordingDetailProvider(id).future);

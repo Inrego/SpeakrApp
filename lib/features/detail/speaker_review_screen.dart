@@ -146,6 +146,7 @@ class _SpeakerReviewScreenState extends ConsumerState<SpeakerReviewScreen> {
       );
       container.invalidate(recordingDetailProvider(widget.recordingId));
       container.invalidate(allSpeakersProvider);
+      container.invalidate(speakerSuggestionsProvider(widget.recordingId));
       if (!mounted) return;
       navigator.pop();
       messenger.showSnackBar(
@@ -255,7 +256,7 @@ class _SpeakerReviewScreenState extends ConsumerState<SpeakerReviewScreen> {
               ),
               const SizedBox(height: 20),
               for (final row in _rows) ...[
-                _SpeakerField(row: row),
+                _SpeakerField(row: row, recordingId: widget.recordingId),
                 const SizedBox(height: 14),
               ],
               const SizedBox(height: 8),
@@ -352,8 +353,9 @@ class _SpeakerRow {
 }
 
 class _SpeakerField extends ConsumerWidget {
-  const _SpeakerField({required this.row});
+  const _SpeakerField({required this.row, required this.recordingId});
   final _SpeakerRow row;
+  final int recordingId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -362,6 +364,11 @@ class _SpeakerField extends ConsumerWidget {
           data: (list) => list,
           orElse: () => const <Speaker>[],
         );
+    final suggestions =
+        ref.watch(speakerSuggestionsProvider(recordingId)).maybeWhen(
+              data: (map) => map[row.label] ?? const <SpeakerSuggestion>[],
+              orElse: () => const <SpeakerSuggestion>[],
+            );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -470,7 +477,90 @@ class _SpeakerField extends ConsumerWidget {
             );
           },
         ),
+        if (suggestions.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 30,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: EdgeInsets.zero,
+              itemCount: suggestions.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 6),
+              itemBuilder: (context, i) {
+                final s = suggestions[i];
+                final isStrong =
+                    i == 0 && s.confidence >= 1.0 && s.similarity >= 100.0;
+                return _SuggestionChip(
+                  suggestion: s,
+                  highlighted: isStrong,
+                  onTap: () {
+                    row.controller.value = TextEditingValue(
+                      text: s.name,
+                      selection: TextSelection.collapsed(offset: s.name.length),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        ],
       ],
+    );
+  }
+}
+
+class _SuggestionChip extends StatelessWidget {
+  const _SuggestionChip({
+    required this.suggestion,
+    required this.highlighted,
+    required this.onTap,
+  });
+
+  final SpeakerSuggestion suggestion;
+  final bool highlighted;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final bg = highlighted ? SpeakrColors.ink : SpeakrColors.bg;
+    final fg = highlighted ? SpeakrColors.bg : SpeakrColors.ink;
+    return Tooltip(
+      message:
+          'similarity ${suggestion.similarity.toStringAsFixed(0)}% · ${suggestion.embeddingCount} clip${suggestion.embeddingCount == 1 ? '' : 's'}',
+      child: Material(
+        color: bg,
+        borderRadius: BorderRadius.circular(4),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(4),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(color: SpeakrColors.line),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
+              children: [
+                Text(
+                  suggestion.name,
+                  style: SpeakrText.sans(size: 13, color: fg),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  '${suggestion.similarity.toStringAsFixed(0)}%',
+                  style: SpeakrText.mono(
+                    size: 10,
+                    color: highlighted ? SpeakrColors.bg : SpeakrColors.muted,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

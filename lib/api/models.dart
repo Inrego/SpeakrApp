@@ -94,6 +94,20 @@ class Speaker with _$Speaker {
 }
 
 @freezed
+class SpeakerSuggestion with _$SpeakerSuggestion {
+  const factory SpeakerSuggestion({
+    @JsonKey(name: 'speaker_id') required int speakerId,
+    required String name,
+    @Default(0.0) double confidence,
+    @Default(0.0) double similarity,
+    @JsonKey(name: 'embedding_count') @Default(0) int embeddingCount,
+  }) = _SpeakerSuggestion;
+
+  factory SpeakerSuggestion.fromJson(Map<String, dynamic> json) =>
+      _$SpeakerSuggestionFromJson(json);
+}
+
+@freezed
 class Recording with _$Recording {
   const factory Recording({
     required int id,
