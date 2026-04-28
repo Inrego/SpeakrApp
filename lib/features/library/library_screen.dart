@@ -83,9 +83,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                     message: e.toString(),
                     onRetry: () => ref.invalidate(libraryRecordingsProvider),
                   ),
-                  data: (items) => items.isEmpty
-                      ? const _Empty()
-                      : _ItemsList(items: items),
+                  data: (items) =>
+                      items.isEmpty ? const _Empty() : _ItemsList(items: items),
                 ),
               ),
             ),
@@ -130,8 +129,10 @@ class _Header extends StatelessWidget {
                       border: InputBorder.none,
                       enabledBorder: InputBorder.none,
                       focusedBorder: InputBorder.none,
-                      hintStyle:
-                          SpeakrText.sans(size: 14, color: SpeakrColors.muted),
+                      hintStyle: SpeakrText.sans(
+                        size: 14,
+                        color: SpeakrColors.muted,
+                      ),
                     ),
                   )
                 : const Padding(
@@ -143,10 +144,7 @@ class _Header extends StatelessWidget {
             icon: searching ? SpeakrIcon.close : SpeakrIcon.search,
             onTap: onToggleSearch,
           ),
-          GhostIconButton(
-            icon: SpeakrIcon.settings,
-            onTap: onSettings,
-          ),
+          GhostIconButton(icon: SpeakrIcon.settings, onTap: onSettings),
         ],
       ),
     );
@@ -163,10 +161,7 @@ class _Title extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Recordings',
-            style: SpeakrText.serif(size: 38, height: 1.05),
-          ),
+          Text('Recordings', style: SpeakrText.serif(size: 38, height: 1.05)),
           const SizedBox(height: 6),
           Text(
             total > 0 ? '$total total' : 'No recordings yet',
@@ -203,7 +198,8 @@ class _FilterChips extends ConsumerWidget {
           final selected = filter.statusKey == key;
           return InkWell(
             borderRadius: BorderRadius.circular(100),
-            onTap: () => ref.read(libraryFilterProvider.notifier).setStatus(key),
+            onTap: () =>
+                ref.read(libraryFilterProvider.notifier).setStatus(key),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
               decoration: BoxDecoration(
@@ -254,10 +250,12 @@ class _ItemsList extends StatelessWidget {
             ),
             for (final it in entry.value)
               switch (it) {
-                RemoteLibraryItem(:final recording) =>
-                  _RecordingTile(recording: recording),
-                PendingLibraryItem(:final pending) =>
-                  _PendingTile(pending: pending),
+                RemoteLibraryItem(:final recording) => _RecordingTile(
+                  recording: recording,
+                ),
+                PendingLibraryItem(:final pending) => _PendingTile(
+                  pending: pending,
+                ),
               },
           ],
         );
@@ -284,8 +282,10 @@ class _PendingTileState extends ConsumerState<_PendingTile> {
         context: context,
         builder: (_) => AlertDialog(
           backgroundColor: SpeakrColors.bg,
-          title: Text('Upload this recording?',
-              style: SpeakrText.serif(size: 20)),
+          title: Text(
+            'Upload this recording?',
+            style: SpeakrText.serif(size: 20),
+          ),
           content: Text(
             '${widget.pending.file.path.split(RegExp(r"[\\/]")).last}\n\n'
             'The file will be uploaded to your Speakr server and removed '
@@ -312,22 +312,29 @@ class _PendingTileState extends ConsumerState<_PendingTile> {
     });
     try {
       await uploadOneFile(widget.pending.file, widget.pending.config);
-      // uploadOneFile bypasses the duration check, so on success we also
-      // want any persisted error for this path to clear out.
       final store = await AutoUploadSettingsStore.open();
-      await store.clearFileError(widget.pending.file.path);
+      final fileStillExists = await widget.pending.file.exists();
+      if (!fileStillExists) {
+        await store.clearFileError(widget.pending.file.path);
+        await store.clearUploadedFile(widget.pending.file.path);
+      }
       ref.invalidate(pendingFilesProvider);
       ref.invalidate(pendingFileErrorsProvider);
       ref.invalidate(libraryRecordingsProvider);
+      if (mounted && fileStillExists) {
+        setState(() {
+          _uploading = false;
+        });
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _uploading = false;
         _error = e.toString();
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_error!)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(_error!)));
     }
   }
 
@@ -336,12 +343,17 @@ class _PendingTileState extends ConsumerState<_PendingTile> {
       context: context,
       builder: (dialogCtx) => AlertDialog(
         backgroundColor: SpeakrColors.bg,
-        title: Text("Couldn't process recording",
-            style: SpeakrText.serif(size: 20)),
+        title: Text(
+          "Couldn't process recording",
+          style: SpeakrText.serif(size: 20),
+        ),
         content: Text(
           errorMessage,
           style: SpeakrText.sans(
-              size: 13, color: SpeakrColors.ink2, height: 1.4),
+            size: 13,
+            color: SpeakrColors.ink2,
+            height: 1.4,
+          ),
         ),
         actions: [
           TextButton(
@@ -374,19 +386,17 @@ class _PendingTileState extends ConsumerState<_PendingTile> {
   }
 
   Future<void> _deleteLocalFile() async {
-    try {
-      if (await widget.pending.file.exists()) {
-        await widget.pending.file.delete();
-      }
-    } catch (e) {
+    final deleteError = await deleteLocalAutoUploadFile(widget.pending.file);
+    if (deleteError != null) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not delete file: $e')),
+        SnackBar(content: Text('Could not delete file: $deleteError')),
       );
       return;
     }
     final store = await AutoUploadSettingsStore.open();
     await store.clearFileError(widget.pending.file.path);
+    await store.clearUploadedFile(widget.pending.file.path);
     if (!mounted) return;
     ref.invalidate(pendingFilesProvider);
     ref.invalidate(pendingFileErrorsProvider);
@@ -396,7 +406,8 @@ class _PendingTileState extends ConsumerState<_PendingTile> {
   Widget build(BuildContext context) {
     final p = widget.pending;
     final name = p.file.path.split(RegExp(r'[\\/]')).last;
-    final errors = ref.watch(pendingFileErrorsProvider).asData?.value ??
+    final errors =
+        ref.watch(pendingFileErrorsProvider).asData?.value ??
         const <String, String>{};
     final scanError = errors[p.file.path];
     final hasError = scanError != null;
@@ -438,8 +449,7 @@ class _PendingTileState extends ConsumerState<_PendingTile> {
                   const SizedBox(height: 2),
                   Text(
                     '${formatHourMinute(p.dateTime)} · ${formatBytes(p.size)}',
-                    style: SpeakrText.sans(
-                        size: 12, color: SpeakrColors.muted),
+                    style: SpeakrText.sans(size: 12, color: SpeakrColors.muted),
                   ),
                 ],
               ),
@@ -450,7 +460,9 @@ class _PendingTileState extends ConsumerState<_PendingTile> {
                 width: 18,
                 height: 18,
                 child: CircularProgressIndicator(
-                    strokeWidth: 2, color: SpeakrColors.ink),
+                  strokeWidth: 2,
+                  color: SpeakrColors.ink,
+                ),
               )
             else if (hasError)
               const _ErrorBadge()
@@ -524,7 +536,10 @@ class _ErrorBadge extends StatelessWidget {
           Text(
             'error',
             style: SpeakrText.mono(
-                size: 10, letterSpacing: 1, color: SpeakrColors.danger),
+              size: 10,
+              letterSpacing: 1,
+              color: SpeakrColors.danger,
+            ),
           ),
         ],
       ),
@@ -544,7 +559,10 @@ class _RecordingTile extends StatelessWidget {
     // are usually still viewable, so let the user open it.
     final enterable = completed || r.status == RecordingStatus.failed;
     final time = (r.meetingDate ?? r.createdAt);
-    final speakers = (r.participants ?? '').split(',').where((s) => s.trim().isNotEmpty).length;
+    final speakers = (r.participants ?? '')
+        .split(',')
+        .where((s) => s.trim().isNotEmpty)
+        .length;
     return InkWell(
       onTap: enterable ? () => context.push('/recording/${r.id}') : null,
       child: Container(
@@ -585,7 +603,9 @@ class _RecordingTile extends StatelessWidget {
                       Text(
                         _subtitle(time, speakers),
                         style: SpeakrText.sans(
-                            size: 12, color: SpeakrColors.muted),
+                          size: 12,
+                          color: SpeakrColors.muted,
+                        ),
                       ),
                     ],
                   ),
@@ -626,8 +646,11 @@ class _Loading extends StatelessWidget {
       children: const [
         SizedBox(height: 80),
         Center(
-            child:
-                CircularProgressIndicator(color: SpeakrColors.ink, strokeWidth: 2)),
+          child: CircularProgressIndicator(
+            color: SpeakrColors.ink,
+            strokeWidth: 2,
+          ),
+        ),
       ],
     );
   }
@@ -650,8 +673,11 @@ class _Empty extends StatelessWidget {
         const SizedBox(height: 14),
         Text(
           'Tap the mic in the corner to make your first recording.',
-          style:
-              SpeakrText.sans(size: 15, height: 1.5, color: SpeakrColors.ink2),
+          style: SpeakrText.sans(
+            size: 15,
+            height: 1.5,
+            color: SpeakrColors.ink2,
+          ),
         ),
       ],
     );
