@@ -13,6 +13,7 @@ import '../../utils/formatters.dart';
 import '../../widgets/mono_eyebrow.dart';
 import '../../widgets/speakr_icons.dart';
 import '../../widgets/tag_chip.dart';
+import '../library/library_controller.dart';
 import 'detail_controller.dart';
 import 'speaker_review_screen.dart';
 import 'tabs/chat_tab.dart';
@@ -307,6 +308,19 @@ class _MoreSheet extends ConsumerWidget {
                 kind: _ReprocessKind.summary,
               ),
             ),
+            const Divider(color: SpeakrColors.line, height: 1),
+            ListTile(
+              leading: const SpeakrIconView(SpeakrIcon.trash),
+              title: Text(
+                'Delete recording',
+                style: SpeakrText.sans(size: 14, color: SpeakrColors.danger),
+              ),
+              subtitle: Text(
+                'Removes the recording, transcript, and audio',
+                style: SpeakrText.sans(size: 12, color: SpeakrColors.muted),
+              ),
+              onTap: () => _delete(context, ref),
+            ),
           ],
         ),
       ),
@@ -395,6 +409,61 @@ class _MoreSheet extends ConsumerWidget {
                 : 'Summary queued — refresh in a moment',
           ),
         ),
+      );
+    } on SpeakrApiException catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text(e.message)));
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text(e.toString())));
+    }
+  }
+
+  Future<void> _delete(BuildContext context, WidgetRef ref) async {
+    final navigator = Navigator.of(context);
+    final goRouter = GoRouter.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    final container = ProviderScope.containerOf(context, listen: false);
+    final api = container.read(speakrApiProvider);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: SpeakrColors.bg,
+        title: Text(
+          'Delete recording?',
+          style: SpeakrText.serif(size: 20),
+        ),
+        content: Text(
+          'This permanently deletes the recording, its transcript, and its audio. This cannot be undone.',
+          style: SpeakrText.sans(size: 14, height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text('Cancel',
+                style: SpeakrText.sans(
+                    size: 13, color: SpeakrColors.muted)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style:
+                TextButton.styleFrom(foregroundColor: SpeakrColors.danger),
+            child: Text('Delete',
+                style: SpeakrText.sans(
+                    size: 13,
+                    weight: FontWeight.w600,
+                    color: SpeakrColors.danger)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    navigator.pop(); // close the bottom sheet
+    try {
+      await api.deleteRecording(recording.id);
+      container.invalidate(libraryRecordingsProvider);
+      container.invalidate(recordingDetailProvider(recording.id));
+      if (goRouter.canPop()) goRouter.pop();
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Recording deleted')),
       );
     } on SpeakrApiException catch (e) {
       messenger.showSnackBar(SnackBar(content: Text(e.message)));
