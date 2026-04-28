@@ -36,7 +36,7 @@ class _MiniRecorderScreenState extends ConsumerState<MiniRecorderScreen> {
         child: Column(
           children: [
             _MiniTopBar(
-              onCancel: mirror.cancel,
+              onClose: mirror.hideMini,
               onDragStart: mirror.beginDrag,
             ),
             const SizedBox(height: 2),
@@ -92,10 +92,10 @@ class _MiniRecorderScreenState extends ConsumerState<MiniRecorderScreen> {
 
 class _MiniTopBar extends StatelessWidget {
   const _MiniTopBar({
-    required this.onCancel,
+    required this.onClose,
     required this.onDragStart,
   });
-  final VoidCallback onCancel;
+  final VoidCallback onClose;
   final Future<void> Function() onDragStart;
 
   @override
@@ -105,7 +105,7 @@ class _MiniTopBar extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(8, 6, 8, 4),
       child: Row(
         children: [
-          GhostIconButton(icon: SpeakrIcon.close, onTap: onCancel),
+          GhostIconButton(icon: SpeakrIcon.close, onTap: onClose),
           Expanded(
             child: _DragRegion(
               onDragStart: onDragStart,

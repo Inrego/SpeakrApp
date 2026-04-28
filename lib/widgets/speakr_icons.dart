@@ -26,6 +26,7 @@ enum SpeakrIcon {
   settings,
   minimize,
   trash,
+  pip,
 }
 
 class SpeakrIconView extends StatelessWidget {
@@ -218,6 +219,25 @@ class _IconPainter extends CustomPainter {
           ..lineTo(10, 13)
           ..lineTo(15, 8);
         canvas.drawPath(p, stroke);
+        break;
+      case SpeakrIcon.pip:
+        // Outer screen frame.
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(
+            const Rect.fromLTWH(3, 5, 14, 11),
+            const Radius.circular(1.5),
+          ),
+          stroke,
+        );
+        // Small inset rectangle in the top-right corner — mirrors where
+        // the mini-window actually docks on screen.
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(
+            const Rect.fromLTWH(10.5, 7, 5, 3.5),
+            const Radius.circular(0.8),
+          ),
+          fill,
+        );
         break;
       case SpeakrIcon.trash:
         // Lid
