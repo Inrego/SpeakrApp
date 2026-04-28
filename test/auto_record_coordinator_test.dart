@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:speakr_app/features/live/recording_state.dart';

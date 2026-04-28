@@ -3,7 +3,7 @@ import 'dart:convert';
 
 import 'package:desktop_multi_window/desktop_multi_window.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 
 import '../recording_state.dart';
 import 'mini_ipc.dart';
