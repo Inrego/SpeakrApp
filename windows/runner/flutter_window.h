@@ -6,6 +6,7 @@
 
 #include <memory>
 
+#include "mini_window_native.h"
 #include "win32_window.h"
 
 // A window that does nothing but host a Flutter view.
@@ -28,6 +29,10 @@ class FlutterWindow : public Win32Window {
 
   // The Flutter instance hosted by this window.
   std::unique_ptr<flutter::FlutterViewController> flutter_controller_;
+
+  // Optional helper that drives the always-on-top mini recorder window
+  // on Windows. Constructed after RegisterPlugins() in OnCreate().
+  std::unique_ptr<MiniWindowNative> mini_window_native_;
 };
 
 #endif  // RUNNER_FLUTTER_WINDOW_H_

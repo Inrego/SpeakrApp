@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io' show Platform;
 
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -11,9 +12,33 @@ import 'package:workmanager/workmanager.dart';
 import 'app.dart';
 import 'features/auto_upload/auto_upload_worker.dart';
 import 'features/auto_upload/workmanager_callback.dart';
+import 'features/live/mini/mini_ipc.dart';
+import 'features/live/mini/mini_recorder_app.dart';
 
-void main() async {
+Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Windows-only: when invoked as a child engine by desktop_multi_window
+  // the args are ['multi_window', '<int windowId>', '<jsonArgs>'].
+  if (!kIsWeb && Platform.isWindows && _isMiniWindowLaunch(args)) {
+    final windowId = int.tryParse(args[1]) ?? -1;
+    String role = MiniIpc.argRoleMini;
+    try {
+      final parsed = jsonDecode(args.length > 2 ? args[2] : '{}');
+      if (parsed is Map && parsed['role'] is String) {
+        role = parsed['role'] as String;
+      }
+    } catch (_) {}
+    if (role == MiniIpc.argRoleMini && windowId > 0) {
+      runApp(
+        ProviderScope(
+          child: MiniRecorderApp(windowId: windowId),
+        ),
+      );
+      return;
+    }
+  }
+
   if (!kIsWeb && (Platform.isWindows || Platform.isLinux)) {
     JustAudioMediaKit.ensureInitialized();
   }
@@ -54,4 +79,8 @@ void main() async {
       },
     ),
   );
+}
+
+bool _isMiniWindowLaunch(List<String> args) {
+  return args.isNotEmpty && args.first == 'multi_window';
 }

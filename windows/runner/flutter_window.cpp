@@ -25,6 +25,8 @@ bool FlutterWindow::OnCreate() {
     return false;
   }
   RegisterPlugins(flutter_controller_->engine());
+  mini_window_native_ = std::make_unique<MiniWindowNative>(
+      flutter_controller_->engine(), GetHandle());
   SetChildContent(flutter_controller_->view()->GetNativeWindow());
 
   flutter_controller_->engine()->SetNextFrameCallback([&]() {
@@ -40,6 +42,7 @@ bool FlutterWindow::OnCreate() {
 }
 
 void FlutterWindow::OnDestroy() {
+  mini_window_native_.reset();
   if (flutter_controller_) {
     flutter_controller_ = nullptr;
   }
@@ -59,6 +62,12 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
     if (result) {
       return *result;
     }
+  }
+
+  // Let the mini-window helper consume its retry-apply timer ticks.
+  if (mini_window_native_ &&
+      mini_window_native_->HandleWindowMessage(hwnd, message, wparam, lparam)) {
+    return 0;
   }
 
   switch (message) {
