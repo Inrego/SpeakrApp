@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../theme/colors.dart';
+import '../../../theme/typography.dart';
 import '../../../widgets/mono_eyebrow.dart';
 import '../../../widgets/speakr_icons.dart';
 import '../widgets/recording_widgets.dart';
@@ -25,6 +26,41 @@ class _MiniRecorderScreenState extends ConsumerState<MiniRecorderScreen> {
     super.dispose();
   }
 
+  Future<void> _confirmDiscard() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      builder: (_) => AlertDialog(
+        backgroundColor: SpeakrColors.bg,
+        title: Text('Discard recording?', style: SpeakrText.serif(size: 20)),
+        content: Text(
+          'This will stop the recording and delete the audio. '
+          'This cannot be undone.',
+          style: SpeakrText.sans(size: 14, color: SpeakrColors.ink2),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(
+              'Keep recording',
+              style: SpeakrText.sans(size: 14, color: SpeakrColors.ink),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text(
+              'Discard',
+              style: SpeakrText.sans(size: 14, color: SpeakrColors.danger),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true && mounted) {
+      await ref.read(recordingMirrorProvider.notifier).cancel();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(recordingMirrorProvider);
@@ -37,6 +73,7 @@ class _MiniRecorderScreenState extends ConsumerState<MiniRecorderScreen> {
           children: [
             _MiniTopBar(
               onClose: mirror.hideMini,
+              onDiscard: _confirmDiscard,
               onDragStart: mirror.beginDrag,
             ),
             const SizedBox(height: 2),
@@ -93,9 +130,11 @@ class _MiniRecorderScreenState extends ConsumerState<MiniRecorderScreen> {
 class _MiniTopBar extends StatelessWidget {
   const _MiniTopBar({
     required this.onClose,
+    required this.onDiscard,
     required this.onDragStart,
   });
   final VoidCallback onClose;
+  final Future<void> Function() onDiscard;
   final Future<void> Function() onDragStart;
 
   @override
@@ -112,10 +151,7 @@ class _MiniTopBar extends StatelessWidget {
               child: const Center(child: MonoEyebrow('Recording', size: 9)),
             ),
           ),
-          _DragRegion(
-            onDragStart: onDragStart,
-            child: const SizedBox(width: 36, height: 36),
-          ),
+          GhostIconButton(icon: SpeakrIcon.trash, onTap: () => onDiscard()),
         ],
       ),
     );
