@@ -11,6 +11,7 @@ class MiniIpc {
   static const cmdTogglePause = 'cmd.togglePause';
   static const cmdStop = 'cmd.stop';
   static const cmdCancel = 'cmd.cancel';
+  static const cmdHideMini = 'cmd.hideMini';
   static const cmdSetSpeakers = 'cmd.setSpeakers';
   static const cmdToggleTag = 'cmd.toggleTag';
   static const cmdAddCustomTag = 'cmd.addCustomTag';

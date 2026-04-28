@@ -57,6 +57,9 @@ class RecordingController extends StateNotifier<RecordingState> {
       case MiniIpc.cmdCancel:
         await cancel();
         return null;
+      case MiniIpc.cmdHideMini:
+        await hideMini();
+        return null;
       case MiniIpc.cmdSetSpeakers:
         final v = (call.arguments as Map?)?['value'];
         if (v is int) setSpeakers(v);
@@ -224,6 +227,22 @@ class RecordingController extends StateNotifier<RecordingState> {
   }
 
   // ---------------- Mini window lifecycle ----------------
+
+  /// Hide the mini-window without touching the recorder. Recording, ticker
+  /// and `/live` route stay live; the user can bring the mini back via
+  /// [openMini].
+  Future<void> hideMini() async {
+    await _closeMiniWindow();
+    state = state.copyWith(miniOpen: false, miniWindowId: null);
+  }
+
+  /// (Re)open the mini-window while a recording is active. Windows-only.
+  Future<void> openMini() async {
+    if (kIsWeb || !Platform.isWindows) return;
+    if (!state.started) return;
+    if (state.miniOpen) return;
+    await _openMiniWindow();
+  }
 
   Future<void> _openMiniWindow() async {
     if (_miniController != null) return;
