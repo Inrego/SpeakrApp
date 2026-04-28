@@ -48,11 +48,13 @@ class FakeRecordingController extends StateNotifier<RecordingState> {
   FakeRecordingController() : super(const RecordingState());
 
   bool startedCalled = false;
+  int startCallCount = 0;
   bool stoppedCalled = false;
   bool cancelCalled = false;
 
   Future<void> start() async {
     startedCalled = true;
+    startCallCount++;
     state = state.copyWith(started: true);
   }
 
@@ -79,11 +81,16 @@ MicUser _u({
   Duration stopAge = const Duration(seconds: 30),
 }) {
   final now = DateTime.now();
+  // isInUse is `lastStart.isAfter(lastStop)`. Order the timestamps so the
+  // result actually matches the [inUse] flag: in-use → start newer, not
+  // in-use → stop newer.
   return MicUser(
     key: key,
     displayName: key,
     kind: kind,
-    lastStart: now.subtract(startAge),
+    lastStart: inUse
+        ? now.subtract(startAge)
+        : now.subtract(stopAge + const Duration(seconds: 1)),
     lastStop: inUse
         ? now.subtract(const Duration(hours: 1))
         : now.subtract(stopAge),
@@ -276,6 +283,77 @@ void main() {
     await coord.stopAutoSession();
     expect(rec.cancelCalled, isTrue);
     expect(rec.stoppedCalled, isFalse);
+  });
+
+  test('does not auto-restart after user stops while trigger still in use',
+      () async {
+    await store.write(const AutoRecordSettings(
+      enabled: true,
+      allowlist: [
+        AllowlistEntry(
+          key: 'Teams.exe',
+          displayName: 'Teams',
+          kind: AllowlistKind.exeBasename,
+        ),
+      ],
+    ));
+    // Meeting starts → auto-record fires.
+    mic.emit([
+      _u(key: 'Teams.exe', kind: AllowlistKind.exeBasename, inUse: true),
+    ]);
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+    expect(rec.startCallCount, 1);
+    expect(coord.isAutoSession, isTrue);
+
+    // User stops/uploads (or discards) — recording state resets.
+    await rec.stopAndUpload();
+    await Future<void>.delayed(const Duration(milliseconds: 5));
+    expect(coord.isAutoSession, isFalse);
+
+    // Trigger app is still in the meeting; next poll must NOT restart.
+    mic.emit([
+      _u(key: 'Teams.exe', kind: AllowlistKind.exeBasename, inUse: true),
+    ]);
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+    expect(rec.startCallCount, 1);
+    expect(coord.isAutoSession, isFalse);
+  });
+
+  test('auto-restarts on next meeting after dismissal', () async {
+    await store.write(const AutoRecordSettings(
+      enabled: true,
+      allowlist: [
+        AllowlistEntry(
+          key: 'Teams.exe',
+          displayName: 'Teams',
+          kind: AllowlistKind.exeBasename,
+        ),
+      ],
+    ));
+    // First meeting → auto-record fires.
+    mic.emit([
+      _u(key: 'Teams.exe', kind: AllowlistKind.exeBasename, inUse: true),
+    ]);
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+    expect(rec.startCallCount, 1);
+
+    // User stops.
+    await rec.cancel();
+    await Future<void>.delayed(const Duration(milliseconds: 5));
+
+    // Trigger app released the mic (meeting ended) — dismissal clears.
+    mic.emit([
+      _u(key: 'Teams.exe', kind: AllowlistKind.exeBasename, inUse: false),
+    ]);
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+
+    // New meeting begins → auto-record fires again.
+    mic.emit([
+      _u(key: 'Teams.exe', kind: AllowlistKind.exeBasename, inUse: true),
+    ]);
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+    expect(rec.startCallCount, 2);
+    expect(coord.isAutoSession, isTrue);
   });
 
   test('stopAutoSession uploads when long enough', () async {
