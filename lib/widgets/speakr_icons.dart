@@ -175,17 +175,39 @@ class _IconPainter extends CustomPainter {
         canvas.drawPath(p, fill);
         break;
       case SpeakrIcon.settings:
-        canvas.drawCircle(const Offset(10, 10), 2.6, stroke);
-        for (var i = 0; i < 8; i++) {
-          final angle = i * (math.pi / 4);
-          final dx = math.cos(angle);
-          final dy = math.sin(angle);
-          canvas.drawLine(
-            Offset(10 + dx * 4.6, 10 + dy * 4.6),
-            Offset(10 + dx * 7.2, 10 + dy * 7.2),
-            stroke,
-          );
+        const cx = 10.0;
+        const cy = 10.0;
+        const outerR = 7.6;
+        const innerR = 5.4;
+        const teeth = 8;
+        const period = (math.pi * 2) / teeth;
+        const halfTooth = period / 4;
+        Offset at(double r, double a) =>
+            Offset(cx + r * math.cos(a), cy + r * math.sin(a));
+        final cog = Path();
+        for (var i = 0; i < teeth; i++) {
+          final base = i * period;
+          final a1 = base - halfTooth;
+          final a2 = base + halfTooth;
+          final a3 = base + period - halfTooth;
+          if (i == 0) {
+            final start = at(outerR, a1);
+            cog.moveTo(start.dx, start.dy);
+          }
+          final outerEnd = at(outerR, a2);
+          cog.arcToPoint(outerEnd,
+              radius: const Radius.circular(outerR), clockwise: true);
+          final innerStart = at(innerR, a2);
+          cog.lineTo(innerStart.dx, innerStart.dy);
+          final innerEnd = at(innerR, a3);
+          cog.arcToPoint(innerEnd,
+              radius: const Radius.circular(innerR), clockwise: true);
+          final nextOuter = at(outerR, a3);
+          cog.lineTo(nextOuter.dx, nextOuter.dy);
         }
+        cog.close();
+        canvas.drawPath(cog, stroke);
+        canvas.drawCircle(const Offset(cx, cy), 2.0, stroke);
         break;
     }
   }
