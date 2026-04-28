@@ -2,6 +2,7 @@
 
 #include <flutter/encodable_value.h>
 
+#include <string>
 #include <variant>
 
 namespace {
@@ -75,6 +76,35 @@ void MiniWindowNative::HandleMethodCall(
       ::ReleaseCapture();
       ::PostMessage(mini, WM_NCLBUTTONDOWN, HTCAPTION, 0);
     }
+    result->Success();
+    return;
+  }
+  if (method == "setMainWindowTitle") {
+    const auto* args = std::get_if<flutter::EncodableMap>(call.arguments());
+    if (args == nullptr) {
+      result->Error("bad_args", "expected map with 'title'");
+      return;
+    }
+    auto it = args->find(flutter::EncodableValue("title"));
+    if (it == args->end()) {
+      result->Error("bad_args", "missing 'title'");
+      return;
+    }
+    const auto* title_utf8 = std::get_if<std::string>(&it->second);
+    if (title_utf8 == nullptr) {
+      result->Error("bad_args", "'title' must be a string");
+      return;
+    }
+    int wide_len = ::MultiByteToWideChar(CP_UTF8, 0, title_utf8->c_str(),
+                                         static_cast<int>(title_utf8->size()),
+                                         nullptr, 0);
+    std::wstring wide(wide_len, L'\0');
+    if (wide_len > 0) {
+      ::MultiByteToWideChar(CP_UTF8, 0, title_utf8->c_str(),
+                            static_cast<int>(title_utf8->size()), wide.data(),
+                            wide_len);
+    }
+    ::SetWindowTextW(main_hwnd_, wide.c_str());
     result->Success();
     return;
   }

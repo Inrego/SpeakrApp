@@ -15,6 +15,7 @@ import 'features/auto_upload/workmanager_callback.dart';
 import 'features/live/mini/mini_ipc.dart';
 import 'features/live/mini/mini_recorder_app.dart';
 import 'services/auto_record/auto_record_bootstrap.dart';
+import 'services/dev/dev_window_title.dart';
 
 Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -74,6 +75,7 @@ Future<void> main(List<String> args) async {
     // Fire and forget — the bootstrap is only relevant on Windows and
     // failures are non-fatal (the rest of the app works without it).
     unawaited(AutoRecordBootstrap.start(container));
+    unawaited(applyDevBranchTitleIfDebug());
   }
 
   // Drop two error-level mpv log lines that media_kit / libmpv emit on every
