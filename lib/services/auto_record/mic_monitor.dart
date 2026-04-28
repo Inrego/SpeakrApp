@@ -200,10 +200,7 @@ class _WindowsMicMonitor implements MicMonitor {
   /// a Dart [DateTime]. FILETIME = 100-ns ticks since 1601-01-01 UTC.
   DateTime? _readFiletime(RegistryKey key, String name) {
     try {
-      // win32_registry exposes `getValueAsInt` for QWORD values. For
-      // robustness, fall back to the raw value type if the helper isn't
-      // available on the running version.
-      final v = key.getValueAsInt(name);
+      final v = key.getIntValue(name);
       if (v == null || v == 0) return null;
       return _filetimeToDateTime(v);
     } catch (_) {
