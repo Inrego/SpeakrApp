@@ -48,4 +48,16 @@ class MiniWindowNative {
       // ignore
     } catch (_) {}
   }
+
+  /// Rewrite the caption of the main HWND. Used in dev mode so simultaneous
+  /// worktree instances are distinguishable in the taskbar.
+  static Future<void> setMainWindowTitle(String title) async {
+    try {
+      await _channel.invokeMethod('setMainWindowTitle', {'title': title});
+    } on MissingPluginException {
+      // Non-Windows or older runner build — silent.
+    } catch (_) {
+      // Title is cosmetic; never let it break startup.
+    }
+  }
 }
