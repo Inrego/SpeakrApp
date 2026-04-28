@@ -343,9 +343,9 @@ class _BehaviorGroup extends StatelessWidget {
       children: [
         SettingsRow(
           label: 'Stop-prompt silence threshold',
-          value: '${settings.silenceSeconds}s',
           trailing: _IntStepper(
             value: settings.silenceSeconds,
+            suffix: 's',
             step: 5,
             min: 5,
             max: 120,
@@ -354,9 +354,9 @@ class _BehaviorGroup extends StatelessWidget {
         ),
         SettingsRow(
           label: 'Discard recordings shorter than',
-          value: '${settings.minKeepSeconds}s',
           trailing: _IntStepper(
             value: settings.minKeepSeconds,
+            suffix: 's',
             step: 5,
             min: 0,
             max: 120,
@@ -365,7 +365,6 @@ class _BehaviorGroup extends StatelessWidget {
         ),
         SettingsRow(
           label: 'Default speakers',
-          value: '${settings.defaultSpeakers}',
           trailing: _IntStepper(
             value: settings.defaultSpeakers,
             step: 1,
@@ -386,12 +385,14 @@ class _IntStepper extends StatelessWidget {
     required this.min,
     required this.max,
     required this.onChanged,
+    this.suffix = '',
   });
   final int value;
   final int step;
   final int min;
   final int max;
   final ValueChanged<int> onChanged;
+  final String suffix;
 
   @override
   Widget build(BuildContext context) {
@@ -412,7 +413,16 @@ class _IntStepper extends StatelessWidget {
             child: Text('−', style: SpeakrText.serif(size: 14, height: 1)),
           ),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 8),
+        SizedBox(
+          width: 36,
+          child: Text(
+            suffix.isEmpty ? '$value' : '$value$suffix',
+            textAlign: TextAlign.center,
+            style: SpeakrText.serif(size: 16),
+          ),
+        ),
+        const SizedBox(width: 8),
         InkWell(
           onTap:
               value < max ? () => onChanged((value + step).clamp(min, max)) : null,
