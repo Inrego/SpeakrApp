@@ -175,16 +175,130 @@ Map<String, dynamic> _$$ChatResponseImplToJson(_$ChatResponseImpl instance) =>
 
 _$StatsResponseImpl _$$StatsResponseImplFromJson(Map<String, dynamic> json) =>
     _$StatsResponseImpl(
-      recordings: (json['recordings'] as num?)?.toInt(),
-      totalRecordings: (json['total_recordings'] as num?)?.toInt(),
-      storageUsedBytes: (json['storage_used_bytes'] as num?)?.toInt(),
-      version: json['version'] as String?,
+      activity: json['activity'] == null
+          ? null
+          : StatsActivity.fromJson(json['activity'] as Map<String, dynamic>),
+      queue: json['queue'] == null
+          ? null
+          : StatsQueue.fromJson(json['queue'] as Map<String, dynamic>),
+      recordings: json['recordings'] == null
+          ? null
+          : StatsRecordings.fromJson(
+              json['recordings'] as Map<String, dynamic>,
+            ),
+      storage: json['storage'] == null
+          ? null
+          : StatsStorage.fromJson(json['storage'] as Map<String, dynamic>),
+      tokens: json['tokens'] == null
+          ? null
+          : StatsTokens.fromJson(json['tokens'] as Map<String, dynamic>),
+      transcription: json['transcription'] == null
+          ? null
+          : StatsTranscription.fromJson(
+              json['transcription'] as Map<String, dynamic>,
+            ),
     );
 
 Map<String, dynamic> _$$StatsResponseImplToJson(_$StatsResponseImpl instance) =>
     <String, dynamic>{
+      'activity': instance.activity,
+      'queue': instance.queue,
       'recordings': instance.recordings,
-      'total_recordings': instance.totalRecordings,
-      'storage_used_bytes': instance.storageUsedBytes,
-      'version': instance.version,
+      'storage': instance.storage,
+      'tokens': instance.tokens,
+      'transcription': instance.transcription,
     };
+
+_$StatsActivityImpl _$$StatsActivityImplFromJson(Map<String, dynamic> json) =>
+    _$StatsActivityImpl(
+      lastTranscription: json['last_transcription'] == null
+          ? null
+          : DateTime.parse(json['last_transcription'] as String),
+      recordingsToday: (json['recordings_today'] as num?)?.toInt(),
+    );
+
+Map<String, dynamic> _$$StatsActivityImplToJson(_$StatsActivityImpl instance) =>
+    <String, dynamic>{
+      'last_transcription': instance.lastTranscription?.toIso8601String(),
+      'recordings_today': instance.recordingsToday,
+    };
+
+_$StatsQueueImpl _$$StatsQueueImplFromJson(Map<String, dynamic> json) =>
+    _$StatsQueueImpl(
+      jobsProcessing: (json['jobs_processing'] as num?)?.toInt(),
+      jobsQueued: (json['jobs_queued'] as num?)?.toInt(),
+    );
+
+Map<String, dynamic> _$$StatsQueueImplToJson(_$StatsQueueImpl instance) =>
+    <String, dynamic>{
+      'jobs_processing': instance.jobsProcessing,
+      'jobs_queued': instance.jobsQueued,
+    };
+
+_$StatsRecordingsImpl _$$StatsRecordingsImplFromJson(
+  Map<String, dynamic> json,
+) => _$StatsRecordingsImpl(
+  completed: (json['completed'] as num?)?.toInt(),
+  failed: (json['failed'] as num?)?.toInt(),
+  pending: (json['pending'] as num?)?.toInt(),
+  processing: (json['processing'] as num?)?.toInt(),
+  total: (json['total'] as num?)?.toInt(),
+);
+
+Map<String, dynamic> _$$StatsRecordingsImplToJson(
+  _$StatsRecordingsImpl instance,
+) => <String, dynamic>{
+  'completed': instance.completed,
+  'failed': instance.failed,
+  'pending': instance.pending,
+  'processing': instance.processing,
+  'total': instance.total,
+};
+
+_$StatsStorageImpl _$$StatsStorageImplFromJson(Map<String, dynamic> json) =>
+    _$StatsStorageImpl(
+      usedBytes: (json['used_bytes'] as num?)?.toInt(),
+      usedHuman: json['used_human'] as String?,
+    );
+
+Map<String, dynamic> _$$StatsStorageImplToJson(_$StatsStorageImpl instance) =>
+    <String, dynamic>{
+      'used_bytes': instance.usedBytes,
+      'used_human': instance.usedHuman,
+    };
+
+_$StatsTokensImpl _$$StatsTokensImplFromJson(Map<String, dynamic> json) =>
+    _$StatsTokensImpl(
+      budget: (json['budget'] as num?)?.toInt(),
+      percentage: (json['percentage'] as num?)?.toDouble(),
+      usedThisMonth: (json['used_this_month'] as num?)?.toInt(),
+    );
+
+Map<String, dynamic> _$$StatsTokensImplToJson(_$StatsTokensImpl instance) =>
+    <String, dynamic>{
+      'budget': instance.budget,
+      'percentage': instance.percentage,
+      'used_this_month': instance.usedThisMonth,
+    };
+
+_$StatsTranscriptionImpl _$$StatsTranscriptionImplFromJson(
+  Map<String, dynamic> json,
+) => _$StatsTranscriptionImpl(
+  budgetMinutes: (json['budget_minutes'] as num?)?.toInt(),
+  budgetSeconds: (json['budget_seconds'] as num?)?.toInt(),
+  estimatedCost: (json['estimated_cost'] as num?)?.toDouble(),
+  percentage: (json['percentage'] as num?)?.toDouble(),
+  usedThisMonthMinutes: (json['used_this_month_minutes'] as num?)?.toInt(),
+  usedThisMonthSeconds: (json['used_this_month_seconds'] as num?)?.toInt(),
+);
+
+Map<String, dynamic> _$$StatsTranscriptionImplToJson(
+  _$StatsTranscriptionImpl instance,
+) => <String, dynamic>{
+  'budget_minutes': instance.budgetMinutes,
+  'budget_seconds': instance.budgetSeconds,
+  'estimated_cost': instance.estimatedCost,
+  'percentage': instance.percentage,
+  'used_this_month_minutes': instance.usedThisMonthMinutes,
+  'used_this_month_seconds': instance.usedThisMonthSeconds,
+};

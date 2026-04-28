@@ -2199,12 +2199,12 @@ StatsResponse _$StatsResponseFromJson(Map<String, dynamic> json) {
 
 /// @nodoc
 mixin _$StatsResponse {
-  int? get recordings => throw _privateConstructorUsedError;
-  @JsonKey(name: 'total_recordings')
-  int? get totalRecordings => throw _privateConstructorUsedError;
-  @JsonKey(name: 'storage_used_bytes')
-  int? get storageUsedBytes => throw _privateConstructorUsedError;
-  String? get version => throw _privateConstructorUsedError;
+  StatsActivity? get activity => throw _privateConstructorUsedError;
+  StatsQueue? get queue => throw _privateConstructorUsedError;
+  StatsRecordings? get recordings => throw _privateConstructorUsedError;
+  StatsStorage? get storage => throw _privateConstructorUsedError;
+  StatsTokens? get tokens => throw _privateConstructorUsedError;
+  StatsTranscription? get transcription => throw _privateConstructorUsedError;
 
   /// Serializes this StatsResponse to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -2224,11 +2224,20 @@ abstract class $StatsResponseCopyWith<$Res> {
   ) = _$StatsResponseCopyWithImpl<$Res, StatsResponse>;
   @useResult
   $Res call({
-    int? recordings,
-    @JsonKey(name: 'total_recordings') int? totalRecordings,
-    @JsonKey(name: 'storage_used_bytes') int? storageUsedBytes,
-    String? version,
+    StatsActivity? activity,
+    StatsQueue? queue,
+    StatsRecordings? recordings,
+    StatsStorage? storage,
+    StatsTokens? tokens,
+    StatsTranscription? transcription,
   });
+
+  $StatsActivityCopyWith<$Res>? get activity;
+  $StatsQueueCopyWith<$Res>? get queue;
+  $StatsRecordingsCopyWith<$Res>? get recordings;
+  $StatsStorageCopyWith<$Res>? get storage;
+  $StatsTokensCopyWith<$Res>? get tokens;
+  $StatsTranscriptionCopyWith<$Res>? get transcription;
 }
 
 /// @nodoc
@@ -2246,32 +2255,126 @@ class _$StatsResponseCopyWithImpl<$Res, $Val extends StatsResponse>
   @pragma('vm:prefer-inline')
   @override
   $Res call({
+    Object? activity = freezed,
+    Object? queue = freezed,
     Object? recordings = freezed,
-    Object? totalRecordings = freezed,
-    Object? storageUsedBytes = freezed,
-    Object? version = freezed,
+    Object? storage = freezed,
+    Object? tokens = freezed,
+    Object? transcription = freezed,
   }) {
     return _then(
       _value.copyWith(
+            activity: freezed == activity
+                ? _value.activity
+                : activity // ignore: cast_nullable_to_non_nullable
+                      as StatsActivity?,
+            queue: freezed == queue
+                ? _value.queue
+                : queue // ignore: cast_nullable_to_non_nullable
+                      as StatsQueue?,
             recordings: freezed == recordings
                 ? _value.recordings
                 : recordings // ignore: cast_nullable_to_non_nullable
-                      as int?,
-            totalRecordings: freezed == totalRecordings
-                ? _value.totalRecordings
-                : totalRecordings // ignore: cast_nullable_to_non_nullable
-                      as int?,
-            storageUsedBytes: freezed == storageUsedBytes
-                ? _value.storageUsedBytes
-                : storageUsedBytes // ignore: cast_nullable_to_non_nullable
-                      as int?,
-            version: freezed == version
-                ? _value.version
-                : version // ignore: cast_nullable_to_non_nullable
-                      as String?,
+                      as StatsRecordings?,
+            storage: freezed == storage
+                ? _value.storage
+                : storage // ignore: cast_nullable_to_non_nullable
+                      as StatsStorage?,
+            tokens: freezed == tokens
+                ? _value.tokens
+                : tokens // ignore: cast_nullable_to_non_nullable
+                      as StatsTokens?,
+            transcription: freezed == transcription
+                ? _value.transcription
+                : transcription // ignore: cast_nullable_to_non_nullable
+                      as StatsTranscription?,
           )
           as $Val,
     );
+  }
+
+  /// Create a copy of StatsResponse
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @pragma('vm:prefer-inline')
+  $StatsActivityCopyWith<$Res>? get activity {
+    if (_value.activity == null) {
+      return null;
+    }
+
+    return $StatsActivityCopyWith<$Res>(_value.activity!, (value) {
+      return _then(_value.copyWith(activity: value) as $Val);
+    });
+  }
+
+  /// Create a copy of StatsResponse
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @pragma('vm:prefer-inline')
+  $StatsQueueCopyWith<$Res>? get queue {
+    if (_value.queue == null) {
+      return null;
+    }
+
+    return $StatsQueueCopyWith<$Res>(_value.queue!, (value) {
+      return _then(_value.copyWith(queue: value) as $Val);
+    });
+  }
+
+  /// Create a copy of StatsResponse
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @pragma('vm:prefer-inline')
+  $StatsRecordingsCopyWith<$Res>? get recordings {
+    if (_value.recordings == null) {
+      return null;
+    }
+
+    return $StatsRecordingsCopyWith<$Res>(_value.recordings!, (value) {
+      return _then(_value.copyWith(recordings: value) as $Val);
+    });
+  }
+
+  /// Create a copy of StatsResponse
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @pragma('vm:prefer-inline')
+  $StatsStorageCopyWith<$Res>? get storage {
+    if (_value.storage == null) {
+      return null;
+    }
+
+    return $StatsStorageCopyWith<$Res>(_value.storage!, (value) {
+      return _then(_value.copyWith(storage: value) as $Val);
+    });
+  }
+
+  /// Create a copy of StatsResponse
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @pragma('vm:prefer-inline')
+  $StatsTokensCopyWith<$Res>? get tokens {
+    if (_value.tokens == null) {
+      return null;
+    }
+
+    return $StatsTokensCopyWith<$Res>(_value.tokens!, (value) {
+      return _then(_value.copyWith(tokens: value) as $Val);
+    });
+  }
+
+  /// Create a copy of StatsResponse
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @pragma('vm:prefer-inline')
+  $StatsTranscriptionCopyWith<$Res>? get transcription {
+    if (_value.transcription == null) {
+      return null;
+    }
+
+    return $StatsTranscriptionCopyWith<$Res>(_value.transcription!, (value) {
+      return _then(_value.copyWith(transcription: value) as $Val);
+    });
   }
 }
 
@@ -2285,11 +2388,26 @@ abstract class _$$StatsResponseImplCopyWith<$Res>
   @override
   @useResult
   $Res call({
-    int? recordings,
-    @JsonKey(name: 'total_recordings') int? totalRecordings,
-    @JsonKey(name: 'storage_used_bytes') int? storageUsedBytes,
-    String? version,
+    StatsActivity? activity,
+    StatsQueue? queue,
+    StatsRecordings? recordings,
+    StatsStorage? storage,
+    StatsTokens? tokens,
+    StatsTranscription? transcription,
   });
+
+  @override
+  $StatsActivityCopyWith<$Res>? get activity;
+  @override
+  $StatsQueueCopyWith<$Res>? get queue;
+  @override
+  $StatsRecordingsCopyWith<$Res>? get recordings;
+  @override
+  $StatsStorageCopyWith<$Res>? get storage;
+  @override
+  $StatsTokensCopyWith<$Res>? get tokens;
+  @override
+  $StatsTranscriptionCopyWith<$Res>? get transcription;
 }
 
 /// @nodoc
@@ -2306,29 +2424,39 @@ class __$$StatsResponseImplCopyWithImpl<$Res>
   @pragma('vm:prefer-inline')
   @override
   $Res call({
+    Object? activity = freezed,
+    Object? queue = freezed,
     Object? recordings = freezed,
-    Object? totalRecordings = freezed,
-    Object? storageUsedBytes = freezed,
-    Object? version = freezed,
+    Object? storage = freezed,
+    Object? tokens = freezed,
+    Object? transcription = freezed,
   }) {
     return _then(
       _$StatsResponseImpl(
+        activity: freezed == activity
+            ? _value.activity
+            : activity // ignore: cast_nullable_to_non_nullable
+                  as StatsActivity?,
+        queue: freezed == queue
+            ? _value.queue
+            : queue // ignore: cast_nullable_to_non_nullable
+                  as StatsQueue?,
         recordings: freezed == recordings
             ? _value.recordings
             : recordings // ignore: cast_nullable_to_non_nullable
-                  as int?,
-        totalRecordings: freezed == totalRecordings
-            ? _value.totalRecordings
-            : totalRecordings // ignore: cast_nullable_to_non_nullable
-                  as int?,
-        storageUsedBytes: freezed == storageUsedBytes
-            ? _value.storageUsedBytes
-            : storageUsedBytes // ignore: cast_nullable_to_non_nullable
-                  as int?,
-        version: freezed == version
-            ? _value.version
-            : version // ignore: cast_nullable_to_non_nullable
-                  as String?,
+                  as StatsRecordings?,
+        storage: freezed == storage
+            ? _value.storage
+            : storage // ignore: cast_nullable_to_non_nullable
+                  as StatsStorage?,
+        tokens: freezed == tokens
+            ? _value.tokens
+            : tokens // ignore: cast_nullable_to_non_nullable
+                  as StatsTokens?,
+        transcription: freezed == transcription
+            ? _value.transcription
+            : transcription // ignore: cast_nullable_to_non_nullable
+                  as StatsTranscription?,
       ),
     );
   }
@@ -2338,29 +2466,33 @@ class __$$StatsResponseImplCopyWithImpl<$Res>
 @JsonSerializable()
 class _$StatsResponseImpl implements _StatsResponse {
   const _$StatsResponseImpl({
+    this.activity,
+    this.queue,
     this.recordings,
-    @JsonKey(name: 'total_recordings') this.totalRecordings,
-    @JsonKey(name: 'storage_used_bytes') this.storageUsedBytes,
-    this.version,
+    this.storage,
+    this.tokens,
+    this.transcription,
   });
 
   factory _$StatsResponseImpl.fromJson(Map<String, dynamic> json) =>
       _$$StatsResponseImplFromJson(json);
 
   @override
-  final int? recordings;
+  final StatsActivity? activity;
   @override
-  @JsonKey(name: 'total_recordings')
-  final int? totalRecordings;
+  final StatsQueue? queue;
   @override
-  @JsonKey(name: 'storage_used_bytes')
-  final int? storageUsedBytes;
+  final StatsRecordings? recordings;
   @override
-  final String? version;
+  final StatsStorage? storage;
+  @override
+  final StatsTokens? tokens;
+  @override
+  final StatsTranscription? transcription;
 
   @override
   String toString() {
-    return 'StatsResponse(recordings: $recordings, totalRecordings: $totalRecordings, storageUsedBytes: $storageUsedBytes, version: $version)';
+    return 'StatsResponse(activity: $activity, queue: $queue, recordings: $recordings, storage: $storage, tokens: $tokens, transcription: $transcription)';
   }
 
   @override
@@ -2368,23 +2500,27 @@ class _$StatsResponseImpl implements _StatsResponse {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
             other is _$StatsResponseImpl &&
+            (identical(other.activity, activity) ||
+                other.activity == activity) &&
+            (identical(other.queue, queue) || other.queue == queue) &&
             (identical(other.recordings, recordings) ||
                 other.recordings == recordings) &&
-            (identical(other.totalRecordings, totalRecordings) ||
-                other.totalRecordings == totalRecordings) &&
-            (identical(other.storageUsedBytes, storageUsedBytes) ||
-                other.storageUsedBytes == storageUsedBytes) &&
-            (identical(other.version, version) || other.version == version));
+            (identical(other.storage, storage) || other.storage == storage) &&
+            (identical(other.tokens, tokens) || other.tokens == tokens) &&
+            (identical(other.transcription, transcription) ||
+                other.transcription == transcription));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   int get hashCode => Object.hash(
     runtimeType,
+    activity,
+    queue,
     recordings,
-    totalRecordings,
-    storageUsedBytes,
-    version,
+    storage,
+    tokens,
+    transcription,
   );
 
   /// Create a copy of StatsResponse
@@ -2403,30 +2539,1349 @@ class _$StatsResponseImpl implements _StatsResponse {
 
 abstract class _StatsResponse implements StatsResponse {
   const factory _StatsResponse({
-    final int? recordings,
-    @JsonKey(name: 'total_recordings') final int? totalRecordings,
-    @JsonKey(name: 'storage_used_bytes') final int? storageUsedBytes,
-    final String? version,
+    final StatsActivity? activity,
+    final StatsQueue? queue,
+    final StatsRecordings? recordings,
+    final StatsStorage? storage,
+    final StatsTokens? tokens,
+    final StatsTranscription? transcription,
   }) = _$StatsResponseImpl;
 
   factory _StatsResponse.fromJson(Map<String, dynamic> json) =
       _$StatsResponseImpl.fromJson;
 
   @override
-  int? get recordings;
+  StatsActivity? get activity;
   @override
-  @JsonKey(name: 'total_recordings')
-  int? get totalRecordings;
+  StatsQueue? get queue;
   @override
-  @JsonKey(name: 'storage_used_bytes')
-  int? get storageUsedBytes;
+  StatsRecordings? get recordings;
   @override
-  String? get version;
+  StatsStorage? get storage;
+  @override
+  StatsTokens? get tokens;
+  @override
+  StatsTranscription? get transcription;
 
   /// Create a copy of StatsResponse
   /// with the given fields replaced by the non-null parameter values.
   @override
   @JsonKey(includeFromJson: false, includeToJson: false)
   _$$StatsResponseImplCopyWith<_$StatsResponseImpl> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+StatsActivity _$StatsActivityFromJson(Map<String, dynamic> json) {
+  return _StatsActivity.fromJson(json);
+}
+
+/// @nodoc
+mixin _$StatsActivity {
+  @JsonKey(name: 'last_transcription')
+  DateTime? get lastTranscription => throw _privateConstructorUsedError;
+  @JsonKey(name: 'recordings_today')
+  int? get recordingsToday => throw _privateConstructorUsedError;
+
+  /// Serializes this StatsActivity to a JSON map.
+  Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
+
+  /// Create a copy of StatsActivity
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  $StatsActivityCopyWith<StatsActivity> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class $StatsActivityCopyWith<$Res> {
+  factory $StatsActivityCopyWith(
+    StatsActivity value,
+    $Res Function(StatsActivity) then,
+  ) = _$StatsActivityCopyWithImpl<$Res, StatsActivity>;
+  @useResult
+  $Res call({
+    @JsonKey(name: 'last_transcription') DateTime? lastTranscription,
+    @JsonKey(name: 'recordings_today') int? recordingsToday,
+  });
+}
+
+/// @nodoc
+class _$StatsActivityCopyWithImpl<$Res, $Val extends StatsActivity>
+    implements $StatsActivityCopyWith<$Res> {
+  _$StatsActivityCopyWithImpl(this._value, this._then);
+
+  // ignore: unused_field
+  final $Val _value;
+  // ignore: unused_field
+  final $Res Function($Val) _then;
+
+  /// Create a copy of StatsActivity
+  /// with the given fields replaced by the non-null parameter values.
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? lastTranscription = freezed,
+    Object? recordingsToday = freezed,
+  }) {
+    return _then(
+      _value.copyWith(
+            lastTranscription: freezed == lastTranscription
+                ? _value.lastTranscription
+                : lastTranscription // ignore: cast_nullable_to_non_nullable
+                      as DateTime?,
+            recordingsToday: freezed == recordingsToday
+                ? _value.recordingsToday
+                : recordingsToday // ignore: cast_nullable_to_non_nullable
+                      as int?,
+          )
+          as $Val,
+    );
+  }
+}
+
+/// @nodoc
+abstract class _$$StatsActivityImplCopyWith<$Res>
+    implements $StatsActivityCopyWith<$Res> {
+  factory _$$StatsActivityImplCopyWith(
+    _$StatsActivityImpl value,
+    $Res Function(_$StatsActivityImpl) then,
+  ) = __$$StatsActivityImplCopyWithImpl<$Res>;
+  @override
+  @useResult
+  $Res call({
+    @JsonKey(name: 'last_transcription') DateTime? lastTranscription,
+    @JsonKey(name: 'recordings_today') int? recordingsToday,
+  });
+}
+
+/// @nodoc
+class __$$StatsActivityImplCopyWithImpl<$Res>
+    extends _$StatsActivityCopyWithImpl<$Res, _$StatsActivityImpl>
+    implements _$$StatsActivityImplCopyWith<$Res> {
+  __$$StatsActivityImplCopyWithImpl(
+    _$StatsActivityImpl _value,
+    $Res Function(_$StatsActivityImpl) _then,
+  ) : super(_value, _then);
+
+  /// Create a copy of StatsActivity
+  /// with the given fields replaced by the non-null parameter values.
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? lastTranscription = freezed,
+    Object? recordingsToday = freezed,
+  }) {
+    return _then(
+      _$StatsActivityImpl(
+        lastTranscription: freezed == lastTranscription
+            ? _value.lastTranscription
+            : lastTranscription // ignore: cast_nullable_to_non_nullable
+                  as DateTime?,
+        recordingsToday: freezed == recordingsToday
+            ? _value.recordingsToday
+            : recordingsToday // ignore: cast_nullable_to_non_nullable
+                  as int?,
+      ),
+    );
+  }
+}
+
+/// @nodoc
+@JsonSerializable()
+class _$StatsActivityImpl implements _StatsActivity {
+  const _$StatsActivityImpl({
+    @JsonKey(name: 'last_transcription') this.lastTranscription,
+    @JsonKey(name: 'recordings_today') this.recordingsToday,
+  });
+
+  factory _$StatsActivityImpl.fromJson(Map<String, dynamic> json) =>
+      _$$StatsActivityImplFromJson(json);
+
+  @override
+  @JsonKey(name: 'last_transcription')
+  final DateTime? lastTranscription;
+  @override
+  @JsonKey(name: 'recordings_today')
+  final int? recordingsToday;
+
+  @override
+  String toString() {
+    return 'StatsActivity(lastTranscription: $lastTranscription, recordingsToday: $recordingsToday)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$StatsActivityImpl &&
+            (identical(other.lastTranscription, lastTranscription) ||
+                other.lastTranscription == lastTranscription) &&
+            (identical(other.recordingsToday, recordingsToday) ||
+                other.recordingsToday == recordingsToday));
+  }
+
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  int get hashCode =>
+      Object.hash(runtimeType, lastTranscription, recordingsToday);
+
+  /// Create a copy of StatsActivity
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$StatsActivityImplCopyWith<_$StatsActivityImpl> get copyWith =>
+      __$$StatsActivityImplCopyWithImpl<_$StatsActivityImpl>(this, _$identity);
+
+  @override
+  Map<String, dynamic> toJson() {
+    return _$$StatsActivityImplToJson(this);
+  }
+}
+
+abstract class _StatsActivity implements StatsActivity {
+  const factory _StatsActivity({
+    @JsonKey(name: 'last_transcription') final DateTime? lastTranscription,
+    @JsonKey(name: 'recordings_today') final int? recordingsToday,
+  }) = _$StatsActivityImpl;
+
+  factory _StatsActivity.fromJson(Map<String, dynamic> json) =
+      _$StatsActivityImpl.fromJson;
+
+  @override
+  @JsonKey(name: 'last_transcription')
+  DateTime? get lastTranscription;
+  @override
+  @JsonKey(name: 'recordings_today')
+  int? get recordingsToday;
+
+  /// Create a copy of StatsActivity
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  _$$StatsActivityImplCopyWith<_$StatsActivityImpl> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+StatsQueue _$StatsQueueFromJson(Map<String, dynamic> json) {
+  return _StatsQueue.fromJson(json);
+}
+
+/// @nodoc
+mixin _$StatsQueue {
+  @JsonKey(name: 'jobs_processing')
+  int? get jobsProcessing => throw _privateConstructorUsedError;
+  @JsonKey(name: 'jobs_queued')
+  int? get jobsQueued => throw _privateConstructorUsedError;
+
+  /// Serializes this StatsQueue to a JSON map.
+  Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
+
+  /// Create a copy of StatsQueue
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  $StatsQueueCopyWith<StatsQueue> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class $StatsQueueCopyWith<$Res> {
+  factory $StatsQueueCopyWith(
+    StatsQueue value,
+    $Res Function(StatsQueue) then,
+  ) = _$StatsQueueCopyWithImpl<$Res, StatsQueue>;
+  @useResult
+  $Res call({
+    @JsonKey(name: 'jobs_processing') int? jobsProcessing,
+    @JsonKey(name: 'jobs_queued') int? jobsQueued,
+  });
+}
+
+/// @nodoc
+class _$StatsQueueCopyWithImpl<$Res, $Val extends StatsQueue>
+    implements $StatsQueueCopyWith<$Res> {
+  _$StatsQueueCopyWithImpl(this._value, this._then);
+
+  // ignore: unused_field
+  final $Val _value;
+  // ignore: unused_field
+  final $Res Function($Val) _then;
+
+  /// Create a copy of StatsQueue
+  /// with the given fields replaced by the non-null parameter values.
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({Object? jobsProcessing = freezed, Object? jobsQueued = freezed}) {
+    return _then(
+      _value.copyWith(
+            jobsProcessing: freezed == jobsProcessing
+                ? _value.jobsProcessing
+                : jobsProcessing // ignore: cast_nullable_to_non_nullable
+                      as int?,
+            jobsQueued: freezed == jobsQueued
+                ? _value.jobsQueued
+                : jobsQueued // ignore: cast_nullable_to_non_nullable
+                      as int?,
+          )
+          as $Val,
+    );
+  }
+}
+
+/// @nodoc
+abstract class _$$StatsQueueImplCopyWith<$Res>
+    implements $StatsQueueCopyWith<$Res> {
+  factory _$$StatsQueueImplCopyWith(
+    _$StatsQueueImpl value,
+    $Res Function(_$StatsQueueImpl) then,
+  ) = __$$StatsQueueImplCopyWithImpl<$Res>;
+  @override
+  @useResult
+  $Res call({
+    @JsonKey(name: 'jobs_processing') int? jobsProcessing,
+    @JsonKey(name: 'jobs_queued') int? jobsQueued,
+  });
+}
+
+/// @nodoc
+class __$$StatsQueueImplCopyWithImpl<$Res>
+    extends _$StatsQueueCopyWithImpl<$Res, _$StatsQueueImpl>
+    implements _$$StatsQueueImplCopyWith<$Res> {
+  __$$StatsQueueImplCopyWithImpl(
+    _$StatsQueueImpl _value,
+    $Res Function(_$StatsQueueImpl) _then,
+  ) : super(_value, _then);
+
+  /// Create a copy of StatsQueue
+  /// with the given fields replaced by the non-null parameter values.
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({Object? jobsProcessing = freezed, Object? jobsQueued = freezed}) {
+    return _then(
+      _$StatsQueueImpl(
+        jobsProcessing: freezed == jobsProcessing
+            ? _value.jobsProcessing
+            : jobsProcessing // ignore: cast_nullable_to_non_nullable
+                  as int?,
+        jobsQueued: freezed == jobsQueued
+            ? _value.jobsQueued
+            : jobsQueued // ignore: cast_nullable_to_non_nullable
+                  as int?,
+      ),
+    );
+  }
+}
+
+/// @nodoc
+@JsonSerializable()
+class _$StatsQueueImpl implements _StatsQueue {
+  const _$StatsQueueImpl({
+    @JsonKey(name: 'jobs_processing') this.jobsProcessing,
+    @JsonKey(name: 'jobs_queued') this.jobsQueued,
+  });
+
+  factory _$StatsQueueImpl.fromJson(Map<String, dynamic> json) =>
+      _$$StatsQueueImplFromJson(json);
+
+  @override
+  @JsonKey(name: 'jobs_processing')
+  final int? jobsProcessing;
+  @override
+  @JsonKey(name: 'jobs_queued')
+  final int? jobsQueued;
+
+  @override
+  String toString() {
+    return 'StatsQueue(jobsProcessing: $jobsProcessing, jobsQueued: $jobsQueued)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$StatsQueueImpl &&
+            (identical(other.jobsProcessing, jobsProcessing) ||
+                other.jobsProcessing == jobsProcessing) &&
+            (identical(other.jobsQueued, jobsQueued) ||
+                other.jobsQueued == jobsQueued));
+  }
+
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  int get hashCode => Object.hash(runtimeType, jobsProcessing, jobsQueued);
+
+  /// Create a copy of StatsQueue
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$StatsQueueImplCopyWith<_$StatsQueueImpl> get copyWith =>
+      __$$StatsQueueImplCopyWithImpl<_$StatsQueueImpl>(this, _$identity);
+
+  @override
+  Map<String, dynamic> toJson() {
+    return _$$StatsQueueImplToJson(this);
+  }
+}
+
+abstract class _StatsQueue implements StatsQueue {
+  const factory _StatsQueue({
+    @JsonKey(name: 'jobs_processing') final int? jobsProcessing,
+    @JsonKey(name: 'jobs_queued') final int? jobsQueued,
+  }) = _$StatsQueueImpl;
+
+  factory _StatsQueue.fromJson(Map<String, dynamic> json) =
+      _$StatsQueueImpl.fromJson;
+
+  @override
+  @JsonKey(name: 'jobs_processing')
+  int? get jobsProcessing;
+  @override
+  @JsonKey(name: 'jobs_queued')
+  int? get jobsQueued;
+
+  /// Create a copy of StatsQueue
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  _$$StatsQueueImplCopyWith<_$StatsQueueImpl> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+StatsRecordings _$StatsRecordingsFromJson(Map<String, dynamic> json) {
+  return _StatsRecordings.fromJson(json);
+}
+
+/// @nodoc
+mixin _$StatsRecordings {
+  int? get completed => throw _privateConstructorUsedError;
+  int? get failed => throw _privateConstructorUsedError;
+  int? get pending => throw _privateConstructorUsedError;
+  int? get processing => throw _privateConstructorUsedError;
+  int? get total => throw _privateConstructorUsedError;
+
+  /// Serializes this StatsRecordings to a JSON map.
+  Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
+
+  /// Create a copy of StatsRecordings
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  $StatsRecordingsCopyWith<StatsRecordings> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class $StatsRecordingsCopyWith<$Res> {
+  factory $StatsRecordingsCopyWith(
+    StatsRecordings value,
+    $Res Function(StatsRecordings) then,
+  ) = _$StatsRecordingsCopyWithImpl<$Res, StatsRecordings>;
+  @useResult
+  $Res call({
+    int? completed,
+    int? failed,
+    int? pending,
+    int? processing,
+    int? total,
+  });
+}
+
+/// @nodoc
+class _$StatsRecordingsCopyWithImpl<$Res, $Val extends StatsRecordings>
+    implements $StatsRecordingsCopyWith<$Res> {
+  _$StatsRecordingsCopyWithImpl(this._value, this._then);
+
+  // ignore: unused_field
+  final $Val _value;
+  // ignore: unused_field
+  final $Res Function($Val) _then;
+
+  /// Create a copy of StatsRecordings
+  /// with the given fields replaced by the non-null parameter values.
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? completed = freezed,
+    Object? failed = freezed,
+    Object? pending = freezed,
+    Object? processing = freezed,
+    Object? total = freezed,
+  }) {
+    return _then(
+      _value.copyWith(
+            completed: freezed == completed
+                ? _value.completed
+                : completed // ignore: cast_nullable_to_non_nullable
+                      as int?,
+            failed: freezed == failed
+                ? _value.failed
+                : failed // ignore: cast_nullable_to_non_nullable
+                      as int?,
+            pending: freezed == pending
+                ? _value.pending
+                : pending // ignore: cast_nullable_to_non_nullable
+                      as int?,
+            processing: freezed == processing
+                ? _value.processing
+                : processing // ignore: cast_nullable_to_non_nullable
+                      as int?,
+            total: freezed == total
+                ? _value.total
+                : total // ignore: cast_nullable_to_non_nullable
+                      as int?,
+          )
+          as $Val,
+    );
+  }
+}
+
+/// @nodoc
+abstract class _$$StatsRecordingsImplCopyWith<$Res>
+    implements $StatsRecordingsCopyWith<$Res> {
+  factory _$$StatsRecordingsImplCopyWith(
+    _$StatsRecordingsImpl value,
+    $Res Function(_$StatsRecordingsImpl) then,
+  ) = __$$StatsRecordingsImplCopyWithImpl<$Res>;
+  @override
+  @useResult
+  $Res call({
+    int? completed,
+    int? failed,
+    int? pending,
+    int? processing,
+    int? total,
+  });
+}
+
+/// @nodoc
+class __$$StatsRecordingsImplCopyWithImpl<$Res>
+    extends _$StatsRecordingsCopyWithImpl<$Res, _$StatsRecordingsImpl>
+    implements _$$StatsRecordingsImplCopyWith<$Res> {
+  __$$StatsRecordingsImplCopyWithImpl(
+    _$StatsRecordingsImpl _value,
+    $Res Function(_$StatsRecordingsImpl) _then,
+  ) : super(_value, _then);
+
+  /// Create a copy of StatsRecordings
+  /// with the given fields replaced by the non-null parameter values.
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? completed = freezed,
+    Object? failed = freezed,
+    Object? pending = freezed,
+    Object? processing = freezed,
+    Object? total = freezed,
+  }) {
+    return _then(
+      _$StatsRecordingsImpl(
+        completed: freezed == completed
+            ? _value.completed
+            : completed // ignore: cast_nullable_to_non_nullable
+                  as int?,
+        failed: freezed == failed
+            ? _value.failed
+            : failed // ignore: cast_nullable_to_non_nullable
+                  as int?,
+        pending: freezed == pending
+            ? _value.pending
+            : pending // ignore: cast_nullable_to_non_nullable
+                  as int?,
+        processing: freezed == processing
+            ? _value.processing
+            : processing // ignore: cast_nullable_to_non_nullable
+                  as int?,
+        total: freezed == total
+            ? _value.total
+            : total // ignore: cast_nullable_to_non_nullable
+                  as int?,
+      ),
+    );
+  }
+}
+
+/// @nodoc
+@JsonSerializable()
+class _$StatsRecordingsImpl implements _StatsRecordings {
+  const _$StatsRecordingsImpl({
+    this.completed,
+    this.failed,
+    this.pending,
+    this.processing,
+    this.total,
+  });
+
+  factory _$StatsRecordingsImpl.fromJson(Map<String, dynamic> json) =>
+      _$$StatsRecordingsImplFromJson(json);
+
+  @override
+  final int? completed;
+  @override
+  final int? failed;
+  @override
+  final int? pending;
+  @override
+  final int? processing;
+  @override
+  final int? total;
+
+  @override
+  String toString() {
+    return 'StatsRecordings(completed: $completed, failed: $failed, pending: $pending, processing: $processing, total: $total)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$StatsRecordingsImpl &&
+            (identical(other.completed, completed) ||
+                other.completed == completed) &&
+            (identical(other.failed, failed) || other.failed == failed) &&
+            (identical(other.pending, pending) || other.pending == pending) &&
+            (identical(other.processing, processing) ||
+                other.processing == processing) &&
+            (identical(other.total, total) || other.total == total));
+  }
+
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  int get hashCode =>
+      Object.hash(runtimeType, completed, failed, pending, processing, total);
+
+  /// Create a copy of StatsRecordings
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$StatsRecordingsImplCopyWith<_$StatsRecordingsImpl> get copyWith =>
+      __$$StatsRecordingsImplCopyWithImpl<_$StatsRecordingsImpl>(
+        this,
+        _$identity,
+      );
+
+  @override
+  Map<String, dynamic> toJson() {
+    return _$$StatsRecordingsImplToJson(this);
+  }
+}
+
+abstract class _StatsRecordings implements StatsRecordings {
+  const factory _StatsRecordings({
+    final int? completed,
+    final int? failed,
+    final int? pending,
+    final int? processing,
+    final int? total,
+  }) = _$StatsRecordingsImpl;
+
+  factory _StatsRecordings.fromJson(Map<String, dynamic> json) =
+      _$StatsRecordingsImpl.fromJson;
+
+  @override
+  int? get completed;
+  @override
+  int? get failed;
+  @override
+  int? get pending;
+  @override
+  int? get processing;
+  @override
+  int? get total;
+
+  /// Create a copy of StatsRecordings
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  _$$StatsRecordingsImplCopyWith<_$StatsRecordingsImpl> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+StatsStorage _$StatsStorageFromJson(Map<String, dynamic> json) {
+  return _StatsStorage.fromJson(json);
+}
+
+/// @nodoc
+mixin _$StatsStorage {
+  @JsonKey(name: 'used_bytes')
+  int? get usedBytes => throw _privateConstructorUsedError;
+  @JsonKey(name: 'used_human')
+  String? get usedHuman => throw _privateConstructorUsedError;
+
+  /// Serializes this StatsStorage to a JSON map.
+  Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
+
+  /// Create a copy of StatsStorage
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  $StatsStorageCopyWith<StatsStorage> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class $StatsStorageCopyWith<$Res> {
+  factory $StatsStorageCopyWith(
+    StatsStorage value,
+    $Res Function(StatsStorage) then,
+  ) = _$StatsStorageCopyWithImpl<$Res, StatsStorage>;
+  @useResult
+  $Res call({
+    @JsonKey(name: 'used_bytes') int? usedBytes,
+    @JsonKey(name: 'used_human') String? usedHuman,
+  });
+}
+
+/// @nodoc
+class _$StatsStorageCopyWithImpl<$Res, $Val extends StatsStorage>
+    implements $StatsStorageCopyWith<$Res> {
+  _$StatsStorageCopyWithImpl(this._value, this._then);
+
+  // ignore: unused_field
+  final $Val _value;
+  // ignore: unused_field
+  final $Res Function($Val) _then;
+
+  /// Create a copy of StatsStorage
+  /// with the given fields replaced by the non-null parameter values.
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({Object? usedBytes = freezed, Object? usedHuman = freezed}) {
+    return _then(
+      _value.copyWith(
+            usedBytes: freezed == usedBytes
+                ? _value.usedBytes
+                : usedBytes // ignore: cast_nullable_to_non_nullable
+                      as int?,
+            usedHuman: freezed == usedHuman
+                ? _value.usedHuman
+                : usedHuman // ignore: cast_nullable_to_non_nullable
+                      as String?,
+          )
+          as $Val,
+    );
+  }
+}
+
+/// @nodoc
+abstract class _$$StatsStorageImplCopyWith<$Res>
+    implements $StatsStorageCopyWith<$Res> {
+  factory _$$StatsStorageImplCopyWith(
+    _$StatsStorageImpl value,
+    $Res Function(_$StatsStorageImpl) then,
+  ) = __$$StatsStorageImplCopyWithImpl<$Res>;
+  @override
+  @useResult
+  $Res call({
+    @JsonKey(name: 'used_bytes') int? usedBytes,
+    @JsonKey(name: 'used_human') String? usedHuman,
+  });
+}
+
+/// @nodoc
+class __$$StatsStorageImplCopyWithImpl<$Res>
+    extends _$StatsStorageCopyWithImpl<$Res, _$StatsStorageImpl>
+    implements _$$StatsStorageImplCopyWith<$Res> {
+  __$$StatsStorageImplCopyWithImpl(
+    _$StatsStorageImpl _value,
+    $Res Function(_$StatsStorageImpl) _then,
+  ) : super(_value, _then);
+
+  /// Create a copy of StatsStorage
+  /// with the given fields replaced by the non-null parameter values.
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({Object? usedBytes = freezed, Object? usedHuman = freezed}) {
+    return _then(
+      _$StatsStorageImpl(
+        usedBytes: freezed == usedBytes
+            ? _value.usedBytes
+            : usedBytes // ignore: cast_nullable_to_non_nullable
+                  as int?,
+        usedHuman: freezed == usedHuman
+            ? _value.usedHuman
+            : usedHuman // ignore: cast_nullable_to_non_nullable
+                  as String?,
+      ),
+    );
+  }
+}
+
+/// @nodoc
+@JsonSerializable()
+class _$StatsStorageImpl implements _StatsStorage {
+  const _$StatsStorageImpl({
+    @JsonKey(name: 'used_bytes') this.usedBytes,
+    @JsonKey(name: 'used_human') this.usedHuman,
+  });
+
+  factory _$StatsStorageImpl.fromJson(Map<String, dynamic> json) =>
+      _$$StatsStorageImplFromJson(json);
+
+  @override
+  @JsonKey(name: 'used_bytes')
+  final int? usedBytes;
+  @override
+  @JsonKey(name: 'used_human')
+  final String? usedHuman;
+
+  @override
+  String toString() {
+    return 'StatsStorage(usedBytes: $usedBytes, usedHuman: $usedHuman)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$StatsStorageImpl &&
+            (identical(other.usedBytes, usedBytes) ||
+                other.usedBytes == usedBytes) &&
+            (identical(other.usedHuman, usedHuman) ||
+                other.usedHuman == usedHuman));
+  }
+
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  int get hashCode => Object.hash(runtimeType, usedBytes, usedHuman);
+
+  /// Create a copy of StatsStorage
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$StatsStorageImplCopyWith<_$StatsStorageImpl> get copyWith =>
+      __$$StatsStorageImplCopyWithImpl<_$StatsStorageImpl>(this, _$identity);
+
+  @override
+  Map<String, dynamic> toJson() {
+    return _$$StatsStorageImplToJson(this);
+  }
+}
+
+abstract class _StatsStorage implements StatsStorage {
+  const factory _StatsStorage({
+    @JsonKey(name: 'used_bytes') final int? usedBytes,
+    @JsonKey(name: 'used_human') final String? usedHuman,
+  }) = _$StatsStorageImpl;
+
+  factory _StatsStorage.fromJson(Map<String, dynamic> json) =
+      _$StatsStorageImpl.fromJson;
+
+  @override
+  @JsonKey(name: 'used_bytes')
+  int? get usedBytes;
+  @override
+  @JsonKey(name: 'used_human')
+  String? get usedHuman;
+
+  /// Create a copy of StatsStorage
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  _$$StatsStorageImplCopyWith<_$StatsStorageImpl> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+StatsTokens _$StatsTokensFromJson(Map<String, dynamic> json) {
+  return _StatsTokens.fromJson(json);
+}
+
+/// @nodoc
+mixin _$StatsTokens {
+  int? get budget => throw _privateConstructorUsedError;
+  double? get percentage => throw _privateConstructorUsedError;
+  @JsonKey(name: 'used_this_month')
+  int? get usedThisMonth => throw _privateConstructorUsedError;
+
+  /// Serializes this StatsTokens to a JSON map.
+  Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
+
+  /// Create a copy of StatsTokens
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  $StatsTokensCopyWith<StatsTokens> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class $StatsTokensCopyWith<$Res> {
+  factory $StatsTokensCopyWith(
+    StatsTokens value,
+    $Res Function(StatsTokens) then,
+  ) = _$StatsTokensCopyWithImpl<$Res, StatsTokens>;
+  @useResult
+  $Res call({
+    int? budget,
+    double? percentage,
+    @JsonKey(name: 'used_this_month') int? usedThisMonth,
+  });
+}
+
+/// @nodoc
+class _$StatsTokensCopyWithImpl<$Res, $Val extends StatsTokens>
+    implements $StatsTokensCopyWith<$Res> {
+  _$StatsTokensCopyWithImpl(this._value, this._then);
+
+  // ignore: unused_field
+  final $Val _value;
+  // ignore: unused_field
+  final $Res Function($Val) _then;
+
+  /// Create a copy of StatsTokens
+  /// with the given fields replaced by the non-null parameter values.
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? budget = freezed,
+    Object? percentage = freezed,
+    Object? usedThisMonth = freezed,
+  }) {
+    return _then(
+      _value.copyWith(
+            budget: freezed == budget
+                ? _value.budget
+                : budget // ignore: cast_nullable_to_non_nullable
+                      as int?,
+            percentage: freezed == percentage
+                ? _value.percentage
+                : percentage // ignore: cast_nullable_to_non_nullable
+                      as double?,
+            usedThisMonth: freezed == usedThisMonth
+                ? _value.usedThisMonth
+                : usedThisMonth // ignore: cast_nullable_to_non_nullable
+                      as int?,
+          )
+          as $Val,
+    );
+  }
+}
+
+/// @nodoc
+abstract class _$$StatsTokensImplCopyWith<$Res>
+    implements $StatsTokensCopyWith<$Res> {
+  factory _$$StatsTokensImplCopyWith(
+    _$StatsTokensImpl value,
+    $Res Function(_$StatsTokensImpl) then,
+  ) = __$$StatsTokensImplCopyWithImpl<$Res>;
+  @override
+  @useResult
+  $Res call({
+    int? budget,
+    double? percentage,
+    @JsonKey(name: 'used_this_month') int? usedThisMonth,
+  });
+}
+
+/// @nodoc
+class __$$StatsTokensImplCopyWithImpl<$Res>
+    extends _$StatsTokensCopyWithImpl<$Res, _$StatsTokensImpl>
+    implements _$$StatsTokensImplCopyWith<$Res> {
+  __$$StatsTokensImplCopyWithImpl(
+    _$StatsTokensImpl _value,
+    $Res Function(_$StatsTokensImpl) _then,
+  ) : super(_value, _then);
+
+  /// Create a copy of StatsTokens
+  /// with the given fields replaced by the non-null parameter values.
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? budget = freezed,
+    Object? percentage = freezed,
+    Object? usedThisMonth = freezed,
+  }) {
+    return _then(
+      _$StatsTokensImpl(
+        budget: freezed == budget
+            ? _value.budget
+            : budget // ignore: cast_nullable_to_non_nullable
+                  as int?,
+        percentage: freezed == percentage
+            ? _value.percentage
+            : percentage // ignore: cast_nullable_to_non_nullable
+                  as double?,
+        usedThisMonth: freezed == usedThisMonth
+            ? _value.usedThisMonth
+            : usedThisMonth // ignore: cast_nullable_to_non_nullable
+                  as int?,
+      ),
+    );
+  }
+}
+
+/// @nodoc
+@JsonSerializable()
+class _$StatsTokensImpl implements _StatsTokens {
+  const _$StatsTokensImpl({
+    this.budget,
+    this.percentage,
+    @JsonKey(name: 'used_this_month') this.usedThisMonth,
+  });
+
+  factory _$StatsTokensImpl.fromJson(Map<String, dynamic> json) =>
+      _$$StatsTokensImplFromJson(json);
+
+  @override
+  final int? budget;
+  @override
+  final double? percentage;
+  @override
+  @JsonKey(name: 'used_this_month')
+  final int? usedThisMonth;
+
+  @override
+  String toString() {
+    return 'StatsTokens(budget: $budget, percentage: $percentage, usedThisMonth: $usedThisMonth)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$StatsTokensImpl &&
+            (identical(other.budget, budget) || other.budget == budget) &&
+            (identical(other.percentage, percentage) ||
+                other.percentage == percentage) &&
+            (identical(other.usedThisMonth, usedThisMonth) ||
+                other.usedThisMonth == usedThisMonth));
+  }
+
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  int get hashCode =>
+      Object.hash(runtimeType, budget, percentage, usedThisMonth);
+
+  /// Create a copy of StatsTokens
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$StatsTokensImplCopyWith<_$StatsTokensImpl> get copyWith =>
+      __$$StatsTokensImplCopyWithImpl<_$StatsTokensImpl>(this, _$identity);
+
+  @override
+  Map<String, dynamic> toJson() {
+    return _$$StatsTokensImplToJson(this);
+  }
+}
+
+abstract class _StatsTokens implements StatsTokens {
+  const factory _StatsTokens({
+    final int? budget,
+    final double? percentage,
+    @JsonKey(name: 'used_this_month') final int? usedThisMonth,
+  }) = _$StatsTokensImpl;
+
+  factory _StatsTokens.fromJson(Map<String, dynamic> json) =
+      _$StatsTokensImpl.fromJson;
+
+  @override
+  int? get budget;
+  @override
+  double? get percentage;
+  @override
+  @JsonKey(name: 'used_this_month')
+  int? get usedThisMonth;
+
+  /// Create a copy of StatsTokens
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  _$$StatsTokensImplCopyWith<_$StatsTokensImpl> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+StatsTranscription _$StatsTranscriptionFromJson(Map<String, dynamic> json) {
+  return _StatsTranscription.fromJson(json);
+}
+
+/// @nodoc
+mixin _$StatsTranscription {
+  @JsonKey(name: 'budget_minutes')
+  int? get budgetMinutes => throw _privateConstructorUsedError;
+  @JsonKey(name: 'budget_seconds')
+  int? get budgetSeconds => throw _privateConstructorUsedError;
+  @JsonKey(name: 'estimated_cost')
+  double? get estimatedCost => throw _privateConstructorUsedError;
+  double? get percentage => throw _privateConstructorUsedError;
+  @JsonKey(name: 'used_this_month_minutes')
+  int? get usedThisMonthMinutes => throw _privateConstructorUsedError;
+  @JsonKey(name: 'used_this_month_seconds')
+  int? get usedThisMonthSeconds => throw _privateConstructorUsedError;
+
+  /// Serializes this StatsTranscription to a JSON map.
+  Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
+
+  /// Create a copy of StatsTranscription
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  $StatsTranscriptionCopyWith<StatsTranscription> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class $StatsTranscriptionCopyWith<$Res> {
+  factory $StatsTranscriptionCopyWith(
+    StatsTranscription value,
+    $Res Function(StatsTranscription) then,
+  ) = _$StatsTranscriptionCopyWithImpl<$Res, StatsTranscription>;
+  @useResult
+  $Res call({
+    @JsonKey(name: 'budget_minutes') int? budgetMinutes,
+    @JsonKey(name: 'budget_seconds') int? budgetSeconds,
+    @JsonKey(name: 'estimated_cost') double? estimatedCost,
+    double? percentage,
+    @JsonKey(name: 'used_this_month_minutes') int? usedThisMonthMinutes,
+    @JsonKey(name: 'used_this_month_seconds') int? usedThisMonthSeconds,
+  });
+}
+
+/// @nodoc
+class _$StatsTranscriptionCopyWithImpl<$Res, $Val extends StatsTranscription>
+    implements $StatsTranscriptionCopyWith<$Res> {
+  _$StatsTranscriptionCopyWithImpl(this._value, this._then);
+
+  // ignore: unused_field
+  final $Val _value;
+  // ignore: unused_field
+  final $Res Function($Val) _then;
+
+  /// Create a copy of StatsTranscription
+  /// with the given fields replaced by the non-null parameter values.
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? budgetMinutes = freezed,
+    Object? budgetSeconds = freezed,
+    Object? estimatedCost = freezed,
+    Object? percentage = freezed,
+    Object? usedThisMonthMinutes = freezed,
+    Object? usedThisMonthSeconds = freezed,
+  }) {
+    return _then(
+      _value.copyWith(
+            budgetMinutes: freezed == budgetMinutes
+                ? _value.budgetMinutes
+                : budgetMinutes // ignore: cast_nullable_to_non_nullable
+                      as int?,
+            budgetSeconds: freezed == budgetSeconds
+                ? _value.budgetSeconds
+                : budgetSeconds // ignore: cast_nullable_to_non_nullable
+                      as int?,
+            estimatedCost: freezed == estimatedCost
+                ? _value.estimatedCost
+                : estimatedCost // ignore: cast_nullable_to_non_nullable
+                      as double?,
+            percentage: freezed == percentage
+                ? _value.percentage
+                : percentage // ignore: cast_nullable_to_non_nullable
+                      as double?,
+            usedThisMonthMinutes: freezed == usedThisMonthMinutes
+                ? _value.usedThisMonthMinutes
+                : usedThisMonthMinutes // ignore: cast_nullable_to_non_nullable
+                      as int?,
+            usedThisMonthSeconds: freezed == usedThisMonthSeconds
+                ? _value.usedThisMonthSeconds
+                : usedThisMonthSeconds // ignore: cast_nullable_to_non_nullable
+                      as int?,
+          )
+          as $Val,
+    );
+  }
+}
+
+/// @nodoc
+abstract class _$$StatsTranscriptionImplCopyWith<$Res>
+    implements $StatsTranscriptionCopyWith<$Res> {
+  factory _$$StatsTranscriptionImplCopyWith(
+    _$StatsTranscriptionImpl value,
+    $Res Function(_$StatsTranscriptionImpl) then,
+  ) = __$$StatsTranscriptionImplCopyWithImpl<$Res>;
+  @override
+  @useResult
+  $Res call({
+    @JsonKey(name: 'budget_minutes') int? budgetMinutes,
+    @JsonKey(name: 'budget_seconds') int? budgetSeconds,
+    @JsonKey(name: 'estimated_cost') double? estimatedCost,
+    double? percentage,
+    @JsonKey(name: 'used_this_month_minutes') int? usedThisMonthMinutes,
+    @JsonKey(name: 'used_this_month_seconds') int? usedThisMonthSeconds,
+  });
+}
+
+/// @nodoc
+class __$$StatsTranscriptionImplCopyWithImpl<$Res>
+    extends _$StatsTranscriptionCopyWithImpl<$Res, _$StatsTranscriptionImpl>
+    implements _$$StatsTranscriptionImplCopyWith<$Res> {
+  __$$StatsTranscriptionImplCopyWithImpl(
+    _$StatsTranscriptionImpl _value,
+    $Res Function(_$StatsTranscriptionImpl) _then,
+  ) : super(_value, _then);
+
+  /// Create a copy of StatsTranscription
+  /// with the given fields replaced by the non-null parameter values.
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? budgetMinutes = freezed,
+    Object? budgetSeconds = freezed,
+    Object? estimatedCost = freezed,
+    Object? percentage = freezed,
+    Object? usedThisMonthMinutes = freezed,
+    Object? usedThisMonthSeconds = freezed,
+  }) {
+    return _then(
+      _$StatsTranscriptionImpl(
+        budgetMinutes: freezed == budgetMinutes
+            ? _value.budgetMinutes
+            : budgetMinutes // ignore: cast_nullable_to_non_nullable
+                  as int?,
+        budgetSeconds: freezed == budgetSeconds
+            ? _value.budgetSeconds
+            : budgetSeconds // ignore: cast_nullable_to_non_nullable
+                  as int?,
+        estimatedCost: freezed == estimatedCost
+            ? _value.estimatedCost
+            : estimatedCost // ignore: cast_nullable_to_non_nullable
+                  as double?,
+        percentage: freezed == percentage
+            ? _value.percentage
+            : percentage // ignore: cast_nullable_to_non_nullable
+                  as double?,
+        usedThisMonthMinutes: freezed == usedThisMonthMinutes
+            ? _value.usedThisMonthMinutes
+            : usedThisMonthMinutes // ignore: cast_nullable_to_non_nullable
+                  as int?,
+        usedThisMonthSeconds: freezed == usedThisMonthSeconds
+            ? _value.usedThisMonthSeconds
+            : usedThisMonthSeconds // ignore: cast_nullable_to_non_nullable
+                  as int?,
+      ),
+    );
+  }
+}
+
+/// @nodoc
+@JsonSerializable()
+class _$StatsTranscriptionImpl implements _StatsTranscription {
+  const _$StatsTranscriptionImpl({
+    @JsonKey(name: 'budget_minutes') this.budgetMinutes,
+    @JsonKey(name: 'budget_seconds') this.budgetSeconds,
+    @JsonKey(name: 'estimated_cost') this.estimatedCost,
+    this.percentage,
+    @JsonKey(name: 'used_this_month_minutes') this.usedThisMonthMinutes,
+    @JsonKey(name: 'used_this_month_seconds') this.usedThisMonthSeconds,
+  });
+
+  factory _$StatsTranscriptionImpl.fromJson(Map<String, dynamic> json) =>
+      _$$StatsTranscriptionImplFromJson(json);
+
+  @override
+  @JsonKey(name: 'budget_minutes')
+  final int? budgetMinutes;
+  @override
+  @JsonKey(name: 'budget_seconds')
+  final int? budgetSeconds;
+  @override
+  @JsonKey(name: 'estimated_cost')
+  final double? estimatedCost;
+  @override
+  final double? percentage;
+  @override
+  @JsonKey(name: 'used_this_month_minutes')
+  final int? usedThisMonthMinutes;
+  @override
+  @JsonKey(name: 'used_this_month_seconds')
+  final int? usedThisMonthSeconds;
+
+  @override
+  String toString() {
+    return 'StatsTranscription(budgetMinutes: $budgetMinutes, budgetSeconds: $budgetSeconds, estimatedCost: $estimatedCost, percentage: $percentage, usedThisMonthMinutes: $usedThisMonthMinutes, usedThisMonthSeconds: $usedThisMonthSeconds)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$StatsTranscriptionImpl &&
+            (identical(other.budgetMinutes, budgetMinutes) ||
+                other.budgetMinutes == budgetMinutes) &&
+            (identical(other.budgetSeconds, budgetSeconds) ||
+                other.budgetSeconds == budgetSeconds) &&
+            (identical(other.estimatedCost, estimatedCost) ||
+                other.estimatedCost == estimatedCost) &&
+            (identical(other.percentage, percentage) ||
+                other.percentage == percentage) &&
+            (identical(other.usedThisMonthMinutes, usedThisMonthMinutes) ||
+                other.usedThisMonthMinutes == usedThisMonthMinutes) &&
+            (identical(other.usedThisMonthSeconds, usedThisMonthSeconds) ||
+                other.usedThisMonthSeconds == usedThisMonthSeconds));
+  }
+
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  int get hashCode => Object.hash(
+    runtimeType,
+    budgetMinutes,
+    budgetSeconds,
+    estimatedCost,
+    percentage,
+    usedThisMonthMinutes,
+    usedThisMonthSeconds,
+  );
+
+  /// Create a copy of StatsTranscription
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$StatsTranscriptionImplCopyWith<_$StatsTranscriptionImpl> get copyWith =>
+      __$$StatsTranscriptionImplCopyWithImpl<_$StatsTranscriptionImpl>(
+        this,
+        _$identity,
+      );
+
+  @override
+  Map<String, dynamic> toJson() {
+    return _$$StatsTranscriptionImplToJson(this);
+  }
+}
+
+abstract class _StatsTranscription implements StatsTranscription {
+  const factory _StatsTranscription({
+    @JsonKey(name: 'budget_minutes') final int? budgetMinutes,
+    @JsonKey(name: 'budget_seconds') final int? budgetSeconds,
+    @JsonKey(name: 'estimated_cost') final double? estimatedCost,
+    final double? percentage,
+    @JsonKey(name: 'used_this_month_minutes') final int? usedThisMonthMinutes,
+    @JsonKey(name: 'used_this_month_seconds') final int? usedThisMonthSeconds,
+  }) = _$StatsTranscriptionImpl;
+
+  factory _StatsTranscription.fromJson(Map<String, dynamic> json) =
+      _$StatsTranscriptionImpl.fromJson;
+
+  @override
+  @JsonKey(name: 'budget_minutes')
+  int? get budgetMinutes;
+  @override
+  @JsonKey(name: 'budget_seconds')
+  int? get budgetSeconds;
+  @override
+  @JsonKey(name: 'estimated_cost')
+  double? get estimatedCost;
+  @override
+  double? get percentage;
+  @override
+  @JsonKey(name: 'used_this_month_minutes')
+  int? get usedThisMonthMinutes;
+  @override
+  @JsonKey(name: 'used_this_month_seconds')
+  int? get usedThisMonthSeconds;
+
+  /// Create a copy of StatsTranscription
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  _$$StatsTranscriptionImplCopyWith<_$StatsTranscriptionImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }

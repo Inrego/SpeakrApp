@@ -174,12 +174,88 @@ class ChatResponse with _$ChatResponse {
 @freezed
 class StatsResponse with _$StatsResponse {
   const factory StatsResponse({
-    int? recordings,
-    @JsonKey(name: 'total_recordings') int? totalRecordings,
-    @JsonKey(name: 'storage_used_bytes') int? storageUsedBytes,
-    String? version,
+    StatsActivity? activity,
+    StatsQueue? queue,
+    StatsRecordings? recordings,
+    StatsStorage? storage,
+    StatsTokens? tokens,
+    StatsTranscription? transcription,
   }) = _StatsResponse;
 
   factory StatsResponse.fromJson(Map<String, dynamic> json) =>
       _$StatsResponseFromJson(json);
+}
+
+@freezed
+class StatsActivity with _$StatsActivity {
+  const factory StatsActivity({
+    @JsonKey(name: 'last_transcription') DateTime? lastTranscription,
+    @JsonKey(name: 'recordings_today') int? recordingsToday,
+  }) = _StatsActivity;
+
+  factory StatsActivity.fromJson(Map<String, dynamic> json) =>
+      _$StatsActivityFromJson(json);
+}
+
+@freezed
+class StatsQueue with _$StatsQueue {
+  const factory StatsQueue({
+    @JsonKey(name: 'jobs_processing') int? jobsProcessing,
+    @JsonKey(name: 'jobs_queued') int? jobsQueued,
+  }) = _StatsQueue;
+
+  factory StatsQueue.fromJson(Map<String, dynamic> json) =>
+      _$StatsQueueFromJson(json);
+}
+
+@freezed
+class StatsRecordings with _$StatsRecordings {
+  const factory StatsRecordings({
+    int? completed,
+    int? failed,
+    int? pending,
+    int? processing,
+    int? total,
+  }) = _StatsRecordings;
+
+  factory StatsRecordings.fromJson(Map<String, dynamic> json) =>
+      _$StatsRecordingsFromJson(json);
+}
+
+@freezed
+class StatsStorage with _$StatsStorage {
+  const factory StatsStorage({
+    @JsonKey(name: 'used_bytes') int? usedBytes,
+    @JsonKey(name: 'used_human') String? usedHuman,
+  }) = _StatsStorage;
+
+  factory StatsStorage.fromJson(Map<String, dynamic> json) =>
+      _$StatsStorageFromJson(json);
+}
+
+@freezed
+class StatsTokens with _$StatsTokens {
+  const factory StatsTokens({
+    int? budget,
+    double? percentage,
+    @JsonKey(name: 'used_this_month') int? usedThisMonth,
+  }) = _StatsTokens;
+
+  factory StatsTokens.fromJson(Map<String, dynamic> json) =>
+      _$StatsTokensFromJson(json);
+}
+
+@freezed
+class StatsTranscription with _$StatsTranscription {
+  const factory StatsTranscription({
+    @JsonKey(name: 'budget_minutes') int? budgetMinutes,
+    @JsonKey(name: 'budget_seconds') int? budgetSeconds,
+    @JsonKey(name: 'estimated_cost') double? estimatedCost,
+    double? percentage,
+    @JsonKey(name: 'used_this_month_minutes') int? usedThisMonthMinutes,
+    @JsonKey(name: 'used_this_month_seconds') int? usedThisMonthSeconds,
+  }) = _StatsTranscription;
+
+  factory StatsTranscription.fromJson(Map<String, dynamic> json) =>
+      _$StatsTranscriptionFromJson(json);
 }

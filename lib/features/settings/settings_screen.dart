@@ -28,7 +28,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _autoSummarize = true;
   bool _serverOk = true;
   bool _checkingServer = false;
-  String? _version;
   int? _storageBytes;
   int? _recordingsCount;
   String _baseUrl = '';
@@ -71,9 +70,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     if (!mounted) return;
     setState(() {
       _serverOk = reachable;
-      _version = stats?.version;
-      _storageBytes = stats?.storageUsedBytes;
-      _recordingsCount = stats?.recordings ?? stats?.totalRecordings;
+      _storageBytes = stats?.storage?.usedBytes;
+      _recordingsCount = stats?.recordings?.total;
       _checkingServer = false;
     });
   }
@@ -271,12 +269,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
             SettingsGroup(
               label: 'About',
-              children: [
-                SettingsRow(
-                  label: 'Server version',
-                  value: _version ?? '—',
-                  mono: true,
-                ),
+              children: const [
                 SettingsRow(label: 'App version', value: '0.1.0', mono: true),
               ],
             ),
