@@ -34,6 +34,9 @@ class TrayIcon {
   // "Show Speakr" menu entry.
   std::function<void()> on_show_requested;
 
+  // Fired when the user selects the "Start Recording" menu entry.
+  std::function<void()> on_start_recording_requested;
+
   // Fired when the user selects the "Exit" menu entry.
   std::function<void()> on_exit_requested;
 

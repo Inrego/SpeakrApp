@@ -28,6 +28,15 @@ bool FlutterWindow::OnCreate() {
   mini_window_native_ = std::make_unique<MiniWindowNative>(
       flutter_controller_->engine(), GetHandle());
 
+  // Outbound channel for tray-driven actions that need to call into Dart
+  // (e.g. starting a recording from the tray menu). The Dart side
+  // registers a handler in lib/services/tray/tray_bridge.dart.
+  tray_channel_ = std::make_unique<
+      flutter::MethodChannel<flutter::EncodableValue>>(
+      flutter_controller_->engine()->messenger(),
+      "speakr/tray",
+      &flutter::StandardMethodCodec::GetInstance());
+
   // Tray icon: closing the main window hides it; the only real exit is the
   // tray's "Exit" menu item. Captures `this` because the callbacks are only
   // ever fired while the FlutterWindow is alive (TrayIcon is owned by it
@@ -41,6 +50,11 @@ bool FlutterWindow::OnCreate() {
       ShowWindow(hwnd, SW_RESTORE);
     }
     SetForegroundWindow(hwnd);
+  };
+  tray_icon_->on_start_recording_requested = [this]() {
+    if (tray_channel_) {
+      tray_channel_->InvokeMethod("startRecording", nullptr);
+    }
   };
   tray_icon_->on_exit_requested = [this]() { RequestExit(); };
   tray_icon_->Install(GetHandle());
@@ -61,6 +75,7 @@ bool FlutterWindow::OnCreate() {
 
 void FlutterWindow::OnDestroy() {
   tray_icon_.reset();
+  tray_channel_.reset();
   mini_window_native_.reset();
   if (flutter_controller_) {
     flutter_controller_ = nullptr;
