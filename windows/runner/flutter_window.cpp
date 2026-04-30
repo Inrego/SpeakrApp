@@ -4,6 +4,22 @@
 
 #include "flutter/generated_plugin_registrant.h"
 
+namespace {
+// Posted by a second instance of speakr_app.exe (see windows/runner/main.cpp)
+// to ask the running primary to surface its main window. WM_APP + 1 is the
+// tray callback (tray_icon.cpp), so this uses + 2.
+constexpr UINT kShowInstanceMessage = WM_APP + 2;
+
+void BringWindowToForegroundImpl(HWND hwnd) {
+  if (hwnd == nullptr) return;
+  ::ShowWindow(hwnd, SW_SHOW);
+  if (::IsIconic(hwnd)) {
+    ::ShowWindow(hwnd, SW_RESTORE);
+  }
+  ::SetForegroundWindow(hwnd);
+}
+}  // namespace
+
 FlutterWindow::FlutterWindow(const flutter::DartProject& project)
     : project_(project) {}
 
@@ -43,13 +59,7 @@ bool FlutterWindow::OnCreate() {
   // and reset in OnDestroy).
   tray_icon_ = std::make_unique<TrayIcon>();
   tray_icon_->on_show_requested = [this]() {
-    HWND hwnd = GetHandle();
-    if (hwnd == nullptr) return;
-    ShowWindow(hwnd, SW_SHOW);
-    if (IsIconic(hwnd)) {
-      ShowWindow(hwnd, SW_RESTORE);
-    }
-    SetForegroundWindow(hwnd);
+    BringWindowToForegroundImpl(GetHandle());
   };
   tray_icon_->on_start_recording_requested = [this]() {
     if (tray_channel_) {
@@ -102,6 +112,12 @@ LRESULT
 FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
                               WPARAM const wparam,
                               LPARAM const lparam) noexcept {
+  // Wake-up message from a second-instance launch — surface the main window.
+  if (message == kShowInstanceMessage) {
+    BringWindowToForegroundImpl(hwnd);
+    return 0;
+  }
+
   // Tray callbacks (private WM_APP message), TaskbarCreated re-add, and
   // WM_COMMAND from the popup menu are all unique to this app and would
   // never be consumed by Flutter or the mini-window helper. Handle them
