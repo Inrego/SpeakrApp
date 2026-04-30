@@ -30,7 +30,10 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   if (!window.Create(L"speakr_app", origin, size)) {
     return EXIT_FAILURE;
   }
-  window.SetQuitOnClose(true);
+  // Close-to-tray: WM_CLOSE is intercepted in FlutterWindow to hide the
+  // window. The tray "Exit" menu item re-arms quit-on-close and destroys
+  // the window itself.
+  window.SetQuitOnClose(false);
 
   ::MSG msg;
   while (::GetMessage(&msg, nullptr, 0, 0)) {

@@ -27,6 +27,24 @@ bool FlutterWindow::OnCreate() {
   RegisterPlugins(flutter_controller_->engine());
   mini_window_native_ = std::make_unique<MiniWindowNative>(
       flutter_controller_->engine(), GetHandle());
+
+  // Tray icon: closing the main window hides it; the only real exit is the
+  // tray's "Exit" menu item. Captures `this` because the callbacks are only
+  // ever fired while the FlutterWindow is alive (TrayIcon is owned by it
+  // and reset in OnDestroy).
+  tray_icon_ = std::make_unique<TrayIcon>();
+  tray_icon_->on_show_requested = [this]() {
+    HWND hwnd = GetHandle();
+    if (hwnd == nullptr) return;
+    ShowWindow(hwnd, SW_SHOW);
+    if (IsIconic(hwnd)) {
+      ShowWindow(hwnd, SW_RESTORE);
+    }
+    SetForegroundWindow(hwnd);
+  };
+  tray_icon_->on_exit_requested = [this]() { RequestExit(); };
+  tray_icon_->Install(GetHandle());
+
   SetChildContent(flutter_controller_->view()->GetNativeWindow());
 
   flutter_controller_->engine()->SetNextFrameCallback([&]() {
@@ -42,6 +60,7 @@ bool FlutterWindow::OnCreate() {
 }
 
 void FlutterWindow::OnDestroy() {
+  tray_icon_.reset();
   mini_window_native_.reset();
   if (flutter_controller_) {
     flutter_controller_ = nullptr;
@@ -50,10 +69,41 @@ void FlutterWindow::OnDestroy() {
   Win32Window::OnDestroy();
 }
 
+void FlutterWindow::RequestExit() {
+  force_quit_ = true;
+  if (tray_icon_) {
+    tray_icon_->Remove();
+  }
+  // Re-arm the base class's quit-on-close so WM_DESTROY posts WM_QUIT and
+  // the message loop in main.cpp drains cleanly.
+  SetQuitOnClose(true);
+  HWND hwnd = GetHandle();
+  if (hwnd != nullptr) {
+    DestroyWindow(hwnd);
+  }
+}
+
 LRESULT
 FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
                               WPARAM const wparam,
                               LPARAM const lparam) noexcept {
+  // Tray callbacks (private WM_APP message), TaskbarCreated re-add, and
+  // WM_COMMAND from the popup menu are all unique to this app and would
+  // never be consumed by Flutter or the mini-window helper. Handle them
+  // first so neither of those layers sees them.
+  if (tray_icon_ &&
+      tray_icon_->HandleWindowMessage(hwnd, message, wparam, lparam)) {
+    return 0;
+  }
+
+  // Close-to-tray: the only real exit is RequestExit() (which sets
+  // force_quit_ and destroys the window). Everything else — title-bar X,
+  // Alt+F4, taskbar context-menu Close — produces WM_CLOSE and hides.
+  if (message == WM_CLOSE && !force_quit_) {
+    ShowWindow(GetHandle(), SW_HIDE);
+    return 0;
+  }
+
   // Give Flutter, including plugins, an opportunity to handle window messages.
   if (flutter_controller_) {
     std::optional<LRESULT> result =
