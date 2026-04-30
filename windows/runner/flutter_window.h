@@ -3,6 +3,8 @@
 
 #include <flutter/dart_project.h>
 #include <flutter/flutter_view_controller.h>
+#include <flutter/method_channel.h>
+#include <flutter/standard_method_codec.h>
 
 #include <memory>
 
@@ -41,6 +43,11 @@ class FlutterWindow : public Win32Window {
 
   // Owns the system-tray icon. Constructed after the HWND exists.
   std::unique_ptr<TrayIcon> tray_icon_;
+
+  // Outbound channel from native to Dart. Used by tray menu actions that
+  // need to call into the running Flutter app (e.g. starting a recording).
+  std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>>
+      tray_channel_;
 
   // True once a real exit has been requested (tray "Exit"). While false,
   // WM_CLOSE hides the window instead of destroying it.

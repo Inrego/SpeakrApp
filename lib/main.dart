@@ -16,6 +16,7 @@ import 'features/live/mini/mini_ipc.dart';
 import 'features/live/mini/mini_recorder_app.dart';
 import 'services/auto_record/auto_record_bootstrap.dart';
 import 'services/dev/dev_window_title.dart';
+import 'services/tray/tray_bridge.dart';
 
 Future<void> main(List<String> args) async {
   // Drop two error-level mpv log lines that media_kit / libmpv emit on every
@@ -87,6 +88,7 @@ Future<void> main(List<String> args) async {
       // failures are non-fatal (the rest of the app works without it).
       unawaited(AutoRecordBootstrap.start(container));
       unawaited(applyDevBranchTitleIfDebug());
+      installTrayBridge(container);
     }
 
     runApp(UncontrolledProviderScope(
