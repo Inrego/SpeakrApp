@@ -14,6 +14,7 @@ constexpr UINT kTrayIconId = 1;
 // Popup menu command ids. Defined here (not resource.h) because they are
 // only meaningful inside the tray callback path.
 constexpr UINT kMenuIdShow = 40001;
+constexpr UINT kMenuIdStartRecording = 40003;
 constexpr UINT kMenuIdExit = 40002;
 
 }  // namespace
@@ -93,6 +94,10 @@ bool TrayIcon::HandleWindowMessage(HWND hwnd, UINT message, WPARAM wparam,
       if (on_show_requested) on_show_requested();
       return true;
     }
+    if (id == kMenuIdStartRecording) {
+      if (on_start_recording_requested) on_start_recording_requested();
+      return true;
+    }
     if (id == kMenuIdExit) {
       if (on_exit_requested) on_exit_requested();
       return true;
@@ -110,6 +115,7 @@ void TrayIcon::ShowContextMenu(HWND owner) {
   if (menu == nullptr) return;
 
   AppendMenuW(menu, MF_STRING, kMenuIdShow, L"Show Speakr");
+  AppendMenuW(menu, MF_STRING, kMenuIdStartRecording, L"Start Recording");
   AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
   AppendMenuW(menu, MF_STRING, kMenuIdExit, L"Exit");
 
