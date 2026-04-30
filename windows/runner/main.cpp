@@ -24,12 +24,48 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
 
   project.set_dart_entrypoint_arguments(std::move(command_line_arguments));
 
+  // Single-instance guard. The mini recorder runs as a secondary Flutter
+  // engine inside this process, so a process-scoped mutex won't trip on it.
+  // The wake message (WM_APP + 2) is handled in flutter_window.cpp.
+  HANDLE single_instance_mutex =
+      ::CreateMutexW(nullptr, TRUE, L"Local\\SpeakrApp_SingleInstance");
+  if (single_instance_mutex != nullptr &&
+      ::GetLastError() == ERROR_ALREADY_EXISTS) {
+    HWND existing = nullptr;
+    for (int i = 0; i < 40 && existing == nullptr; ++i) {
+      struct FindCtx { HWND result; } ctx{nullptr};
+      ::EnumWindows(
+          [](HWND hwnd, LPARAM lp) -> BOOL {
+            wchar_t cls[64] = {0};
+            if (::GetClassNameW(hwnd, cls, 64) == 0) return TRUE;
+            if (::wcscmp(cls, L"FLUTTER_RUNNER_WIN32_WINDOW") != 0) return TRUE;
+            if (::GetWindow(hwnd, GW_OWNER) != nullptr) return TRUE;
+            if (::GetPropW(hwnd, L"SpeakrMainWindow") == nullptr) return TRUE;
+            reinterpret_cast<FindCtx*>(lp)->result = hwnd;
+            return FALSE;
+          },
+          reinterpret_cast<LPARAM>(&ctx));
+      existing = ctx.result;
+      if (existing == nullptr) ::Sleep(50);
+    }
+    if (existing != nullptr) {
+      ::PostMessageW(existing, WM_APP + 2, 0, 0);
+    }
+    ::CloseHandle(single_instance_mutex);
+    ::CoUninitialize();
+    return EXIT_SUCCESS;
+  }
+
   FlutterWindow window(project);
   Win32Window::Point origin(10, 10);
   Win32Window::Size size(1280, 720);
   if (!window.Create(L"speakr_app", origin, size)) {
     return EXIT_FAILURE;
   }
+  // Tag the main window so a second-instance launch can find it via
+  // EnumWindows even after Dart retitles it (mini_window_native.cpp:107).
+  ::SetPropW(window.GetHandle(), L"SpeakrMainWindow",
+             reinterpret_cast<HANDLE>(1));
   // Close-to-tray: WM_CLOSE is intercepted in FlutterWindow to hide the
   // window. The tray "Exit" menu item re-arms quit-on-close and destroys
   // the window itself.
