@@ -610,6 +610,19 @@ class _RecordingTile extends StatelessWidget {
                     ],
                   ),
                 ),
+                if (completed &&
+                    r.audioDuration != null &&
+                    r.audioDuration! > 0) ...[
+                  const SizedBox(width: 10),
+                  Text(
+                    formatDuration(r.audioDuration!),
+                    style: SpeakrText.mono(
+                      size: 11,
+                      color: SpeakrColors.muted,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ],
                 if (!completed) ...[
                   const SizedBox(width: 10),
                   StatusBadge(status: r.status),
