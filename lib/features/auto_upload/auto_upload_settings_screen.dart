@@ -7,6 +7,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import '../../services/preferences/time_format_preference.dart';
+import '../../services/preferences/time_format_providers.dart';
 import '../../theme/colors.dart';
 import '../../theme/typography.dart';
 import '../../utils/formatters.dart';
@@ -835,6 +837,9 @@ class _LastScanRow extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final storeAsync = ref.watch(autoUploadStoreProvider);
+    final pref = ref.watch(timeFormatPreferenceProvider).asData?.value
+        ?? TimeFormatPreference.system;
+    final use24 = resolveUse24Hour(pref, context);
     return storeAsync.maybeWhen(
       data: (store) {
         final at = store.lastScanAt;
@@ -846,7 +851,7 @@ class _LastScanRow extends ConsumerWidget {
         // for diagnosing why a scan didn't behave as expected.
         return SettingsRow(
           label: 'Last scan',
-          value: at == null ? '—' : formatHourMinute(at),
+          value: at == null ? '—' : formatHourMinute(at, use24Hour: use24),
           subtitle: result,
         );
       },
@@ -872,6 +877,9 @@ class _LastPhoneStateRow extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final storeAsync = ref.watch(autoUploadStoreProvider);
+    final pref = ref.watch(timeFormatPreferenceProvider).asData?.value
+        ?? TimeFormatPreference.system;
+    final use24 = resolveUse24Hour(pref, context);
     return storeAsync.maybeWhen(
       data: (store) {
         final at = store.lastPhoneStateAt;
@@ -884,7 +892,7 @@ class _LastPhoneStateRow extends ConsumerWidget {
             : 'state=${state ?? '—'} · prev=${prev ?? '—'}';
         return SettingsRow(
           label: 'Last phone-state event',
-          value: at == null ? '—' : formatHourMinute(at),
+          value: at == null ? '—' : formatHourMinute(at, use24Hour: use24),
           subtitle: subtitle,
         );
       },
@@ -922,12 +930,15 @@ class _LastCallEndEnqueueRow extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final storeAsync = ref.watch(autoUploadStoreProvider);
+    final pref = ref.watch(timeFormatPreferenceProvider).asData?.value
+        ?? TimeFormatPreference.system;
+    final use24 = resolveUse24Hour(pref, context);
     return storeAsync.maybeWhen(
       data: (store) {
         final at = store.lastCallEndEnqueueAt;
         return SettingsRow(
           label: 'Last call-end enqueue',
-          value: at == null ? 'never' : formatHourMinute(at),
+          value: at == null ? 'never' : formatHourMinute(at, use24Hour: use24),
           subtitle: at == null
               ? 'No OFFHOOK→IDLE transition has reached the enqueue '
                   'branch since install. If "Last phone-state event" '
