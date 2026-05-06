@@ -290,7 +290,7 @@ as int?,
 /// @nodoc
 mixin _$Speaker {
 
- int get id; String get name;@JsonKey(name: 'has_voice_profile') bool get hasVoiceProfile;@JsonKey(name: 'use_count') int get useCount;@JsonKey(name: 'last_used') DateTime? get lastUsed;
+ int get id; String get name;@JsonKey(name: 'has_voice_profile') bool get hasVoiceProfile;@JsonKey(name: 'use_count') int get useCount;@JsonKey(name: 'last_used', fromJson: _parseFlexibleDate) DateTime? get lastUsed;
 /// Create a copy of Speaker
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -323,7 +323,7 @@ abstract mixin class $SpeakerCopyWith<$Res>  {
   factory $SpeakerCopyWith(Speaker value, $Res Function(Speaker) _then) = _$SpeakerCopyWithImpl;
 @useResult
 $Res call({
- int id, String name,@JsonKey(name: 'has_voice_profile') bool hasVoiceProfile,@JsonKey(name: 'use_count') int useCount,@JsonKey(name: 'last_used') DateTime? lastUsed
+ int id, String name,@JsonKey(name: 'has_voice_profile') bool hasVoiceProfile,@JsonKey(name: 'use_count') int useCount,@JsonKey(name: 'last_used', fromJson: _parseFlexibleDate) DateTime? lastUsed
 });
 
 
@@ -429,7 +429,7 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( int id,  String name, @JsonKey(name: 'has_voice_profile')  bool hasVoiceProfile, @JsonKey(name: 'use_count')  int useCount, @JsonKey(name: 'last_used')  DateTime? lastUsed)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( int id,  String name, @JsonKey(name: 'has_voice_profile')  bool hasVoiceProfile, @JsonKey(name: 'use_count')  int useCount, @JsonKey(name: 'last_used', fromJson: _parseFlexibleDate)  DateTime? lastUsed)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _Speaker() when $default != null:
 return $default(_that.id,_that.name,_that.hasVoiceProfile,_that.useCount,_that.lastUsed);case _:
@@ -450,7 +450,7 @@ return $default(_that.id,_that.name,_that.hasVoiceProfile,_that.useCount,_that.l
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( int id,  String name, @JsonKey(name: 'has_voice_profile')  bool hasVoiceProfile, @JsonKey(name: 'use_count')  int useCount, @JsonKey(name: 'last_used')  DateTime? lastUsed)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( int id,  String name, @JsonKey(name: 'has_voice_profile')  bool hasVoiceProfile, @JsonKey(name: 'use_count')  int useCount, @JsonKey(name: 'last_used', fromJson: _parseFlexibleDate)  DateTime? lastUsed)  $default,) {final _that = this;
 switch (_that) {
 case _Speaker():
 return $default(_that.id,_that.name,_that.hasVoiceProfile,_that.useCount,_that.lastUsed);}
@@ -467,7 +467,7 @@ return $default(_that.id,_that.name,_that.hasVoiceProfile,_that.useCount,_that.l
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( int id,  String name, @JsonKey(name: 'has_voice_profile')  bool hasVoiceProfile, @JsonKey(name: 'use_count')  int useCount, @JsonKey(name: 'last_used')  DateTime? lastUsed)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( int id,  String name, @JsonKey(name: 'has_voice_profile')  bool hasVoiceProfile, @JsonKey(name: 'use_count')  int useCount, @JsonKey(name: 'last_used', fromJson: _parseFlexibleDate)  DateTime? lastUsed)?  $default,) {final _that = this;
 switch (_that) {
 case _Speaker() when $default != null:
 return $default(_that.id,_that.name,_that.hasVoiceProfile,_that.useCount,_that.lastUsed);case _:
@@ -482,14 +482,14 @@ return $default(_that.id,_that.name,_that.hasVoiceProfile,_that.useCount,_that.l
 @JsonSerializable()
 
 class _Speaker implements Speaker {
-  const _Speaker({required this.id, required this.name, @JsonKey(name: 'has_voice_profile') this.hasVoiceProfile = false, @JsonKey(name: 'use_count') this.useCount = 0, @JsonKey(name: 'last_used') this.lastUsed});
+  const _Speaker({required this.id, required this.name, @JsonKey(name: 'has_voice_profile') this.hasVoiceProfile = false, @JsonKey(name: 'use_count') this.useCount = 0, @JsonKey(name: 'last_used', fromJson: _parseFlexibleDate) this.lastUsed});
   factory _Speaker.fromJson(Map<String, dynamic> json) => _$SpeakerFromJson(json);
 
 @override final  int id;
 @override final  String name;
 @override@JsonKey(name: 'has_voice_profile') final  bool hasVoiceProfile;
 @override@JsonKey(name: 'use_count') final  int useCount;
-@override@JsonKey(name: 'last_used') final  DateTime? lastUsed;
+@override@JsonKey(name: 'last_used', fromJson: _parseFlexibleDate) final  DateTime? lastUsed;
 
 /// Create a copy of Speaker
 /// with the given fields replaced by the non-null parameter values.
@@ -524,7 +524,7 @@ abstract mixin class _$SpeakerCopyWith<$Res> implements $SpeakerCopyWith<$Res> {
   factory _$SpeakerCopyWith(_Speaker value, $Res Function(_Speaker) _then) = __$SpeakerCopyWithImpl;
 @override @useResult
 $Res call({
- int id, String name,@JsonKey(name: 'has_voice_profile') bool hasVoiceProfile,@JsonKey(name: 'use_count') int useCount,@JsonKey(name: 'last_used') DateTime? lastUsed
+ int id, String name,@JsonKey(name: 'has_voice_profile') bool hasVoiceProfile,@JsonKey(name: 'use_count') int useCount,@JsonKey(name: 'last_used', fromJson: _parseFlexibleDate) DateTime? lastUsed
 });
 
 
@@ -2888,7 +2888,7 @@ $StatsTranscriptionCopyWith<$Res>? get transcription {
 /// @nodoc
 mixin _$StatsActivity {
 
-@JsonKey(name: 'last_transcription') DateTime? get lastTranscription;@JsonKey(name: 'recordings_today') int? get recordingsToday;
+@JsonKey(name: 'last_transcription', fromJson: _parseFlexibleDate) DateTime? get lastTranscription;@JsonKey(name: 'recordings_today') int? get recordingsToday;
 /// Create a copy of StatsActivity
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -2921,7 +2921,7 @@ abstract mixin class $StatsActivityCopyWith<$Res>  {
   factory $StatsActivityCopyWith(StatsActivity value, $Res Function(StatsActivity) _then) = _$StatsActivityCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: 'last_transcription') DateTime? lastTranscription,@JsonKey(name: 'recordings_today') int? recordingsToday
+@JsonKey(name: 'last_transcription', fromJson: _parseFlexibleDate) DateTime? lastTranscription,@JsonKey(name: 'recordings_today') int? recordingsToday
 });
 
 
@@ -3024,7 +3024,7 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: 'last_transcription')  DateTime? lastTranscription, @JsonKey(name: 'recordings_today')  int? recordingsToday)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: 'last_transcription', fromJson: _parseFlexibleDate)  DateTime? lastTranscription, @JsonKey(name: 'recordings_today')  int? recordingsToday)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _StatsActivity() when $default != null:
 return $default(_that.lastTranscription,_that.recordingsToday);case _:
@@ -3045,7 +3045,7 @@ return $default(_that.lastTranscription,_that.recordingsToday);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: 'last_transcription')  DateTime? lastTranscription, @JsonKey(name: 'recordings_today')  int? recordingsToday)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: 'last_transcription', fromJson: _parseFlexibleDate)  DateTime? lastTranscription, @JsonKey(name: 'recordings_today')  int? recordingsToday)  $default,) {final _that = this;
 switch (_that) {
 case _StatsActivity():
 return $default(_that.lastTranscription,_that.recordingsToday);}
@@ -3062,7 +3062,7 @@ return $default(_that.lastTranscription,_that.recordingsToday);}
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: 'last_transcription')  DateTime? lastTranscription, @JsonKey(name: 'recordings_today')  int? recordingsToday)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: 'last_transcription', fromJson: _parseFlexibleDate)  DateTime? lastTranscription, @JsonKey(name: 'recordings_today')  int? recordingsToday)?  $default,) {final _that = this;
 switch (_that) {
 case _StatsActivity() when $default != null:
 return $default(_that.lastTranscription,_that.recordingsToday);case _:
@@ -3077,10 +3077,10 @@ return $default(_that.lastTranscription,_that.recordingsToday);case _:
 @JsonSerializable()
 
 class _StatsActivity implements StatsActivity {
-  const _StatsActivity({@JsonKey(name: 'last_transcription') this.lastTranscription, @JsonKey(name: 'recordings_today') this.recordingsToday});
+  const _StatsActivity({@JsonKey(name: 'last_transcription', fromJson: _parseFlexibleDate) this.lastTranscription, @JsonKey(name: 'recordings_today') this.recordingsToday});
   factory _StatsActivity.fromJson(Map<String, dynamic> json) => _$StatsActivityFromJson(json);
 
-@override@JsonKey(name: 'last_transcription') final  DateTime? lastTranscription;
+@override@JsonKey(name: 'last_transcription', fromJson: _parseFlexibleDate) final  DateTime? lastTranscription;
 @override@JsonKey(name: 'recordings_today') final  int? recordingsToday;
 
 /// Create a copy of StatsActivity
@@ -3116,7 +3116,7 @@ abstract mixin class _$StatsActivityCopyWith<$Res> implements $StatsActivityCopy
   factory _$StatsActivityCopyWith(_StatsActivity value, $Res Function(_StatsActivity) _then) = __$StatsActivityCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(name: 'last_transcription') DateTime? lastTranscription,@JsonKey(name: 'recordings_today') int? recordingsToday
+@JsonKey(name: 'last_transcription', fromJson: _parseFlexibleDate) DateTime? lastTranscription,@JsonKey(name: 'recordings_today') int? recordingsToday
 });
 
 

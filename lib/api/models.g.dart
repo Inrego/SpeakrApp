@@ -31,9 +31,7 @@ _Speaker _$SpeakerFromJson(Map<String, dynamic> json) => _Speaker(
   name: json['name'] as String,
   hasVoiceProfile: json['has_voice_profile'] as bool? ?? false,
   useCount: (json['use_count'] as num?)?.toInt() ?? 0,
-  lastUsed: json['last_used'] == null
-      ? null
-      : DateTime.parse(json['last_used'] as String),
+  lastUsed: _parseFlexibleDate(json['last_used']),
 );
 
 Map<String, dynamic> _$SpeakerToJson(_Speaker instance) => <String, dynamic>{
@@ -226,9 +224,7 @@ Map<String, dynamic> _$StatsResponseToJson(_StatsResponse instance) =>
 
 _StatsActivity _$StatsActivityFromJson(Map<String, dynamic> json) =>
     _StatsActivity(
-      lastTranscription: json['last_transcription'] == null
-          ? null
-          : DateTime.parse(json['last_transcription'] as String),
+      lastTranscription: _parseFlexibleDate(json['last_transcription']),
       recordingsToday: (json['recordings_today'] as num?)?.toInt(),
     );
 

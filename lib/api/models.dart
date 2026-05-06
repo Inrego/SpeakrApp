@@ -13,14 +13,31 @@ part 'models.g.dart';
 // U+202F narrow no-break space before AM/PM. Accept both shapes.
 DateTime? _parseFlexibleDate(Object? raw) {
   if (raw is! String || raw.isEmpty) return null;
-  final iso = DateTime.tryParse(raw);
-  if (iso != null) return iso;
-  final normalized = raw.replaceAll(' ', ' ').replaceAll(' ', ' ');
-  try {
-    return DateFormat("MMM d, yyyy, h:mm:ss a").parse(normalized);
-  } catch (_) {
-    return null;
+  DateTime? parsed = DateTime.tryParse(raw);
+  if (parsed == null) {
+    final normalized = raw.replaceAll(' ', ' ').replaceAll(' ', ' ');
+    try {
+      parsed = DateFormat("MMM d, yyyy, h:mm:ss a").parse(normalized);
+    } catch (_) {
+      return null;
+    }
   }
+  // Both Speakr endpoints emit naive strings that semantically represent
+  // UTC (v1 .isoformat() has no Z; the unofficial detail endpoint runs
+  // through babel using the server's TIMEZONE env, default UTC). Dart
+  // parses naive strings as local — reinterpret the components as UTC so
+  // .toLocal() at display time produces the correct local wall clock.
+  if (parsed.isUtc) return parsed;
+  return DateTime.utc(
+    parsed.year,
+    parsed.month,
+    parsed.day,
+    parsed.hour,
+    parsed.minute,
+    parsed.second,
+    parsed.millisecond,
+    parsed.microsecond,
+  );
 }
 
 enum RecordingStatus {
@@ -86,7 +103,8 @@ sealed class Speaker with _$Speaker {
     required String name,
     @JsonKey(name: 'has_voice_profile') @Default(false) bool hasVoiceProfile,
     @JsonKey(name: 'use_count') @Default(0) int useCount,
-    @JsonKey(name: 'last_used') DateTime? lastUsed,
+    @JsonKey(name: 'last_used', fromJson: _parseFlexibleDate)
+    DateTime? lastUsed,
   }) = _Speaker;
 
   factory Speaker.fromJson(Map<String, dynamic> json) =>
@@ -221,7 +239,8 @@ sealed class StatsResponse with _$StatsResponse {
 @freezed
 sealed class StatsActivity with _$StatsActivity {
   const factory StatsActivity({
-    @JsonKey(name: 'last_transcription') DateTime? lastTranscription,
+    @JsonKey(name: 'last_transcription', fromJson: _parseFlexibleDate)
+    DateTime? lastTranscription,
     @JsonKey(name: 'recordings_today') int? recordingsToday,
   }) = _StatsActivity;
 

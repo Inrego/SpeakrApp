@@ -3,14 +3,15 @@ import 'package:intl/intl.dart';
 /// "Today" / "Yesterday" / weekday / "Mon D" — matches `fmtDate`
 /// in direction-a-2.jsx (lines 5-13). Uses the device timezone.
 String formatRelativeDay(DateTime when, {DateTime? today}) {
+  final w = when.toLocal();
   final now = today ?? DateTime.now();
   final tDay = DateTime(now.year, now.month, now.day);
-  final wDay = DateTime(when.year, when.month, when.day);
+  final wDay = DateTime(w.year, w.month, w.day);
   final diff = tDay.difference(wDay).inDays;
   if (diff <= 0) return 'Today';
   if (diff == 1) return 'Yesterday';
-  if (diff < 7) return DateFormat.EEEE().format(when);
-  return DateFormat.MMMd().format(when);
+  if (diff < 7) return DateFormat.EEEE().format(w);
+  return DateFormat.MMMd().format(w);
 }
 
 /// "9:41 AM"-style timestamp.
