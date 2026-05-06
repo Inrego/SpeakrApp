@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 
 import 'package:collection/collection.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -141,6 +143,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                 ref.read(libraryFilterProvider.notifier).setQuery(v.trim());
               },
               onSettings: () => context.push('/settings'),
+              onRefresh: _refreshNow,
             ),
             _Title(total: totalCount),
             _FilterChips(filter: filter),
@@ -174,12 +177,14 @@ class _Header extends StatelessWidget {
     required this.onToggleSearch,
     required this.onSubmitSearch,
     required this.onSettings,
+    required this.onRefresh,
   });
   final bool searching;
   final TextEditingController searchCtrl;
   final VoidCallback onToggleSearch;
   final ValueChanged<String> onSubmitSearch;
   final VoidCallback onSettings;
+  final Future<void> Function() onRefresh;
 
   @override
   Widget build(BuildContext context) {
@@ -212,6 +217,10 @@ class _Header extends StatelessWidget {
                     child: MonoEyebrow('Speakr'),
                   ),
           ),
+          if (!kIsWeb &&
+              !searching &&
+              (Platform.isWindows || Platform.isMacOS || Platform.isLinux))
+            GhostIconButton(icon: SpeakrIcon.refresh, onTap: onRefresh),
           GhostIconButton(
             icon: searching ? SpeakrIcon.close : SpeakrIcon.search,
             onTap: onToggleSearch,
