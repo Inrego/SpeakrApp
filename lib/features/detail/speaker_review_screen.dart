@@ -144,20 +144,24 @@ class _SpeakerReviewScreenState extends ConsumerState<SpeakerReviewScreen> {
         speakerMap: speakerMap,
         regenerateSummary: _regenerateSummary,
       );
-      container.invalidate(recordingDetailProvider(widget.recordingId));
-      container.invalidate(allSpeakersProvider);
-      container.invalidate(speakerSuggestionsProvider(widget.recordingId));
       if (!mounted) return;
+      final recordingId = widget.recordingId;
+      final regenerateSummary = _regenerateSummary;
       navigator.pop();
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(
-            _regenerateSummary
-                ? 'Speakers assigned — summary regenerating'
-                : 'Speakers assigned',
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        container.invalidate(recordingDetailProvider(recordingId));
+        container.invalidate(allSpeakersProvider);
+        container.invalidate(speakerSuggestionsProvider(recordingId));
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              regenerateSummary
+                  ? 'Speakers assigned — summary regenerating'
+                  : 'Speakers assigned',
+            ),
           ),
-        ),
-      );
+        );
+      });
     } on SpeakrApiException catch (e) {
       if (!mounted) return;
       setState(() => _saving = false);
