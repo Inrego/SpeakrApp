@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../api/models.dart';
+import '../../services/preferences/time_format_preference.dart';
+import '../../services/preferences/time_format_providers.dart';
 import '../../theme/colors.dart';
 import '../../theme/typography.dart';
 import '../../utils/formatters.dart';
@@ -447,10 +449,15 @@ class _PendingTileState extends ConsumerState<_PendingTile> {
                     ),
                   ),
                   const SizedBox(height: 2),
-                  Text(
-                    '${formatHourMinute(p.dateTime)} · ${formatBytes(p.size)}',
-                    style: SpeakrText.sans(size: 12, color: SpeakrColors.muted),
-                  ),
+                  Builder(builder: (context) {
+                    final pref = ref.watch(timeFormatPreferenceProvider).asData?.value
+                        ?? TimeFormatPreference.system;
+                    final use24 = resolveUse24Hour(pref, context);
+                    return Text(
+                      '${formatHourMinute(p.dateTime, use24Hour: use24)} · ${formatBytes(p.size)}',
+                      style: SpeakrText.sans(size: 12, color: SpeakrColors.muted),
+                    );
+                  }),
                 ],
               ),
             ),
@@ -547,12 +554,12 @@ class _ErrorBadge extends StatelessWidget {
   }
 }
 
-class _RecordingTile extends StatelessWidget {
+class _RecordingTile extends ConsumerWidget {
   const _RecordingTile({required this.recording});
   final Recording recording;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final r = recording;
     final completed = r.status == RecordingStatus.completed;
     // Failed often just means summary generation failed — audio and transcript
@@ -563,6 +570,9 @@ class _RecordingTile extends StatelessWidget {
         .split(',')
         .where((s) => s.trim().isNotEmpty)
         .length;
+    final pref = ref.watch(timeFormatPreferenceProvider).asData?.value
+        ?? TimeFormatPreference.system;
+    final use24 = resolveUse24Hour(pref, context);
     return InkWell(
       onTap: enterable ? () => context.push('/recording/${r.id}') : null,
       child: Container(
@@ -601,7 +611,7 @@ class _RecordingTile extends StatelessWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        _subtitle(time, speakers),
+                        _subtitle(time, speakers, use24),
                         style: SpeakrText.sans(
                           size: 12,
                           color: SpeakrColors.muted,
@@ -610,6 +620,19 @@ class _RecordingTile extends StatelessWidget {
                     ],
                   ),
                 ),
+                if (completed &&
+                    r.audioDuration != null &&
+                    r.audioDuration! > 0) ...[
+                  const SizedBox(width: 10),
+                  Text(
+                    formatDuration(r.audioDuration!),
+                    style: SpeakrText.mono(
+                      size: 11,
+                      color: SpeakrColors.muted,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ],
                 if (!completed) ...[
                   const SizedBox(width: 10),
                   StatusBadge(status: r.status),
@@ -630,8 +653,8 @@ class _RecordingTile extends StatelessWidget {
     );
   }
 
-  String _subtitle(DateTime? when, int speakers) {
-    final t = when == null ? '' : formatHourMinute(when);
+  String _subtitle(DateTime? when, int speakers, bool use24Hour) {
+    final t = when == null ? '' : formatHourMinute(when, use24Hour: use24Hour);
     if (speakers > 1) return '$t · $speakers speakers';
     return t;
   }

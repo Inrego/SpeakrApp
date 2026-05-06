@@ -11,6 +11,8 @@ import '../../api/speakr_api.dart';
 import '../../services/auto_record/auto_record_providers.dart';
 import '../../services/auto_start/auto_start_providers.dart';
 import '../../services/credentials_store.dart';
+import '../../services/preferences/time_format_preference.dart';
+import '../../services/preferences/time_format_providers.dart';
 import '../../theme/colors.dart';
 import '../../theme/typography.dart';
 import '../../utils/formatters.dart';
@@ -264,6 +266,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   ),
               ],
             ),
+            SettingsGroup(
+              label: 'Display',
+              children: const [_TimeFormatRow()],
+            ),
             if (Platform.isWindows)
               Consumer(
                 builder: (context, ref, _) {
@@ -352,3 +358,74 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 }
 
+class _TimeFormatRow extends ConsumerWidget {
+  const _TimeFormatRow();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final pref = ref.watch(timeFormatPreferenceProvider).asData?.value
+        ?? TimeFormatPreference.system;
+    final systemUses24 = MediaQuery.alwaysUse24HourFormatOf(context);
+    final subtitle = pref == TimeFormatPreference.system
+        ? (Platform.isWindows
+            ? 'System (Windows always reports 12-hour — pick 24h to override)'
+            : 'Following system (currently ${systemUses24 ? '24-hour' : '12-hour'})')
+        : null;
+
+    Future<void> select(TimeFormatPreference next) =>
+        ref.read(timeFormatControllerProvider).set(next);
+
+    return SettingsRow(
+      label: 'Time format',
+      subtitle: subtitle,
+      trailing: _TimeFormatSegments(value: pref, onChanged: select),
+    );
+  }
+}
+
+class _TimeFormatSegments extends StatelessWidget {
+  const _TimeFormatSegments({required this.value, required this.onChanged});
+  final TimeFormatPreference value;
+  final ValueChanged<TimeFormatPreference> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        border: Border.all(color: SpeakrColors.line),
+        borderRadius: BorderRadius.circular(100),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _segment('Auto', TimeFormatPreference.system),
+          _segment('12h', TimeFormatPreference.twelveHour),
+          _segment('24h', TimeFormatPreference.twentyFourHour),
+        ],
+      ),
+    );
+  }
+
+  Widget _segment(String label, TimeFormatPreference pref) {
+    final selected = value == pref;
+    return GestureDetector(
+      onTap: selected ? null : () => onChanged(pref),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 140),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: selected ? SpeakrColors.ink : Colors.transparent,
+          borderRadius: BorderRadius.circular(100),
+        ),
+        child: Text(
+          label,
+          style: SpeakrText.mono(
+            size: 11,
+            color: selected ? SpeakrColors.bg : SpeakrColors.muted,
+            letterSpacing: 0,
+          ),
+        ),
+      ),
+    );
+  }
+}

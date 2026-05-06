@@ -14,9 +14,12 @@ String formatRelativeDay(DateTime when, {DateTime? today}) {
   return DateFormat.MMMd().format(w);
 }
 
-/// "9:41 AM"-style timestamp.
-String formatHourMinute(DateTime when) =>
-    DateFormat.jm().format(when.toLocal());
+/// Clock-time. `use24Hour: false` (default) → `9:41 AM`;
+/// `use24Hour: true` → `09:41`.
+String formatHourMinute(DateTime when, {bool use24Hour = false}) {
+  final fmt = use24Hour ? DateFormat.Hm() : DateFormat.jm();
+  return fmt.format(when.toLocal());
+}
 
 /// "47:12" / "01:18" duration. Accepts seconds.
 String formatDuration(double seconds) {
