@@ -20,8 +20,9 @@ void BringWindowToForegroundImpl(HWND hwnd) {
 }
 }  // namespace
 
-FlutterWindow::FlutterWindow(const flutter::DartProject& project)
-    : project_(project) {}
+FlutterWindow::FlutterWindow(const flutter::DartProject& project,
+                             bool start_hidden)
+    : project_(project), start_hidden_(start_hidden) {}
 
 FlutterWindow::~FlutterWindow() {}
 
@@ -53,6 +54,9 @@ bool FlutterWindow::OnCreate() {
       "speakr/tray",
       &flutter::StandardMethodCodec::GetInstance());
 
+  autostart_channel_ = std::make_unique<AutoStartChannel>(
+      flutter_controller_->engine()->messenger());
+
   // Tray icon: closing the main window hides it; the only real exit is the
   // tray's "Exit" menu item. Captures `this` because the callbacks are only
   // ever fired while the FlutterWindow is alive (TrayIcon is owned by it
@@ -71,9 +75,11 @@ bool FlutterWindow::OnCreate() {
 
   SetChildContent(flutter_controller_->view()->GetNativeWindow());
 
-  flutter_controller_->engine()->SetNextFrameCallback([&]() {
-    this->Show();
-  });
+  if (!start_hidden_) {
+    flutter_controller_->engine()->SetNextFrameCallback([&]() {
+      this->Show();
+    });
+  }
 
   // Flutter can complete the first frame before the "show window" callback is
   // registered. The following call ensures a frame is pending to ensure the
@@ -85,6 +91,7 @@ bool FlutterWindow::OnCreate() {
 
 void FlutterWindow::OnDestroy() {
   tray_icon_.reset();
+  autostart_channel_.reset();
   tray_channel_.reset();
   mini_window_native_.reset();
   if (flutter_controller_) {

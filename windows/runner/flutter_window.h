@@ -8,6 +8,7 @@
 
 #include <memory>
 
+#include "autostart.h"
 #include "mini_window_native.h"
 #include "tray_icon.h"
 #include "win32_window.h"
@@ -16,7 +17,11 @@
 class FlutterWindow : public Win32Window {
  public:
   // Creates a new FlutterWindow hosting a Flutter view running |project|.
-  explicit FlutterWindow(const flutter::DartProject& project);
+  // When |start_hidden| is true the window is created but not shown on the
+  // first frame — used by --hidden auto-start launches that go straight to
+  // the tray.
+  explicit FlutterWindow(const flutter::DartProject& project,
+                         bool start_hidden = false);
   virtual ~FlutterWindow();
 
  protected:
@@ -49,9 +54,17 @@ class FlutterWindow : public Win32Window {
   std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>>
       tray_channel_;
 
+  // Inbound channel from Dart that lets the Settings screen toggle the
+  // per-user Windows Run key registration.
+  std::unique_ptr<AutoStartChannel> autostart_channel_;
+
   // True once a real exit has been requested (tray "Exit"). While false,
   // WM_CLOSE hides the window instead of destroying it.
   bool force_quit_ = false;
+
+  // When true the first-frame callback skips Show() so an auto-start
+  // launch goes straight to the tray.
+  bool start_hidden_ = false;
 };
 
 #endif  // RUNNER_FLUTTER_WINDOW_H_

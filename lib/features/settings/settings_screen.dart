@@ -9,6 +9,7 @@ import '../../api/models.dart';
 import '../../api/providers.dart';
 import '../../api/speakr_api.dart';
 import '../../services/auto_record/auto_record_providers.dart';
+import '../../services/auto_start/auto_start_providers.dart';
 import '../../services/credentials_store.dart';
 import '../../theme/colors.dart';
 import '../../theme/typography.dart';
@@ -131,6 +132,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     context.go('/onboarding');
   }
 
+  Future<void> _toggleAutoStart(bool v) async {
+    try {
+      await ref.read(autoStartServiceProvider).setEnabled(v);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not update auto-start: $e')),
+      );
+    } finally {
+      ref.invalidate(autoStartEnabledProvider);
+    }
+  }
+
   Future<void> _toggleAutoSummarize(bool v) async {
     setState(() => _autoSummarize = v);
     try {
@@ -250,6 +264,29 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   ),
               ],
             ),
+            if (Platform.isWindows)
+              Consumer(
+                builder: (context, ref, _) {
+                  final enabled = ref.watch(autoStartEnabledProvider);
+                  return SettingsGroup(
+                    label: 'Startup',
+                    children: [
+                      SettingsRow(
+                        label: 'Start with Windows',
+                        subtitle:
+                            'Launches Speakr minimized to the tray when you sign in.',
+                        toggleValue: enabled.maybeWhen(
+                          data: (v) => v,
+                          orElse: () => false,
+                        ),
+                        onToggle: enabled.hasValue
+                            ? (v) => _toggleAutoStart(v)
+                            : null,
+                      ),
+                    ],
+                  );
+                },
+              ),
             Consumer(
               builder: (context, ref, _) {
                 final configs = ref.watch(folderConfigsProvider);
