@@ -100,67 +100,6 @@ class RecentlySeenEntry {
       AllowlistEntry(key: key, displayName: displayName, kind: kind);
 }
 
-/// Built-in suggestions for the settings screen. Static, hand-curated;
-/// the list shown is `presets - allowlist - recentlySeen` (unioned by
-/// equality on `(key, kind)`).
-const List<AllowlistEntry> kPresetMeetingApps = [
-  AllowlistEntry(
-    key: 'MSTeams',
-    displayName: 'Microsoft Teams (new)',
-    kind: AllowlistKind.packagedPrefix,
-  ),
-  AllowlistEntry(
-    key: 'Teams.exe',
-    displayName: 'Microsoft Teams (classic)',
-    kind: AllowlistKind.exeBasename,
-  ),
-  AllowlistEntry(
-    key: 'ms-teams.exe',
-    displayName: 'Microsoft Teams',
-    kind: AllowlistKind.exeBasename,
-  ),
-  AllowlistEntry(
-    key: 'Zoom.exe',
-    displayName: 'Zoom',
-    kind: AllowlistKind.exeBasename,
-  ),
-  AllowlistEntry(
-    key: 'slack.exe',
-    displayName: 'Slack',
-    kind: AllowlistKind.exeBasename,
-  ),
-  AllowlistEntry(
-    key: 'Discord.exe',
-    displayName: 'Discord',
-    kind: AllowlistKind.exeBasename,
-  ),
-  AllowlistEntry(
-    key: 'webex.exe',
-    displayName: 'Webex',
-    kind: AllowlistKind.exeBasename,
-  ),
-  AllowlistEntry(
-    key: 'CiscoCollabHost.exe',
-    displayName: 'Webex Meetings',
-    kind: AllowlistKind.exeBasename,
-  ),
-  AllowlistEntry(
-    key: 'chrome.exe',
-    displayName: 'Google Chrome (browser meetings)',
-    kind: AllowlistKind.exeBasename,
-  ),
-  AllowlistEntry(
-    key: 'msedge.exe',
-    displayName: 'Microsoft Edge (browser meetings)',
-    kind: AllowlistKind.exeBasename,
-  ),
-  AllowlistEntry(
-    key: 'obs64.exe',
-    displayName: 'OBS Studio',
-    kind: AllowlistKind.exeBasename,
-  ),
-];
-
 @immutable
 class AutoRecordSettings {
   const AutoRecordSettings({

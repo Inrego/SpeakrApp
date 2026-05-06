@@ -150,7 +150,8 @@ class _AllowlistGroup extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(24, 12, 24, 12),
           child: settings.allowlist.isEmpty
               ? Text(
-                  'No apps yet. Add one from Suggestions below.',
+                  'No apps yet. Add one below — type an exe basename, or '
+                  'pick from apps recently seen using your mic.',
                   style: SpeakrText.sans(
                       size: 12, color: SpeakrColors.muted),
                 )
@@ -195,26 +196,13 @@ class _SuggestionsGroup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final presets =
-        kPresetMeetingApps.where((e) => !_isInAllowlist(e)).toList();
     final recent = settings.recentlySeen
         .where((r) => !_isInAllowlist(r.toAllowlistEntry()))
         .toList()
       ..sort((a, b) => b.lastSeenMs.compareTo(a.lastSeenMs));
     return SettingsGroup(
-      label: 'Suggestions',
+      label: 'Add app',
       children: [
-        if (presets.isNotEmpty)
-          _SuggestionRow(
-            title: 'Common meeting apps',
-            children: [
-              for (final e in presets)
-                _AddChip(
-                  label: e.displayName,
-                  onTap: () => controller.addToAllowlist(e),
-                ),
-            ],
-          ),
         if (recent.isNotEmpty)
           _SuggestionRow(
             title: 'Recently seen using your mic',
