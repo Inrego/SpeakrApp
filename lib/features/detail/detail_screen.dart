@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -31,11 +33,23 @@ class DetailScreen extends ConsumerStatefulWidget {
 class _DetailScreenState extends ConsumerState<DetailScreen> {
   int _tab = 0;
   final _audioPlayer = AudioPlayer();
+  StreamSubscription<PlayerState>? _playerStateSub;
   bool _audioReady = false;
 
   @override
   void initState() {
     super.initState();
+    // Drive readiness from the player's own state stream rather than the
+    // setUrl() future. just_audio_android (ExoPlayer) sometimes throws or
+    // stalls on setUrl() even when the player ultimately reaches a playable
+    // state — gating the UI on the future leaves the play button disabled.
+    _playerStateSub = _audioPlayer.playerStateStream.listen((state) {
+      final ready = state.processingState == ProcessingState.ready ||
+          state.processingState == ProcessingState.buffering;
+      if (ready && !_audioReady && mounted) {
+        setState(() => _audioReady = true);
+      }
+    });
     _initAudio();
   }
 
@@ -49,14 +63,16 @@ class _DetailScreenState extends ConsumerState<DetailScreen> {
         url,
         headers: {'X-API-Token': creds.token},
       );
-      if (mounted) setState(() => _audioReady = true);
-    } catch (_) {
-      // Audio fails silently — UI still renders summary/transcript/chat.
+    } catch (e, st) {
+      debugPrint(
+        'Speakr audio: setUrl failed for recording ${widget.recordingId}: $e\n$st',
+      );
     }
   }
 
   @override
   void dispose() {
+    _playerStateSub?.cancel();
     _audioPlayer.dispose();
     super.dispose();
   }
