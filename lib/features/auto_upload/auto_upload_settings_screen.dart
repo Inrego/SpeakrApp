@@ -32,6 +32,31 @@ class AutoUploadSettingsScreen extends ConsumerStatefulWidget {
 class _AutoUploadSettingsScreenState
     extends ConsumerState<AutoUploadSettingsScreen> {
   bool _scanning = false;
+  Timer? _diagnosticsRefreshTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    // The Android PhoneStateReceiver writes breadcrumbs to the same
+    // SharedPreferences file as the Dart store, but the Flutter plugin
+    // caches values in this isolate's memory and won't pick up cross-
+    // isolate writes until reload() is called. Poll the file every 2s
+    // while the screen is mounted so the diagnostic rows update live.
+    _diagnosticsRefreshTimer = Timer.periodic(
+      const Duration(seconds: 2),
+      (_) async {
+        final store = await ref.read(autoUploadStoreProvider.future);
+        await store.reload();
+        if (mounted) setState(() {});
+      },
+    );
+  }
+
+  @override
+  void dispose() {
+    _diagnosticsRefreshTimer?.cancel();
+    super.dispose();
+  }
 
   Future<void> _addFolder() async {
     final picked = await FilePicker.getDirectoryPath();
@@ -170,6 +195,15 @@ class _AutoUploadSettingsScreenState
                     _LastScanRow(),
                   ],
                 ),
+                if (Platform.isAndroid)
+                  SettingsGroup(
+                    label: 'Call-end diagnostics',
+                    children: const [
+                      _LastPhoneStateRow(),
+                      _LastPhoneStateDecisionRow(),
+                      _LastCallEndEnqueueRow(),
+                    ],
+                  ),
                 const SizedBox(height: 32),
               ],
             );
@@ -805,12 +839,105 @@ class _LastScanRow extends ConsumerWidget {
       data: (store) {
         final at = store.lastScanAt;
         final result = store.lastScanResult;
-        final value = at == null
-            ? '—'
-            : '${formatHourMinute(at)} · ${result ?? ''}';
-        return SettingsRow(label: 'Last scan', value: value);
+        // Timestamp goes in `value` (single-line, right-aligned). The
+        // trigger/result summary goes in `subtitle` so it can wrap onto
+        // multiple lines instead of being clipped with an ellipsis —
+        // useful both for normal info ("trigger=… ok=… skipped=…") and
+        // for diagnosing why a scan didn't behave as expected.
+        return SettingsRow(
+          label: 'Last scan',
+          value: at == null ? '—' : formatHourMinute(at),
+          subtitle: result,
+        );
       },
       orElse: () => const SettingsRow(label: 'Last scan', value: '—'),
+    );
+  }
+}
+
+// ── Call-end diagnostic rows ──────────────────────────────────────────────────
+//
+// These three rows surface breadcrumbs the Android PhoneStateReceiver
+// writes on every PHONE_STATE broadcast. They tell us, in order, whether:
+//   1. the receiver is firing at all (Last phone-state event),
+//   2. the OFFHOOK→IDLE state machine reached the enqueue branch (Last
+//      decision),
+//   3. WorkManager actually accepted the call-end job (Last call-end
+//      enqueue) — compare against "Last scan" above to tell whether the
+//      job ran or got deferred by Doze/battery optimization.
+
+class _LastPhoneStateRow extends ConsumerWidget {
+  const _LastPhoneStateRow();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final storeAsync = ref.watch(autoUploadStoreProvider);
+    return storeAsync.maybeWhen(
+      data: (store) {
+        final at = store.lastPhoneStateAt;
+        final state = store.lastPhoneState;
+        final prev = store.lastPhoneStatePrevious;
+        final subtitle = at == null
+            ? 'never — receiver hasn\'t fired since install. '
+                'READ_PHONE_STATE may be denied, or the OEM is suppressing '
+                'manifest receivers (check OnePlus auto-launch / battery).'
+            : 'state=${state ?? '—'} · prev=${prev ?? '—'}';
+        return SettingsRow(
+          label: 'Last phone-state event',
+          value: at == null ? '—' : formatHourMinute(at),
+          subtitle: subtitle,
+        );
+      },
+      orElse: () => const SettingsRow(
+        label: 'Last phone-state event',
+        value: '—',
+      ),
+    );
+  }
+}
+
+class _LastPhoneStateDecisionRow extends ConsumerWidget {
+  const _LastPhoneStateDecisionRow();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final storeAsync = ref.watch(autoUploadStoreProvider);
+    return storeAsync.maybeWhen(
+      data: (store) {
+        final decision = store.lastPhoneStateDecision;
+        return SettingsRow(
+          label: 'Last decision',
+          value: decision == null ? '—' : '',
+          subtitle: decision,
+        );
+      },
+      orElse: () => const SettingsRow(label: 'Last decision', value: '—'),
+    );
+  }
+}
+
+class _LastCallEndEnqueueRow extends ConsumerWidget {
+  const _LastCallEndEnqueueRow();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final storeAsync = ref.watch(autoUploadStoreProvider);
+    return storeAsync.maybeWhen(
+      data: (store) {
+        final at = store.lastCallEndEnqueueAt;
+        return SettingsRow(
+          label: 'Last call-end enqueue',
+          value: at == null ? 'never' : formatHourMinute(at),
+          subtitle: at == null
+              ? 'No OFFHOOK→IDLE transition has reached the enqueue '
+                  'branch since install. If "Last phone-state event" '
+                  'shows IDLE with prev=null, the app process was killed '
+                  'between OFFHOOK and IDLE.'
+              : null,
+        );
+      },
+      orElse: () =>
+          const SettingsRow(label: 'Last call-end enqueue', value: '—'),
     );
   }
 }

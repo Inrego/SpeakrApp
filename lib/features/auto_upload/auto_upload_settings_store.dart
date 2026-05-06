@@ -33,6 +33,17 @@ class AutoUploadSettingsStore {
   static const _kFileErrors = 'auto_upload.file_errors';
   static const _kUploadedFiles = 'auto_upload.uploaded_files';
 
+  // ── PhoneStateReceiver breadcrumbs (written from Kotlin) ──────────────────
+  // The Android receiver writes a trail of every PHONE_STATE broadcast to
+  // the same SharedPreferences file. Surfaced in the UI to diagnose why a
+  // call-end auto-upload didn't happen (receiver never fired vs. fired
+  // but state-machine skipped vs. enqueued but WorkManager didn't run).
+  static const _kLastPhoneState = 'auto_upload.last_phone_state';
+  static const _kLastPhoneStateMs = 'auto_upload.last_phone_state_ms';
+  static const _kLastPhoneStatePrev = 'auto_upload.last_phone_state_prev';
+  static const _kLastPhoneStateDecision = 'auto_upload.last_phone_state_decision';
+  static const _kLastCallEndEnqueueMs = 'auto_upload.last_call_end_enqueue_ms';
+
   List<FolderUploadConfig> readAll() {
     final raw = _prefs.getString(_kFolders);
     if (raw == null || raw.isEmpty) return const [];
@@ -107,6 +118,44 @@ class AutoUploadSettingsStore {
   }
 
   String? get lastScanResult => _prefs.getString(_kLastScanResult);
+
+  // ── PhoneStateReceiver breadcrumb getters ─────────────────────────────────
+  /// State string from the most recent `ACTION_PHONE_STATE_CHANGED`
+  /// broadcast (e.g. "IDLE", "OFFHOOK", "RINGING"). Null until the first
+  /// broadcast since install.
+  String? get lastPhoneState => _prefs.getString(_kLastPhoneState);
+
+  /// Timestamp of the most recent broadcast. Null if the receiver hasn't
+  /// fired yet — strong signal that runtime READ_PHONE_STATE is denied or
+  /// the OEM is suppressing the manifest receiver.
+  DateTime? get lastPhoneStateAt {
+    final ms = _prefs.getInt(_kLastPhoneStateMs);
+    return ms == null || ms == 0
+        ? null
+        : DateTime.fromMillisecondsSinceEpoch(ms);
+  }
+
+  /// The state value the receiver saw on the broadcast *before* the most
+  /// recent one. Used to show the OFFHOOK→IDLE state-machine transition
+  /// in the diagnostic UI.
+  String? get lastPhoneStatePrevious => _prefs.getString(_kLastPhoneStatePrev);
+
+  /// What the receiver decided on the most recent broadcast: "enqueued",
+  /// "no_op (...)", or "enqueue_failed: ...". A stuck "no_op" with
+  /// previous=null on every IDLE means the process is being killed
+  /// between OFFHOOK and IDLE.
+  String? get lastPhoneStateDecision =>
+      _prefs.getString(_kLastPhoneStateDecision);
+
+  /// Timestamp of the last successful call-end work enqueue. If this
+  /// keeps updating but `lastScanAt` doesn't, WorkManager is accepting
+  /// the job but Doze/battery optimization is preventing it from running.
+  DateTime? get lastCallEndEnqueueAt {
+    final ms = _prefs.getInt(_kLastCallEndEnqueueMs);
+    return ms == null || ms == 0
+        ? null
+        : DateTime.fromMillisecondsSinceEpoch(ms);
+  }
 
   // ── Per-file scan errors ──────────────────────────────────────────────────
   /// Errors that the worker recorded while scanning a folder. Keyed by
