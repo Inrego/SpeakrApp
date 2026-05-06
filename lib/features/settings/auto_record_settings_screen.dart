@@ -295,6 +295,13 @@ String _tagNameForId(int id, List<Tag> known) {
   return 'Tag #$id';
 }
 
+String _folderNameForId(int id, List<Folder> known) {
+  for (final f in known) {
+    if (f.id == id) return f.name;
+  }
+  return 'Folder #$id';
+}
+
 class _SuggestionsGroup extends StatelessWidget {
   const _SuggestionsGroup({
     required this.settings,
@@ -442,11 +449,16 @@ class _BehaviorGroup extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final tagsAsync = ref.watch(tagsProvider);
     final knownTags = tagsAsync.value ?? const <Tag>[];
+    final foldersAsync = ref.watch(foldersProvider);
+    final knownFolders = foldersAsync.value ?? const <Folder>[];
     final defaultTagsLabel = settings.defaultTagIds.isEmpty
         ? 'None'
         : settings.defaultTagIds
             .map((id) => _tagNameForId(id, knownTags))
             .join(', ');
+    final defaultFolderLabel = settings.defaultFolderId == null
+        ? 'None'
+        : _folderNameForId(settings.defaultFolderId!, knownFolders);
     return SettingsGroup(
       label: 'Behavior',
       children: [
@@ -498,6 +510,26 @@ class _BehaviorGroup extends ConsumerWidget {
               builder: (_) => _GlobalTagSheet(
                 selectedIds: settings.defaultTagIds,
                 onChanged: controller.setDefaultTagIds,
+              ),
+            );
+          },
+        ),
+        SettingsRow(
+          label: 'Default folder',
+          value: defaultFolderLabel,
+          subtitle: 'Used when an app has no per-app override.',
+          onTap: () {
+            showModalBottomSheet<void>(
+              context: context,
+              backgroundColor: SpeakrColors.bg,
+              isScrollControlled: true,
+              shape: const RoundedRectangleBorder(
+                borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
+              ),
+              builder: (_) => _FolderPickerSheet(
+                title: 'Default folder',
+                selectedId: settings.defaultFolderId,
+                onChanged: controller.setDefaultFolderId,
               ),
             );
           },
@@ -634,6 +666,7 @@ class _PerAppConfigSheet extends ConsumerWidget {
             entry: entry,
             defaultSpeakers: s.defaultSpeakers,
             defaultTagIds: s.defaultTagIds,
+            defaultFolderId: s.defaultFolderId,
             controller: controller,
           );
         },
@@ -656,19 +689,27 @@ class _PerAppConfigSheetBody extends ConsumerWidget {
     required this.entry,
     required this.defaultSpeakers,
     required this.defaultTagIds,
+    required this.defaultFolderId,
     required this.controller,
   });
   final AllowlistEntry entry;
   final int defaultSpeakers;
   final List<int> defaultTagIds;
+  final int? defaultFolderId;
   final AutoRecordSettingsController controller;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final tagsAsync = ref.watch(tagsProvider);
+    final foldersAsync = ref.watch(foldersProvider);
+    final knownFolders = foldersAsync.value ?? const <Folder>[];
     final speakersIsDefault = entry.speakers == null;
     final tagsIsDefault = entry.tagIds.isEmpty;
+    final folderIsDefault = entry.folderId == null;
     final resolvedSpeakers = entry.speakers ?? defaultSpeakers;
+    final defaultFolderLabel = defaultFolderId == null
+        ? 'none'
+        : _folderNameForId(defaultFolderId!, knownFolders);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 16),
       child: Column(
@@ -782,6 +823,47 @@ class _PerAppConfigSheetBody extends ConsumerWidget {
               ],
             ),
           ),
+          const SizedBox(height: 16),
+          // ── Folder ──────────────────────────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 0, 24, 6),
+            child: MonoEyebrow('Folder', size: 9),
+          ),
+          _SheetRow(
+            label: 'Use default ($defaultFolderLabel)',
+            selected: folderIsDefault,
+            onTap: () => controller.setEntryOverrides(
+              entry,
+              clearFolder: true,
+            ),
+          ),
+          foldersAsync.when(
+            loading: () => const Padding(
+              padding: EdgeInsets.symmetric(vertical: 24),
+              child: Center(
+                child: CircularProgressIndicator(color: SpeakrColors.ink),
+              ),
+            ),
+            error: (e, _) => Padding(
+              padding: const EdgeInsets.fromLTRB(24, 12, 24, 12),
+              child: Text('Could not load folders: $e',
+                  style: SpeakrText.sans(size: 13)),
+            ),
+            data: (folders) => Column(
+              children: [
+                for (final f in folders)
+                  _SheetRow(
+                    label: f.name,
+                    color: parseHexColor(f.color),
+                    selected: entry.folderId == f.id,
+                    onTap: () => controller.setEntryOverrides(
+                      entry,
+                      folderId: f.id,
+                    ),
+                  ),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -860,6 +942,81 @@ class _GlobalTagSheet extends ConsumerWidget {
                           next.add(t.id);
                         }
                         onChanged(next);
+                      },
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Folder picker sheet ──────────────────────────────────────────────────────
+
+/// Single-select folder picker shared by the global default folder and the
+/// per-allowlist-entry folder override (in the "default folder" mode the
+/// override path uses the inline list inside the per-app sheet — this sheet
+/// is for the global Behavior-group row).
+class _FolderPickerSheet extends ConsumerWidget {
+  const _FolderPickerSheet({
+    required this.title,
+    required this.selectedId,
+    required this.onChanged,
+  });
+  final String title;
+  final int? selectedId;
+  final Future<void> Function(int?) onChanged;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final foldersAsync = ref.watch(foldersProvider);
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Text(title, style: SpeakrText.serif(size: 22)),
+            ),
+            const SizedBox(height: 12),
+            _SheetRow(
+              label: 'None',
+              selected: selectedId == null,
+              onTap: () async {
+                await onChanged(null);
+                if (context.mounted) Navigator.pop(context);
+              },
+            ),
+            foldersAsync.when(
+              loading: () => const Padding(
+                padding: EdgeInsets.symmetric(vertical: 24),
+                child: Center(
+                  child:
+                      CircularProgressIndicator(color: SpeakrColors.ink),
+                ),
+              ),
+              error: (e, _) => Padding(
+                padding: const EdgeInsets.fromLTRB(24, 12, 24, 12),
+                child: Text('Could not load folders: $e',
+                    style: SpeakrText.sans(size: 13)),
+              ),
+              data: (folders) => Column(
+                children: [
+                  for (final f in folders)
+                    _SheetRow(
+                      label: f.name,
+                      color: parseHexColor(f.color),
+                      selected: selectedId == f.id,
+                      onTap: () async {
+                        await onChanged(f.id);
+                        if (context.mounted) Navigator.pop(context);
                       },
                     ),
                 ],

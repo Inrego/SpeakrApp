@@ -32,6 +32,7 @@ class SpeakrApi {
     String sortBy = 'meeting_date',
     String sortOrder = 'desc',
     int? tagId,
+    int? folderId,
     String? query,
   }) async {
     final res = await _get<Map<String, dynamic>>('/recordings', query: {
@@ -41,6 +42,7 @@ class SpeakrApi {
       'sort_by': sortBy,
       'sort_order': sortOrder,
       if (tagId != null) 'tag_id': tagId,
+      if (folderId != null) 'folder_id': folderId,
       if (query != null && query.isNotEmpty) 'q': query,
     });
     return RecordingPage.fromJson(res);
@@ -91,6 +93,7 @@ class SpeakrApi {
     int? minSpeakers,
     int? maxSpeakers,
     List<int> tagIds = const [],
+    int? folderId,
     DateTime? fileLastModified,
     String? notes,
     void Function(int sent, int total)? onProgress,
@@ -101,6 +104,7 @@ class SpeakrApi {
       if (language != null) 'language': language,
       if (minSpeakers != null) 'min_speakers': minSpeakers,
       if (maxSpeakers != null) 'max_speakers': maxSpeakers,
+      if (folderId != null) 'folder_id': folderId,
       if (fileLastModified != null)
         'file_last_modified':
             fileLastModified.millisecondsSinceEpoch.toString(),
@@ -133,6 +137,18 @@ class SpeakrApi {
     return list
         .whereType<Map<String, dynamic>>()
         .map(Tag.fromJson)
+        .toList(growable: false);
+  }
+
+  // ── Folders ───────────────────────────────────────────────────────────────
+  Future<List<Folder>> listFolders() async {
+    final res = await _get<dynamic>('/folders');
+    final list = res is List
+        ? res
+        : (res is Map<String, dynamic> ? (res['folders'] as List? ?? []) : []);
+    return list
+        .whereType<Map<String, dynamic>>()
+        .map(Folder.fromJson)
         .toList(growable: false);
   }
 

@@ -425,6 +425,11 @@ class _FolderUploadEditScreenState
                       onTap: () => _showTagSheet(config),
                     ),
                     SettingsRow(
+                      label: 'Folder',
+                      value: _FolderLabel.of(ref, config.folderId),
+                      onTap: () => _showFolderSheet(config),
+                    ),
+                    SettingsRow(
                       label: 'Language',
                       value: config.language ?? 'auto',
                       onTap: () => _editLanguage(config),
@@ -612,6 +617,15 @@ class _FolderUploadEditScreenState
       backgroundColor: SpeakrColors.bg,
       isScrollControlled: true,
       builder: (_) => _TagSheet(configId: s.id, currentId: s.tagId),
+    );
+  }
+
+  Future<void> _showFolderSheet(FolderUploadConfig s) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: SpeakrColors.bg,
+      isScrollControlled: true,
+      builder: (_) => _FolderSheet(configId: s.id, currentId: s.folderId),
     );
   }
 }
@@ -1270,6 +1284,87 @@ class _TagSheet extends ConsumerWidget {
                       await ref
                           .read(folderConfigsControllerProvider)
                           .setTagId(configId, t.id);
+                      if (context.mounted) Navigator.pop(context);
+                    },
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Folder sheet ──────────────────────────────────────────────────────────────
+
+class _FolderLabel {
+  static String of(WidgetRef ref, int? folderId) {
+    if (folderId == null) return 'None';
+    final foldersAsync = ref.read(foldersProvider);
+    final folders = foldersAsync.value;
+    if (folders == null) return 'Folder #$folderId';
+    for (final f in folders) {
+      if (f.id == folderId) return f.name;
+    }
+    return 'Folder #$folderId';
+  }
+}
+
+class _FolderSheet extends ConsumerWidget {
+  const _FolderSheet({required this.configId, required this.currentId});
+  final String configId;
+  final int? currentId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final foldersAsync = ref.watch(foldersProvider);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 14),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Text('Default folder', style: SpeakrText.serif(size: 22)),
+          ),
+          const SizedBox(height: 12),
+          foldersAsync.when(
+            loading: () => const Padding(
+              padding: EdgeInsets.symmetric(vertical: 24),
+              child: Center(
+                child: CircularProgressIndicator(color: SpeakrColors.ink),
+              ),
+            ),
+            error: (e, _) => Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Text(
+                'Could not load folders: $e',
+                style: SpeakrText.sans(size: 13),
+              ),
+            ),
+            data: (folders) => Column(
+              children: [
+                _TagOption(
+                  label: 'None',
+                  selected: currentId == null,
+                  onTap: () async {
+                    await ref
+                        .read(folderConfigsControllerProvider)
+                        .setFolderId(configId, null);
+                    if (context.mounted) Navigator.pop(context);
+                  },
+                ),
+                for (final f in folders)
+                  _TagOption(
+                    label: f.name,
+                    color: parseHexColor(f.color),
+                    selected: currentId == f.id,
+                    onTap: () async {
+                      await ref
+                          .read(folderConfigsControllerProvider)
+                          .setFolderId(configId, f.id);
                       if (context.mounted) Navigator.pop(context);
                     },
                   ),

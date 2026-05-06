@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../../../api/models.dart';
 import '../../../theme/colors.dart';
 import '../../../theme/typography.dart';
+import '../../../widgets/folder_chip.dart';
 import '../../../widgets/mono_eyebrow.dart';
 import '../../../widgets/speakr_icons.dart';
 import '../../../widgets/tag_chip.dart';
@@ -114,6 +116,11 @@ class MetadataCard extends StatelessWidget {
     required this.onToggleEdit,
     required this.newTagCtrl,
     required this.onAddCustom,
+    this.folders = const <Folder>[],
+    this.folderId,
+    this.folderPickerOpen = false,
+    this.onToggleFolderEdit,
+    this.onFolderChanged,
     this.compact = false,
   });
   final int speakers;
@@ -124,6 +131,11 @@ class MetadataCard extends StatelessWidget {
   final VoidCallback onToggleEdit;
   final TextEditingController newTagCtrl;
   final VoidCallback onAddCustom;
+  final List<Folder> folders;
+  final int? folderId;
+  final bool folderPickerOpen;
+  final VoidCallback? onToggleFolderEdit;
+  final ValueChanged<int?>? onFolderChanged;
   final bool compact;
 
   @override
@@ -183,6 +195,16 @@ class MetadataCard extends StatelessWidget {
               ],
             ),
           ),
+          if (onFolderChanged != null && folders.isNotEmpty)
+            _FolderSection(
+              hPad: hPad,
+              vPad: vPad,
+              folders: folders,
+              folderId: folderId,
+              pickerOpen: folderPickerOpen,
+              onToggleEdit: onToggleFolderEdit ?? () {},
+              onChanged: onFolderChanged!,
+            ),
           Container(
             padding: EdgeInsets.fromLTRB(hPad, vPad, hPad, vPad),
             decoration: const BoxDecoration(
@@ -303,6 +325,96 @@ class MetadataCard extends StatelessWidget {
               ],
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FolderSection extends StatelessWidget {
+  const _FolderSection({
+    required this.hPad,
+    required this.vPad,
+    required this.folders,
+    required this.folderId,
+    required this.pickerOpen,
+    required this.onToggleEdit,
+    required this.onChanged,
+  });
+  final double hPad;
+  final double vPad;
+  final List<Folder> folders;
+  final int? folderId;
+  final bool pickerOpen;
+  final VoidCallback onToggleEdit;
+  final ValueChanged<int?> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final selected = folders.firstWhere(
+      (f) => f.id == folderId,
+      orElse: () => const Folder(id: -1, name: ''),
+    );
+    final hasSelection = selected.id != -1;
+    return Container(
+      padding: EdgeInsets.fromLTRB(hPad, vPad, hPad, vPad),
+      decoration: const BoxDecoration(
+        border: Border(top: BorderSide(color: SpeakrColors.line)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const MonoEyebrow('Folder', size: 9),
+              InkWell(
+                onTap: onToggleEdit,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  child: MonoEyebrow(
+                    pickerOpen ? 'Done' : 'Change',
+                    size: 9,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          if (!pickerOpen)
+            hasSelection
+                ? FolderChip(
+                    label: selected.name,
+                    color: parseHexColor(selected.color),
+                  )
+                : Text(
+                    'No folder',
+                    style: SpeakrText.sans(
+                      size: 12,
+                      color: SpeakrColors.muted,
+                    ).copyWith(fontStyle: FontStyle.italic),
+                  ),
+          if (pickerOpen)
+            Wrap(
+              spacing: 4,
+              runSpacing: 4,
+              children: [
+                FolderFilterChip(
+                  label: 'None',
+                  color: SpeakrColors.muted,
+                  selected: folderId == null,
+                  onTap: () => onChanged(null),
+                  showSwatch: false,
+                ),
+                for (final f in folders)
+                  FolderFilterChip(
+                    label: f.name,
+                    color: parseHexColor(f.color),
+                    selected: folderId == f.id,
+                    onTap: () => onChanged(f.id),
+                  ),
+              ],
+            ),
         ],
       ),
     );

@@ -288,6 +288,272 @@ as int?,
 
 
 /// @nodoc
+mixin _$Folder {
+
+ int get id; String get name; String? get color;@JsonKey(name: 'recording_count') int? get recordingCount;
+/// Create a copy of Folder
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$FolderCopyWith<Folder> get copyWith => _$FolderCopyWithImpl<Folder>(this as Folder, _$identity);
+
+  /// Serializes this Folder to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Folder&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.color, color) || other.color == color)&&(identical(other.recordingCount, recordingCount) || other.recordingCount == recordingCount));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,id,name,color,recordingCount);
+
+@override
+String toString() {
+  return 'Folder(id: $id, name: $name, color: $color, recordingCount: $recordingCount)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $FolderCopyWith<$Res>  {
+  factory $FolderCopyWith(Folder value, $Res Function(Folder) _then) = _$FolderCopyWithImpl;
+@useResult
+$Res call({
+ int id, String name, String? color,@JsonKey(name: 'recording_count') int? recordingCount
+});
+
+
+
+
+}
+/// @nodoc
+class _$FolderCopyWithImpl<$Res>
+    implements $FolderCopyWith<$Res> {
+  _$FolderCopyWithImpl(this._self, this._then);
+
+  final Folder _self;
+  final $Res Function(Folder) _then;
+
+/// Create a copy of Folder
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = null,Object? color = freezed,Object? recordingCount = freezed,}) {
+  return _then(_self.copyWith(
+id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as int,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
+as String,color: freezed == color ? _self.color : color // ignore: cast_nullable_to_non_nullable
+as String?,recordingCount: freezed == recordingCount ? _self.recordingCount : recordingCount // ignore: cast_nullable_to_non_nullable
+as int?,
+  ));
+}
+
+}
+
+
+/// Adds pattern-matching-related methods to [Folder].
+extension FolderPatterns on Folder {
+/// A variant of `map` that fallback to returning `orElse`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _Folder value)?  $default,{required TResult orElse(),}){
+final _that = this;
+switch (_that) {
+case _Folder() when $default != null:
+return $default(_that);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// Callbacks receives the raw object, upcasted.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case final Subclass2 value:
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _Folder value)  $default,){
+final _that = this;
+switch (_that) {
+case _Folder():
+return $default(_that);}
+}
+/// A variant of `map` that fallback to returning `null`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _Folder value)?  $default,){
+final _that = this;
+switch (_that) {
+case _Folder() when $default != null:
+return $default(_that);case _:
+  return null;
+
+}
+}
+/// A variant of `when` that fallback to an `orElse` callback.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( int id,  String name,  String? color, @JsonKey(name: 'recording_count')  int? recordingCount)?  $default,{required TResult orElse(),}) {final _that = this;
+switch (_that) {
+case _Folder() when $default != null:
+return $default(_that.id,_that.name,_that.color,_that.recordingCount);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// As opposed to `map`, this offers destructuring.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case Subclass2(:final field2):
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( int id,  String name,  String? color, @JsonKey(name: 'recording_count')  int? recordingCount)  $default,) {final _that = this;
+switch (_that) {
+case _Folder():
+return $default(_that.id,_that.name,_that.color,_that.recordingCount);}
+}
+/// A variant of `when` that fallback to returning `null`
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( int id,  String name,  String? color, @JsonKey(name: 'recording_count')  int? recordingCount)?  $default,) {final _that = this;
+switch (_that) {
+case _Folder() when $default != null:
+return $default(_that.id,_that.name,_that.color,_that.recordingCount);case _:
+  return null;
+
+}
+}
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class _Folder implements Folder {
+  const _Folder({required this.id, required this.name, this.color, @JsonKey(name: 'recording_count') this.recordingCount});
+  factory _Folder.fromJson(Map<String, dynamic> json) => _$FolderFromJson(json);
+
+@override final  int id;
+@override final  String name;
+@override final  String? color;
+@override@JsonKey(name: 'recording_count') final  int? recordingCount;
+
+/// Create a copy of Folder
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$FolderCopyWith<_Folder> get copyWith => __$FolderCopyWithImpl<_Folder>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$FolderToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Folder&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.color, color) || other.color == color)&&(identical(other.recordingCount, recordingCount) || other.recordingCount == recordingCount));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,id,name,color,recordingCount);
+
+@override
+String toString() {
+  return 'Folder(id: $id, name: $name, color: $color, recordingCount: $recordingCount)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$FolderCopyWith<$Res> implements $FolderCopyWith<$Res> {
+  factory _$FolderCopyWith(_Folder value, $Res Function(_Folder) _then) = __$FolderCopyWithImpl;
+@override @useResult
+$Res call({
+ int id, String name, String? color,@JsonKey(name: 'recording_count') int? recordingCount
+});
+
+
+
+
+}
+/// @nodoc
+class __$FolderCopyWithImpl<$Res>
+    implements _$FolderCopyWith<$Res> {
+  __$FolderCopyWithImpl(this._self, this._then);
+
+  final _Folder _self;
+  final $Res Function(_Folder) _then;
+
+/// Create a copy of Folder
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = null,Object? color = freezed,Object? recordingCount = freezed,}) {
+  return _then(_Folder(
+id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as int,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
+as String,color: freezed == color ? _self.color : color // ignore: cast_nullable_to_non_nullable
+as String?,recordingCount: freezed == recordingCount ? _self.recordingCount : recordingCount // ignore: cast_nullable_to_non_nullable
+as int?,
+  ));
+}
+
+
+}
+
+
+/// @nodoc
 mixin _$Speaker {
 
  int get id; String get name;@JsonKey(name: 'has_voice_profile') bool get hasVoiceProfile;@JsonKey(name: 'use_count') int get useCount;@JsonKey(name: 'last_used', fromJson: _parseFlexibleDate) DateTime? get lastUsed;
@@ -828,7 +1094,7 @@ as int,
 /// @nodoc
 mixin _$Recording {
 
- int get id; String? get title;@JsonKey(name: 'meeting_date', fromJson: _parseFlexibleDate) DateTime? get meetingDate;@JsonKey(name: 'created_at', fromJson: _parseFlexibleDate) DateTime? get createdAt; String? get participants;@JsonKey(name: 'file_size') int? get fileSize;@JsonKey(name: 'is_highlighted') bool get isHighlighted;@JsonKey(name: 'is_inbox') bool get isInbox;@JsonKey(fromJson: _parseRecordingStatus) RecordingStatus get status; List<Tag> get tags;// Returned by the v1 list endpoint.
+ int get id; String? get title;@JsonKey(name: 'meeting_date', fromJson: _parseFlexibleDate) DateTime? get meetingDate;@JsonKey(name: 'created_at', fromJson: _parseFlexibleDate) DateTime? get createdAt; String? get participants;@JsonKey(name: 'file_size') int? get fileSize;@JsonKey(name: 'is_highlighted') bool get isHighlighted;@JsonKey(name: 'is_inbox') bool get isInbox;@JsonKey(fromJson: _parseRecordingStatus) RecordingStatus get status; List<Tag> get tags;@JsonKey(name: 'folder_id') int? get folderId; Folder? get folder;// Returned by the v1 list endpoint.
 @JsonKey(name: 'audio_available') bool? get audioAvailable;@JsonKey(name: 'error_message') String? get errorMessage;@JsonKey(name: 'has_summary') bool? get hasSummary;@JsonKey(name: 'has_transcription') bool? get hasTranscription;@JsonKey(name: 'original_filename') String? get originalFilename;// Optional rich fields returned by the unofficial /api/recordings/{id}.
  String? get summary; String? get notes; String? get transcription;@JsonKey(name: 'audio_duration') double? get audioDuration;
 /// Create a copy of Recording
@@ -843,16 +1109,16 @@ $RecordingCopyWith<Recording> get copyWith => _$RecordingCopyWithImpl<Recording>
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is Recording&&(identical(other.id, id) || other.id == id)&&(identical(other.title, title) || other.title == title)&&(identical(other.meetingDate, meetingDate) || other.meetingDate == meetingDate)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.participants, participants) || other.participants == participants)&&(identical(other.fileSize, fileSize) || other.fileSize == fileSize)&&(identical(other.isHighlighted, isHighlighted) || other.isHighlighted == isHighlighted)&&(identical(other.isInbox, isInbox) || other.isInbox == isInbox)&&(identical(other.status, status) || other.status == status)&&const DeepCollectionEquality().equals(other.tags, tags)&&(identical(other.audioAvailable, audioAvailable) || other.audioAvailable == audioAvailable)&&(identical(other.errorMessage, errorMessage) || other.errorMessage == errorMessage)&&(identical(other.hasSummary, hasSummary) || other.hasSummary == hasSummary)&&(identical(other.hasTranscription, hasTranscription) || other.hasTranscription == hasTranscription)&&(identical(other.originalFilename, originalFilename) || other.originalFilename == originalFilename)&&(identical(other.summary, summary) || other.summary == summary)&&(identical(other.notes, notes) || other.notes == notes)&&(identical(other.transcription, transcription) || other.transcription == transcription)&&(identical(other.audioDuration, audioDuration) || other.audioDuration == audioDuration));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Recording&&(identical(other.id, id) || other.id == id)&&(identical(other.title, title) || other.title == title)&&(identical(other.meetingDate, meetingDate) || other.meetingDate == meetingDate)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.participants, participants) || other.participants == participants)&&(identical(other.fileSize, fileSize) || other.fileSize == fileSize)&&(identical(other.isHighlighted, isHighlighted) || other.isHighlighted == isHighlighted)&&(identical(other.isInbox, isInbox) || other.isInbox == isInbox)&&(identical(other.status, status) || other.status == status)&&const DeepCollectionEquality().equals(other.tags, tags)&&(identical(other.folderId, folderId) || other.folderId == folderId)&&(identical(other.folder, folder) || other.folder == folder)&&(identical(other.audioAvailable, audioAvailable) || other.audioAvailable == audioAvailable)&&(identical(other.errorMessage, errorMessage) || other.errorMessage == errorMessage)&&(identical(other.hasSummary, hasSummary) || other.hasSummary == hasSummary)&&(identical(other.hasTranscription, hasTranscription) || other.hasTranscription == hasTranscription)&&(identical(other.originalFilename, originalFilename) || other.originalFilename == originalFilename)&&(identical(other.summary, summary) || other.summary == summary)&&(identical(other.notes, notes) || other.notes == notes)&&(identical(other.transcription, transcription) || other.transcription == transcription)&&(identical(other.audioDuration, audioDuration) || other.audioDuration == audioDuration));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hashAll([runtimeType,id,title,meetingDate,createdAt,participants,fileSize,isHighlighted,isInbox,status,const DeepCollectionEquality().hash(tags),audioAvailable,errorMessage,hasSummary,hasTranscription,originalFilename,summary,notes,transcription,audioDuration]);
+int get hashCode => Object.hashAll([runtimeType,id,title,meetingDate,createdAt,participants,fileSize,isHighlighted,isInbox,status,const DeepCollectionEquality().hash(tags),folderId,folder,audioAvailable,errorMessage,hasSummary,hasTranscription,originalFilename,summary,notes,transcription,audioDuration]);
 
 @override
 String toString() {
-  return 'Recording(id: $id, title: $title, meetingDate: $meetingDate, createdAt: $createdAt, participants: $participants, fileSize: $fileSize, isHighlighted: $isHighlighted, isInbox: $isInbox, status: $status, tags: $tags, audioAvailable: $audioAvailable, errorMessage: $errorMessage, hasSummary: $hasSummary, hasTranscription: $hasTranscription, originalFilename: $originalFilename, summary: $summary, notes: $notes, transcription: $transcription, audioDuration: $audioDuration)';
+  return 'Recording(id: $id, title: $title, meetingDate: $meetingDate, createdAt: $createdAt, participants: $participants, fileSize: $fileSize, isHighlighted: $isHighlighted, isInbox: $isInbox, status: $status, tags: $tags, folderId: $folderId, folder: $folder, audioAvailable: $audioAvailable, errorMessage: $errorMessage, hasSummary: $hasSummary, hasTranscription: $hasTranscription, originalFilename: $originalFilename, summary: $summary, notes: $notes, transcription: $transcription, audioDuration: $audioDuration)';
 }
 
 
@@ -863,11 +1129,11 @@ abstract mixin class $RecordingCopyWith<$Res>  {
   factory $RecordingCopyWith(Recording value, $Res Function(Recording) _then) = _$RecordingCopyWithImpl;
 @useResult
 $Res call({
- int id, String? title,@JsonKey(name: 'meeting_date', fromJson: _parseFlexibleDate) DateTime? meetingDate,@JsonKey(name: 'created_at', fromJson: _parseFlexibleDate) DateTime? createdAt, String? participants,@JsonKey(name: 'file_size') int? fileSize,@JsonKey(name: 'is_highlighted') bool isHighlighted,@JsonKey(name: 'is_inbox') bool isInbox,@JsonKey(fromJson: _parseRecordingStatus) RecordingStatus status, List<Tag> tags,@JsonKey(name: 'audio_available') bool? audioAvailable,@JsonKey(name: 'error_message') String? errorMessage,@JsonKey(name: 'has_summary') bool? hasSummary,@JsonKey(name: 'has_transcription') bool? hasTranscription,@JsonKey(name: 'original_filename') String? originalFilename, String? summary, String? notes, String? transcription,@JsonKey(name: 'audio_duration') double? audioDuration
+ int id, String? title,@JsonKey(name: 'meeting_date', fromJson: _parseFlexibleDate) DateTime? meetingDate,@JsonKey(name: 'created_at', fromJson: _parseFlexibleDate) DateTime? createdAt, String? participants,@JsonKey(name: 'file_size') int? fileSize,@JsonKey(name: 'is_highlighted') bool isHighlighted,@JsonKey(name: 'is_inbox') bool isInbox,@JsonKey(fromJson: _parseRecordingStatus) RecordingStatus status, List<Tag> tags,@JsonKey(name: 'folder_id') int? folderId, Folder? folder,@JsonKey(name: 'audio_available') bool? audioAvailable,@JsonKey(name: 'error_message') String? errorMessage,@JsonKey(name: 'has_summary') bool? hasSummary,@JsonKey(name: 'has_transcription') bool? hasTranscription,@JsonKey(name: 'original_filename') String? originalFilename, String? summary, String? notes, String? transcription,@JsonKey(name: 'audio_duration') double? audioDuration
 });
 
 
-
+$FolderCopyWith<$Res>? get folder;
 
 }
 /// @nodoc
@@ -880,7 +1146,7 @@ class _$RecordingCopyWithImpl<$Res>
 
 /// Create a copy of Recording
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? title = freezed,Object? meetingDate = freezed,Object? createdAt = freezed,Object? participants = freezed,Object? fileSize = freezed,Object? isHighlighted = null,Object? isInbox = null,Object? status = null,Object? tags = null,Object? audioAvailable = freezed,Object? errorMessage = freezed,Object? hasSummary = freezed,Object? hasTranscription = freezed,Object? originalFilename = freezed,Object? summary = freezed,Object? notes = freezed,Object? transcription = freezed,Object? audioDuration = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? title = freezed,Object? meetingDate = freezed,Object? createdAt = freezed,Object? participants = freezed,Object? fileSize = freezed,Object? isHighlighted = null,Object? isInbox = null,Object? status = null,Object? tags = null,Object? folderId = freezed,Object? folder = freezed,Object? audioAvailable = freezed,Object? errorMessage = freezed,Object? hasSummary = freezed,Object? hasTranscription = freezed,Object? originalFilename = freezed,Object? summary = freezed,Object? notes = freezed,Object? transcription = freezed,Object? audioDuration = freezed,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as int,title: freezed == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
@@ -892,7 +1158,9 @@ as int?,isHighlighted: null == isHighlighted ? _self.isHighlighted : isHighlight
 as bool,isInbox: null == isInbox ? _self.isInbox : isInbox // ignore: cast_nullable_to_non_nullable
 as bool,status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
 as RecordingStatus,tags: null == tags ? _self.tags : tags // ignore: cast_nullable_to_non_nullable
-as List<Tag>,audioAvailable: freezed == audioAvailable ? _self.audioAvailable : audioAvailable // ignore: cast_nullable_to_non_nullable
+as List<Tag>,folderId: freezed == folderId ? _self.folderId : folderId // ignore: cast_nullable_to_non_nullable
+as int?,folder: freezed == folder ? _self.folder : folder // ignore: cast_nullable_to_non_nullable
+as Folder?,audioAvailable: freezed == audioAvailable ? _self.audioAvailable : audioAvailable // ignore: cast_nullable_to_non_nullable
 as bool?,errorMessage: freezed == errorMessage ? _self.errorMessage : errorMessage // ignore: cast_nullable_to_non_nullable
 as String?,hasSummary: freezed == hasSummary ? _self.hasSummary : hasSummary // ignore: cast_nullable_to_non_nullable
 as bool?,hasTranscription: freezed == hasTranscription ? _self.hasTranscription : hasTranscription // ignore: cast_nullable_to_non_nullable
@@ -904,7 +1172,19 @@ as String?,audioDuration: freezed == audioDuration ? _self.audioDuration : audio
 as double?,
   ));
 }
+/// Create a copy of Recording
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$FolderCopyWith<$Res>? get folder {
+    if (_self.folder == null) {
+    return null;
+  }
 
+  return $FolderCopyWith<$Res>(_self.folder!, (value) {
+    return _then(_self.copyWith(folder: value));
+  });
+}
 }
 
 
@@ -983,10 +1263,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( int id,  String? title, @JsonKey(name: 'meeting_date', fromJson: _parseFlexibleDate)  DateTime? meetingDate, @JsonKey(name: 'created_at', fromJson: _parseFlexibleDate)  DateTime? createdAt,  String? participants, @JsonKey(name: 'file_size')  int? fileSize, @JsonKey(name: 'is_highlighted')  bool isHighlighted, @JsonKey(name: 'is_inbox')  bool isInbox, @JsonKey(fromJson: _parseRecordingStatus)  RecordingStatus status,  List<Tag> tags, @JsonKey(name: 'audio_available')  bool? audioAvailable, @JsonKey(name: 'error_message')  String? errorMessage, @JsonKey(name: 'has_summary')  bool? hasSummary, @JsonKey(name: 'has_transcription')  bool? hasTranscription, @JsonKey(name: 'original_filename')  String? originalFilename,  String? summary,  String? notes,  String? transcription, @JsonKey(name: 'audio_duration')  double? audioDuration)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( int id,  String? title, @JsonKey(name: 'meeting_date', fromJson: _parseFlexibleDate)  DateTime? meetingDate, @JsonKey(name: 'created_at', fromJson: _parseFlexibleDate)  DateTime? createdAt,  String? participants, @JsonKey(name: 'file_size')  int? fileSize, @JsonKey(name: 'is_highlighted')  bool isHighlighted, @JsonKey(name: 'is_inbox')  bool isInbox, @JsonKey(fromJson: _parseRecordingStatus)  RecordingStatus status,  List<Tag> tags, @JsonKey(name: 'folder_id')  int? folderId,  Folder? folder, @JsonKey(name: 'audio_available')  bool? audioAvailable, @JsonKey(name: 'error_message')  String? errorMessage, @JsonKey(name: 'has_summary')  bool? hasSummary, @JsonKey(name: 'has_transcription')  bool? hasTranscription, @JsonKey(name: 'original_filename')  String? originalFilename,  String? summary,  String? notes,  String? transcription, @JsonKey(name: 'audio_duration')  double? audioDuration)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _Recording() when $default != null:
-return $default(_that.id,_that.title,_that.meetingDate,_that.createdAt,_that.participants,_that.fileSize,_that.isHighlighted,_that.isInbox,_that.status,_that.tags,_that.audioAvailable,_that.errorMessage,_that.hasSummary,_that.hasTranscription,_that.originalFilename,_that.summary,_that.notes,_that.transcription,_that.audioDuration);case _:
+return $default(_that.id,_that.title,_that.meetingDate,_that.createdAt,_that.participants,_that.fileSize,_that.isHighlighted,_that.isInbox,_that.status,_that.tags,_that.folderId,_that.folder,_that.audioAvailable,_that.errorMessage,_that.hasSummary,_that.hasTranscription,_that.originalFilename,_that.summary,_that.notes,_that.transcription,_that.audioDuration);case _:
   return orElse();
 
 }
@@ -1004,10 +1284,10 @@ return $default(_that.id,_that.title,_that.meetingDate,_that.createdAt,_that.par
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( int id,  String? title, @JsonKey(name: 'meeting_date', fromJson: _parseFlexibleDate)  DateTime? meetingDate, @JsonKey(name: 'created_at', fromJson: _parseFlexibleDate)  DateTime? createdAt,  String? participants, @JsonKey(name: 'file_size')  int? fileSize, @JsonKey(name: 'is_highlighted')  bool isHighlighted, @JsonKey(name: 'is_inbox')  bool isInbox, @JsonKey(fromJson: _parseRecordingStatus)  RecordingStatus status,  List<Tag> tags, @JsonKey(name: 'audio_available')  bool? audioAvailable, @JsonKey(name: 'error_message')  String? errorMessage, @JsonKey(name: 'has_summary')  bool? hasSummary, @JsonKey(name: 'has_transcription')  bool? hasTranscription, @JsonKey(name: 'original_filename')  String? originalFilename,  String? summary,  String? notes,  String? transcription, @JsonKey(name: 'audio_duration')  double? audioDuration)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( int id,  String? title, @JsonKey(name: 'meeting_date', fromJson: _parseFlexibleDate)  DateTime? meetingDate, @JsonKey(name: 'created_at', fromJson: _parseFlexibleDate)  DateTime? createdAt,  String? participants, @JsonKey(name: 'file_size')  int? fileSize, @JsonKey(name: 'is_highlighted')  bool isHighlighted, @JsonKey(name: 'is_inbox')  bool isInbox, @JsonKey(fromJson: _parseRecordingStatus)  RecordingStatus status,  List<Tag> tags, @JsonKey(name: 'folder_id')  int? folderId,  Folder? folder, @JsonKey(name: 'audio_available')  bool? audioAvailable, @JsonKey(name: 'error_message')  String? errorMessage, @JsonKey(name: 'has_summary')  bool? hasSummary, @JsonKey(name: 'has_transcription')  bool? hasTranscription, @JsonKey(name: 'original_filename')  String? originalFilename,  String? summary,  String? notes,  String? transcription, @JsonKey(name: 'audio_duration')  double? audioDuration)  $default,) {final _that = this;
 switch (_that) {
 case _Recording():
-return $default(_that.id,_that.title,_that.meetingDate,_that.createdAt,_that.participants,_that.fileSize,_that.isHighlighted,_that.isInbox,_that.status,_that.tags,_that.audioAvailable,_that.errorMessage,_that.hasSummary,_that.hasTranscription,_that.originalFilename,_that.summary,_that.notes,_that.transcription,_that.audioDuration);}
+return $default(_that.id,_that.title,_that.meetingDate,_that.createdAt,_that.participants,_that.fileSize,_that.isHighlighted,_that.isInbox,_that.status,_that.tags,_that.folderId,_that.folder,_that.audioAvailable,_that.errorMessage,_that.hasSummary,_that.hasTranscription,_that.originalFilename,_that.summary,_that.notes,_that.transcription,_that.audioDuration);}
 }
 /// A variant of `when` that fallback to returning `null`
 ///
@@ -1021,10 +1301,10 @@ return $default(_that.id,_that.title,_that.meetingDate,_that.createdAt,_that.par
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( int id,  String? title, @JsonKey(name: 'meeting_date', fromJson: _parseFlexibleDate)  DateTime? meetingDate, @JsonKey(name: 'created_at', fromJson: _parseFlexibleDate)  DateTime? createdAt,  String? participants, @JsonKey(name: 'file_size')  int? fileSize, @JsonKey(name: 'is_highlighted')  bool isHighlighted, @JsonKey(name: 'is_inbox')  bool isInbox, @JsonKey(fromJson: _parseRecordingStatus)  RecordingStatus status,  List<Tag> tags, @JsonKey(name: 'audio_available')  bool? audioAvailable, @JsonKey(name: 'error_message')  String? errorMessage, @JsonKey(name: 'has_summary')  bool? hasSummary, @JsonKey(name: 'has_transcription')  bool? hasTranscription, @JsonKey(name: 'original_filename')  String? originalFilename,  String? summary,  String? notes,  String? transcription, @JsonKey(name: 'audio_duration')  double? audioDuration)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( int id,  String? title, @JsonKey(name: 'meeting_date', fromJson: _parseFlexibleDate)  DateTime? meetingDate, @JsonKey(name: 'created_at', fromJson: _parseFlexibleDate)  DateTime? createdAt,  String? participants, @JsonKey(name: 'file_size')  int? fileSize, @JsonKey(name: 'is_highlighted')  bool isHighlighted, @JsonKey(name: 'is_inbox')  bool isInbox, @JsonKey(fromJson: _parseRecordingStatus)  RecordingStatus status,  List<Tag> tags, @JsonKey(name: 'folder_id')  int? folderId,  Folder? folder, @JsonKey(name: 'audio_available')  bool? audioAvailable, @JsonKey(name: 'error_message')  String? errorMessage, @JsonKey(name: 'has_summary')  bool? hasSummary, @JsonKey(name: 'has_transcription')  bool? hasTranscription, @JsonKey(name: 'original_filename')  String? originalFilename,  String? summary,  String? notes,  String? transcription, @JsonKey(name: 'audio_duration')  double? audioDuration)?  $default,) {final _that = this;
 switch (_that) {
 case _Recording() when $default != null:
-return $default(_that.id,_that.title,_that.meetingDate,_that.createdAt,_that.participants,_that.fileSize,_that.isHighlighted,_that.isInbox,_that.status,_that.tags,_that.audioAvailable,_that.errorMessage,_that.hasSummary,_that.hasTranscription,_that.originalFilename,_that.summary,_that.notes,_that.transcription,_that.audioDuration);case _:
+return $default(_that.id,_that.title,_that.meetingDate,_that.createdAt,_that.participants,_that.fileSize,_that.isHighlighted,_that.isInbox,_that.status,_that.tags,_that.folderId,_that.folder,_that.audioAvailable,_that.errorMessage,_that.hasSummary,_that.hasTranscription,_that.originalFilename,_that.summary,_that.notes,_that.transcription,_that.audioDuration);case _:
   return null;
 
 }
@@ -1036,7 +1316,7 @@ return $default(_that.id,_that.title,_that.meetingDate,_that.createdAt,_that.par
 @JsonSerializable()
 
 class _Recording implements Recording {
-  const _Recording({required this.id, this.title, @JsonKey(name: 'meeting_date', fromJson: _parseFlexibleDate) this.meetingDate, @JsonKey(name: 'created_at', fromJson: _parseFlexibleDate) this.createdAt, this.participants, @JsonKey(name: 'file_size') this.fileSize, @JsonKey(name: 'is_highlighted') this.isHighlighted = false, @JsonKey(name: 'is_inbox') this.isInbox = false, @JsonKey(fromJson: _parseRecordingStatus) this.status = RecordingStatus.completed, final  List<Tag> tags = const <Tag>[], @JsonKey(name: 'audio_available') this.audioAvailable, @JsonKey(name: 'error_message') this.errorMessage, @JsonKey(name: 'has_summary') this.hasSummary, @JsonKey(name: 'has_transcription') this.hasTranscription, @JsonKey(name: 'original_filename') this.originalFilename, this.summary, this.notes, this.transcription, @JsonKey(name: 'audio_duration') this.audioDuration}): _tags = tags;
+  const _Recording({required this.id, this.title, @JsonKey(name: 'meeting_date', fromJson: _parseFlexibleDate) this.meetingDate, @JsonKey(name: 'created_at', fromJson: _parseFlexibleDate) this.createdAt, this.participants, @JsonKey(name: 'file_size') this.fileSize, @JsonKey(name: 'is_highlighted') this.isHighlighted = false, @JsonKey(name: 'is_inbox') this.isInbox = false, @JsonKey(fromJson: _parseRecordingStatus) this.status = RecordingStatus.completed, final  List<Tag> tags = const <Tag>[], @JsonKey(name: 'folder_id') this.folderId, this.folder, @JsonKey(name: 'audio_available') this.audioAvailable, @JsonKey(name: 'error_message') this.errorMessage, @JsonKey(name: 'has_summary') this.hasSummary, @JsonKey(name: 'has_transcription') this.hasTranscription, @JsonKey(name: 'original_filename') this.originalFilename, this.summary, this.notes, this.transcription, @JsonKey(name: 'audio_duration') this.audioDuration}): _tags = tags;
   factory _Recording.fromJson(Map<String, dynamic> json) => _$RecordingFromJson(json);
 
 @override final  int id;
@@ -1055,6 +1335,8 @@ class _Recording implements Recording {
   return EqualUnmodifiableListView(_tags);
 }
 
+@override@JsonKey(name: 'folder_id') final  int? folderId;
+@override final  Folder? folder;
 // Returned by the v1 list endpoint.
 @override@JsonKey(name: 'audio_available') final  bool? audioAvailable;
 @override@JsonKey(name: 'error_message') final  String? errorMessage;
@@ -1080,16 +1362,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Recording&&(identical(other.id, id) || other.id == id)&&(identical(other.title, title) || other.title == title)&&(identical(other.meetingDate, meetingDate) || other.meetingDate == meetingDate)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.participants, participants) || other.participants == participants)&&(identical(other.fileSize, fileSize) || other.fileSize == fileSize)&&(identical(other.isHighlighted, isHighlighted) || other.isHighlighted == isHighlighted)&&(identical(other.isInbox, isInbox) || other.isInbox == isInbox)&&(identical(other.status, status) || other.status == status)&&const DeepCollectionEquality().equals(other._tags, _tags)&&(identical(other.audioAvailable, audioAvailable) || other.audioAvailable == audioAvailable)&&(identical(other.errorMessage, errorMessage) || other.errorMessage == errorMessage)&&(identical(other.hasSummary, hasSummary) || other.hasSummary == hasSummary)&&(identical(other.hasTranscription, hasTranscription) || other.hasTranscription == hasTranscription)&&(identical(other.originalFilename, originalFilename) || other.originalFilename == originalFilename)&&(identical(other.summary, summary) || other.summary == summary)&&(identical(other.notes, notes) || other.notes == notes)&&(identical(other.transcription, transcription) || other.transcription == transcription)&&(identical(other.audioDuration, audioDuration) || other.audioDuration == audioDuration));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Recording&&(identical(other.id, id) || other.id == id)&&(identical(other.title, title) || other.title == title)&&(identical(other.meetingDate, meetingDate) || other.meetingDate == meetingDate)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.participants, participants) || other.participants == participants)&&(identical(other.fileSize, fileSize) || other.fileSize == fileSize)&&(identical(other.isHighlighted, isHighlighted) || other.isHighlighted == isHighlighted)&&(identical(other.isInbox, isInbox) || other.isInbox == isInbox)&&(identical(other.status, status) || other.status == status)&&const DeepCollectionEquality().equals(other._tags, _tags)&&(identical(other.folderId, folderId) || other.folderId == folderId)&&(identical(other.folder, folder) || other.folder == folder)&&(identical(other.audioAvailable, audioAvailable) || other.audioAvailable == audioAvailable)&&(identical(other.errorMessage, errorMessage) || other.errorMessage == errorMessage)&&(identical(other.hasSummary, hasSummary) || other.hasSummary == hasSummary)&&(identical(other.hasTranscription, hasTranscription) || other.hasTranscription == hasTranscription)&&(identical(other.originalFilename, originalFilename) || other.originalFilename == originalFilename)&&(identical(other.summary, summary) || other.summary == summary)&&(identical(other.notes, notes) || other.notes == notes)&&(identical(other.transcription, transcription) || other.transcription == transcription)&&(identical(other.audioDuration, audioDuration) || other.audioDuration == audioDuration));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hashAll([runtimeType,id,title,meetingDate,createdAt,participants,fileSize,isHighlighted,isInbox,status,const DeepCollectionEquality().hash(_tags),audioAvailable,errorMessage,hasSummary,hasTranscription,originalFilename,summary,notes,transcription,audioDuration]);
+int get hashCode => Object.hashAll([runtimeType,id,title,meetingDate,createdAt,participants,fileSize,isHighlighted,isInbox,status,const DeepCollectionEquality().hash(_tags),folderId,folder,audioAvailable,errorMessage,hasSummary,hasTranscription,originalFilename,summary,notes,transcription,audioDuration]);
 
 @override
 String toString() {
-  return 'Recording(id: $id, title: $title, meetingDate: $meetingDate, createdAt: $createdAt, participants: $participants, fileSize: $fileSize, isHighlighted: $isHighlighted, isInbox: $isInbox, status: $status, tags: $tags, audioAvailable: $audioAvailable, errorMessage: $errorMessage, hasSummary: $hasSummary, hasTranscription: $hasTranscription, originalFilename: $originalFilename, summary: $summary, notes: $notes, transcription: $transcription, audioDuration: $audioDuration)';
+  return 'Recording(id: $id, title: $title, meetingDate: $meetingDate, createdAt: $createdAt, participants: $participants, fileSize: $fileSize, isHighlighted: $isHighlighted, isInbox: $isInbox, status: $status, tags: $tags, folderId: $folderId, folder: $folder, audioAvailable: $audioAvailable, errorMessage: $errorMessage, hasSummary: $hasSummary, hasTranscription: $hasTranscription, originalFilename: $originalFilename, summary: $summary, notes: $notes, transcription: $transcription, audioDuration: $audioDuration)';
 }
 
 
@@ -1100,11 +1382,11 @@ abstract mixin class _$RecordingCopyWith<$Res> implements $RecordingCopyWith<$Re
   factory _$RecordingCopyWith(_Recording value, $Res Function(_Recording) _then) = __$RecordingCopyWithImpl;
 @override @useResult
 $Res call({
- int id, String? title,@JsonKey(name: 'meeting_date', fromJson: _parseFlexibleDate) DateTime? meetingDate,@JsonKey(name: 'created_at', fromJson: _parseFlexibleDate) DateTime? createdAt, String? participants,@JsonKey(name: 'file_size') int? fileSize,@JsonKey(name: 'is_highlighted') bool isHighlighted,@JsonKey(name: 'is_inbox') bool isInbox,@JsonKey(fromJson: _parseRecordingStatus) RecordingStatus status, List<Tag> tags,@JsonKey(name: 'audio_available') bool? audioAvailable,@JsonKey(name: 'error_message') String? errorMessage,@JsonKey(name: 'has_summary') bool? hasSummary,@JsonKey(name: 'has_transcription') bool? hasTranscription,@JsonKey(name: 'original_filename') String? originalFilename, String? summary, String? notes, String? transcription,@JsonKey(name: 'audio_duration') double? audioDuration
+ int id, String? title,@JsonKey(name: 'meeting_date', fromJson: _parseFlexibleDate) DateTime? meetingDate,@JsonKey(name: 'created_at', fromJson: _parseFlexibleDate) DateTime? createdAt, String? participants,@JsonKey(name: 'file_size') int? fileSize,@JsonKey(name: 'is_highlighted') bool isHighlighted,@JsonKey(name: 'is_inbox') bool isInbox,@JsonKey(fromJson: _parseRecordingStatus) RecordingStatus status, List<Tag> tags,@JsonKey(name: 'folder_id') int? folderId, Folder? folder,@JsonKey(name: 'audio_available') bool? audioAvailable,@JsonKey(name: 'error_message') String? errorMessage,@JsonKey(name: 'has_summary') bool? hasSummary,@JsonKey(name: 'has_transcription') bool? hasTranscription,@JsonKey(name: 'original_filename') String? originalFilename, String? summary, String? notes, String? transcription,@JsonKey(name: 'audio_duration') double? audioDuration
 });
 
 
-
+@override $FolderCopyWith<$Res>? get folder;
 
 }
 /// @nodoc
@@ -1117,7 +1399,7 @@ class __$RecordingCopyWithImpl<$Res>
 
 /// Create a copy of Recording
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? title = freezed,Object? meetingDate = freezed,Object? createdAt = freezed,Object? participants = freezed,Object? fileSize = freezed,Object? isHighlighted = null,Object? isInbox = null,Object? status = null,Object? tags = null,Object? audioAvailable = freezed,Object? errorMessage = freezed,Object? hasSummary = freezed,Object? hasTranscription = freezed,Object? originalFilename = freezed,Object? summary = freezed,Object? notes = freezed,Object? transcription = freezed,Object? audioDuration = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? title = freezed,Object? meetingDate = freezed,Object? createdAt = freezed,Object? participants = freezed,Object? fileSize = freezed,Object? isHighlighted = null,Object? isInbox = null,Object? status = null,Object? tags = null,Object? folderId = freezed,Object? folder = freezed,Object? audioAvailable = freezed,Object? errorMessage = freezed,Object? hasSummary = freezed,Object? hasTranscription = freezed,Object? originalFilename = freezed,Object? summary = freezed,Object? notes = freezed,Object? transcription = freezed,Object? audioDuration = freezed,}) {
   return _then(_Recording(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as int,title: freezed == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
@@ -1129,7 +1411,9 @@ as int?,isHighlighted: null == isHighlighted ? _self.isHighlighted : isHighlight
 as bool,isInbox: null == isInbox ? _self.isInbox : isInbox // ignore: cast_nullable_to_non_nullable
 as bool,status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
 as RecordingStatus,tags: null == tags ? _self._tags : tags // ignore: cast_nullable_to_non_nullable
-as List<Tag>,audioAvailable: freezed == audioAvailable ? _self.audioAvailable : audioAvailable // ignore: cast_nullable_to_non_nullable
+as List<Tag>,folderId: freezed == folderId ? _self.folderId : folderId // ignore: cast_nullable_to_non_nullable
+as int?,folder: freezed == folder ? _self.folder : folder // ignore: cast_nullable_to_non_nullable
+as Folder?,audioAvailable: freezed == audioAvailable ? _self.audioAvailable : audioAvailable // ignore: cast_nullable_to_non_nullable
 as bool?,errorMessage: freezed == errorMessage ? _self.errorMessage : errorMessage // ignore: cast_nullable_to_non_nullable
 as String?,hasSummary: freezed == hasSummary ? _self.hasSummary : hasSummary // ignore: cast_nullable_to_non_nullable
 as bool?,hasTranscription: freezed == hasTranscription ? _self.hasTranscription : hasTranscription // ignore: cast_nullable_to_non_nullable
@@ -1142,7 +1426,19 @@ as double?,
   ));
 }
 
+/// Create a copy of Recording
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$FolderCopyWith<$Res>? get folder {
+    if (_self.folder == null) {
+    return null;
+  }
 
+  return $FolderCopyWith<$Res>(_self.folder!, (value) {
+    return _then(_self.copyWith(folder: value));
+  });
+}
 }
 
 

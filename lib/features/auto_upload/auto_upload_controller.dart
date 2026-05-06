@@ -96,6 +96,9 @@ class FolderConfigsController {
   Future<void> setTagId(String id, int? tagId) =>
       _patch(id, (c) => c.copyWith(tagId: tagId));
 
+  Future<void> setFolderId(String id, int? folderId) =>
+      _patch(id, (c) => c.copyWith(folderId: folderId));
+
   Future<void> setLanguage(String id, String? lang) =>
       _patch(id, (c) => c.copyWith(language: lang));
 

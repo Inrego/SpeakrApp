@@ -13,6 +13,7 @@ import '../../services/preferences/time_format_providers.dart';
 import '../../theme/colors.dart';
 import '../../theme/typography.dart';
 import '../../utils/formatters.dart';
+import '../../widgets/folder_chip.dart';
 import '../../widgets/mono_eyebrow.dart';
 import '../../widgets/speakr_icons.dart';
 import '../../widgets/status_badge.dart';
@@ -147,6 +148,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
             ),
             _Title(total: totalCount),
             _FilterChips(filter: filter),
+            _FolderFilterRow(filter: filter),
             const SizedBox(height: 8),
             Expanded(
               child: RefreshIndicator(
@@ -300,6 +302,50 @@ class _FilterChips extends ConsumerWidget {
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+class _FolderFilterRow extends ConsumerWidget {
+  const _FolderFilterRow({required this.filter});
+  final LibraryFilter filter;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final foldersAsync = ref.watch(foldersProvider);
+    final folders = foldersAsync.value ?? const <Folder>[];
+    if (folders.isEmpty) return const SizedBox.shrink();
+    final notifier = ref.read(libraryFilterProvider.notifier);
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: SizedBox(
+        height: 32,
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          itemCount: folders.length + 1,
+          separatorBuilder: (_, __) => const SizedBox(width: 6),
+          itemBuilder: (_, i) {
+            if (i == 0) {
+              return FolderFilterChip(
+                label: 'All',
+                color: SpeakrColors.muted,
+                selected: filter.folderId == null,
+                onTap: () => notifier.setFolder(null),
+                showSwatch: false,
+              );
+            }
+            final f = folders[i - 1];
+            return FolderFilterChip(
+              label: f.name,
+              color: parseHexColor(f.color),
+              selected: filter.folderId == f.id,
+              onTap: () => notifier
+                  .setFolder(filter.folderId == f.id ? null : f.id),
+            );
+          },
+        ),
       ),
     );
   }
@@ -652,82 +698,122 @@ class _RecordingTile extends ConsumerWidget {
     final pref = ref.watch(timeFormatPreferenceProvider).asData?.value
         ?? TimeFormatPreference.system;
     final use24 = resolveUse24Hour(pref, context);
+    final folders = ref.watch(foldersProvider).value ?? const <Folder>[];
+    final folder = r.folder;
+    final folderColor = resolveFolderColor(r.folderId, folders);
     return InkWell(
       onTap: enterable ? () => context.push('/recording/${r.id}') : null,
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(24, 14, 24, 14),
-        decoration: const BoxDecoration(
-          border: Border(top: BorderSide(color: SpeakrColors.line)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+      child: Stack(
+        children: [
+          if (folder != null)
+            Positioned(
+              left: 0,
+              top: 0,
+              bottom: 0,
+              child: Container(width: 3, color: folderColor),
+            ),
+          Container(
+            padding: const EdgeInsets.fromLTRB(24, 14, 24, 14),
+            decoration: const BoxDecoration(
+              border: Border(top: BorderSide(color: SpeakrColors.line)),
+            ),
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                if (folder != null) ...[
+                  Row(
                     children: [
-                      Row(
-                        children: [
-                          if (r.isHighlighted)
-                            const Padding(
-                              padding: EdgeInsets.only(right: 6),
-                              child: SpeakrIconView(SpeakrIcon.star, size: 14),
-                            ),
-                          Flexible(
-                            child: Text(
-                              r.title?.isNotEmpty == true
-                                  ? r.title!
-                                  : 'Untitled recording',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: SpeakrText.serif(size: 17, height: 1.25),
-                            ),
-                          ),
-                        ],
+                      Container(
+                        width: 7,
+                        height: 7,
+                        decoration: BoxDecoration(
+                          color: folderColor,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
                       ),
-                      const SizedBox(height: 2),
+                      const SizedBox(width: 6),
                       Text(
-                        _subtitle(time, speakers, use24),
-                        style: SpeakrText.sans(
-                          size: 12,
-                          color: SpeakrColors.muted,
+                        folder.name.toUpperCase(),
+                        style: SpeakrText.mono(
+                          size: 9.5,
+                          color: folderColor,
+                          letterSpacing: 1.4,
                         ),
                       ),
                     ],
                   ),
-                ),
-                if (completed &&
-                    r.audioDuration != null &&
-                    r.audioDuration! > 0) ...[
-                  const SizedBox(width: 10),
-                  Text(
-                    formatDuration(r.audioDuration!),
-                    style: SpeakrText.mono(
-                      size: 11,
-                      color: SpeakrColors.muted,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
+                  const SizedBox(height: 4),
                 ],
-                if (!completed) ...[
-                  const SizedBox(width: 10),
-                  StatusBadge(status: r.status),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              if (r.isHighlighted)
+                                const Padding(
+                                  padding: EdgeInsets.only(right: 6),
+                                  child:
+                                      SpeakrIconView(SpeakrIcon.star, size: 14),
+                                ),
+                              Flexible(
+                                child: Text(
+                                  r.title?.isNotEmpty == true
+                                      ? r.title!
+                                      : 'Untitled recording',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style:
+                                      SpeakrText.serif(size: 17, height: 1.25),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            _subtitle(time, speakers, use24),
+                            style: SpeakrText.sans(
+                              size: 12,
+                              color: SpeakrColors.muted,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (completed &&
+                        r.audioDuration != null &&
+                        r.audioDuration! > 0) ...[
+                      const SizedBox(width: 10),
+                      Text(
+                        formatDuration(r.audioDuration!),
+                        style: SpeakrText.mono(
+                          size: 11,
+                          color: SpeakrColors.muted,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ],
+                    if (!completed) ...[
+                      const SizedBox(width: 10),
+                      StatusBadge(status: r.status),
+                    ],
+                  ],
+                ),
+                if (r.tags.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 4,
+                    runSpacing: 4,
+                    children: r.tags.map((t) => TagChip(tag: t)).toList(),
+                  ),
                 ],
               ],
             ),
-            if (r.tags.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 4,
-                runSpacing: 4,
-                children: r.tags.map((t) => TagChip(tag: t)).toList(),
-              ),
-            ],
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

@@ -14,6 +14,7 @@ class FolderUploadConfig {
     this.customCaptureGroup,
     this.customFormat,
     this.tagId,
+    this.folderId,
     this.language,
     this.minSpeakers,
     this.maxSpeakers,
@@ -40,6 +41,7 @@ class FolderUploadConfig {
       customCaptureGroup: (json['customCaptureGroup'] as num?)?.toInt(),
       customFormat: json['customFormat'] as String?,
       tagId: (json['tagId'] as num?)?.toInt(),
+      folderId: (json['folderId'] as num?)?.toInt(),
       language: json['language'] as String?,
       minSpeakers: (json['minSpeakers'] as num?)?.toInt(),
       maxSpeakers: (json['maxSpeakers'] as num?)?.toInt(),
@@ -64,6 +66,10 @@ class FolderUploadConfig {
   /// Tag id automatically attached to every auto-upload. `null` = no tag.
   final int? tagId;
 
+  /// Speakr folder id every auto-upload from this watched folder is filed
+  /// into. `null` = leave the recording unfiled.
+  final int? folderId;
+
   final String? language;
   final int? minSpeakers;
   final int? maxSpeakers;
@@ -85,6 +91,7 @@ class FolderUploadConfig {
         if (customCaptureGroup != null) 'customCaptureGroup': customCaptureGroup,
         if (customFormat != null) 'customFormat': customFormat,
         if (tagId != null) 'tagId': tagId,
+        if (folderId != null) 'folderId': folderId,
         if (language != null) 'language': language,
         if (minSpeakers != null) 'minSpeakers': minSpeakers,
         if (maxSpeakers != null) 'maxSpeakers': maxSpeakers,
@@ -101,6 +108,7 @@ class FolderUploadConfig {
     Object? customCaptureGroup = _sentinel,
     Object? customFormat = _sentinel,
     Object? tagId = _sentinel,
+    Object? folderId = _sentinel,
     Object? language = _sentinel,
     Object? minSpeakers = _sentinel,
     Object? maxSpeakers = _sentinel,
@@ -125,6 +133,7 @@ class FolderUploadConfig {
           ? this.customFormat
           : customFormat as String?,
       tagId: tagId == _sentinel ? this.tagId : tagId as int?,
+      folderId: folderId == _sentinel ? this.folderId : folderId as int?,
       language: language == _sentinel ? this.language : language as String?,
       minSpeakers: minSpeakers == _sentinel
           ? this.minSpeakers

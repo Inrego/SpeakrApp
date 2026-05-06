@@ -26,6 +26,20 @@ Map<String, dynamic> _$TagToJson(_Tag instance) => <String, dynamic>{
   'default_max_speakers': instance.defaultMaxSpeakers,
 };
 
+_Folder _$FolderFromJson(Map<String, dynamic> json) => _Folder(
+  id: (json['id'] as num).toInt(),
+  name: json['name'] as String,
+  color: json['color'] as String?,
+  recordingCount: (json['recording_count'] as num?)?.toInt(),
+);
+
+Map<String, dynamic> _$FolderToJson(_Folder instance) => <String, dynamic>{
+  'id': instance.id,
+  'name': instance.name,
+  'color': instance.color,
+  'recording_count': instance.recordingCount,
+};
+
 _Speaker _$SpeakerFromJson(Map<String, dynamic> json) => _Speaker(
   id: (json['id'] as num).toInt(),
   name: json['name'] as String,
@@ -77,6 +91,10 @@ _Recording _$RecordingFromJson(Map<String, dynamic> json) => _Recording(
           ?.map((e) => Tag.fromJson(e as Map<String, dynamic>))
           .toList() ??
       const <Tag>[],
+  folderId: (json['folder_id'] as num?)?.toInt(),
+  folder: json['folder'] == null
+      ? null
+      : Folder.fromJson(json['folder'] as Map<String, dynamic>),
   audioAvailable: json['audio_available'] as bool?,
   errorMessage: json['error_message'] as String?,
   hasSummary: json['has_summary'] as bool?,
@@ -100,6 +118,8 @@ Map<String, dynamic> _$RecordingToJson(_Recording instance) =>
       'is_inbox': instance.isInbox,
       'status': _$RecordingStatusEnumMap[instance.status]!,
       'tags': instance.tags,
+      'folder_id': instance.folderId,
+      'folder': instance.folder,
       'audio_available': instance.audioAvailable,
       'error_message': instance.errorMessage,
       'has_summary': instance.hasSummary,

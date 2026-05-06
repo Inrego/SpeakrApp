@@ -266,6 +266,7 @@ Future<_UploadAndDeleteResult> _uploadAndDelete(
       minSpeakers: config.minSpeakers,
       maxSpeakers: config.maxSpeakers,
       tagIds: tagIds,
+      folderId: config.folderId,
       fileLastModified: dt,
     );
   } finally {

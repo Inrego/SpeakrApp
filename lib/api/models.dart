@@ -96,6 +96,22 @@ sealed class Tag with _$Tag {
   factory Tag.fromJson(Map<String, dynamic> json) => _$TagFromJson(json);
 }
 
+// Server-side organizational folder. Each recording belongs to 0 or 1.
+// `/recordings` payloads embed a denormalized stub `{id, name}` only — the
+// color is fetched separately from `/folders` and looked up at render time.
+@freezed
+sealed class Folder with _$Folder {
+  const factory Folder({
+    required int id,
+    required String name,
+    String? color,
+    @JsonKey(name: 'recording_count') int? recordingCount,
+  }) = _Folder;
+
+  factory Folder.fromJson(Map<String, dynamic> json) =>
+      _$FolderFromJson(json);
+}
+
 @freezed
 sealed class Speaker with _$Speaker {
   const factory Speaker({
@@ -142,6 +158,9 @@ sealed class Recording with _$Recording {
     @Default(RecordingStatus.completed)
     RecordingStatus status,
     @Default(<Tag>[]) List<Tag> tags,
+
+    @JsonKey(name: 'folder_id') int? folderId,
+    Folder? folder,
 
     // Returned by the v1 list endpoint.
     @JsonKey(name: 'audio_available') bool? audioAvailable,

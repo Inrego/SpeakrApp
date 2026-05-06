@@ -19,6 +19,7 @@ _RecordingState _$RecordingStateFromJson(Map<String, dynamic> json) =>
               ?.map((e) => e as String)
               .toList() ??
           const <String>[],
+      folderId: (json['folderId'] as num?)?.toInt(),
       miniOpen: json['miniOpen'] as bool? ?? false,
       miniWindowId: (json['miniWindowId'] as num?)?.toInt(),
     );
@@ -32,6 +33,7 @@ Map<String, dynamic> _$RecordingStateToJson(_RecordingState instance) =>
       'error': instance.error,
       'speakers': instance.speakers,
       'activeTags': instance.activeTags,
+      'folderId': instance.folderId,
       'miniOpen': instance.miniOpen,
       'miniWindowId': instance.miniWindowId,
     };
