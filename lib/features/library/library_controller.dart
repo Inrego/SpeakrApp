@@ -39,8 +39,15 @@ final libraryFilterProvider =
   (_) => LibraryFilterNotifier(),
 );
 
+/// Bumped by any code path that mutates the server-side recording set
+/// (uploads, deletions, scans). [libraryRecordingsProvider] watches this
+/// so the list refetches whenever any feature signals "something changed."
+/// Monotonic counter — concurrent bumps cannot collapse.
+final uploadKickProvider = StateProvider<int>((_) => 0);
+
 final libraryRecordingsProvider =
     FutureProvider.autoDispose<RecordingPage>((ref) async {
+  ref.watch(uploadKickProvider);
   final api = ref.watch(speakrApiProvider);
   final f = ref.watch(libraryFilterProvider);
   final statusParam = (f.statusKey == 'all' || f.statusKey == 'highlighted')

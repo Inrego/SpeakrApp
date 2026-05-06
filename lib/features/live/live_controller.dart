@@ -183,7 +183,7 @@ class RecordingController extends StateNotifier<RecordingState> {
           debugPrint('meeting_date PATCH failed for ${recording.id}: $e');
         }
       }
-      _ref.invalidate(libraryRecordingsProvider);
+      _ref.read(uploadKickProvider.notifier).state++;
       try {
         await file.delete();
       } catch (_) {}

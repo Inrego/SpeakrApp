@@ -475,7 +475,7 @@ class _MoreSheet extends ConsumerWidget {
     navigator.pop(); // close the bottom sheet
     try {
       await api.deleteRecording(recording.id);
-      container.invalidate(libraryRecordingsProvider);
+      container.read(uploadKickProvider.notifier).state++;
       container.invalidate(recordingDetailProvider(recording.id));
       if (goRouter.canPop()) goRouter.pop();
       messenger.showSnackBar(

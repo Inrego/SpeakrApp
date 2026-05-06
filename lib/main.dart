@@ -12,6 +12,7 @@ import 'package:workmanager/workmanager.dart';
 import 'app.dart';
 import 'features/auto_upload/auto_upload_worker.dart';
 import 'features/auto_upload/workmanager_callback.dart';
+import 'features/library/library_controller.dart';
 import 'features/live/mini/mini_ipc.dart';
 import 'features/live/mini/mini_recorder_app.dart';
 import 'services/auto_record/auto_record_bootstrap.dart';
@@ -68,20 +69,22 @@ Future<void> main(List<String> args) async {
       );
     }
 
-    if (!kIsWeb &&
-        (Platform.isWindows || Platform.isLinux || Platform.isMacOS)) {
-      // No WorkManager on desktop — run a foreground polling loop. The
-      // worker bails internally when the feature is disabled, so this is
-      // cheap when not configured.
-      Timer.periodic(const Duration(minutes: 5), (_) {
-        runAutoUploadScan(trigger: 'desktop_timer');
-      });
-    }
-
     // Build the provider container ourselves so the auto-record bootstrap
     // and the UI share state. Without this, ProviderScope would create
     // its own container and the bootstrap couldn't reach into it.
     final container = ProviderContainer();
+
+    if (!kIsWeb &&
+        (Platform.isWindows || Platform.isLinux || Platform.isMacOS)) {
+      // No WorkManager on desktop — run a foreground polling loop. The
+      // worker bails internally when the feature is disabled, so this is
+      // cheap when not configured. After each scan, bump the kick so the
+      // Library list reflects any uploads/deletions promptly.
+      Timer.periodic(const Duration(minutes: 5), (_) async {
+        await runAutoUploadScan(trigger: 'desktop_timer');
+        container.read(uploadKickProvider.notifier).state++;
+      });
+    }
 
     if (!kIsWeb && Platform.isWindows) {
       // Fire and forget — the bootstrap is only relevant on Windows and
