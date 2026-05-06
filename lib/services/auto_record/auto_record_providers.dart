@@ -71,6 +71,31 @@ class AutoRecordSettingsController {
     await _write(s.copyWith(allowlist: next));
   }
 
+  /// Update the per-app overrides on an existing allowlist entry. Identity
+  /// is matched on (key, kind) (i.e. `entry == old`); other fields are
+  /// taken from [speakers] / [tagIds]. Pass `clearSpeakers: true` to wipe
+  /// the override (revert to global default); pass an empty list to
+  /// [tagIds] to revert tags. No-op if the entry isn't in the allowlist.
+  Future<void> setEntryOverrides(
+    AllowlistEntry entry, {
+    int? speakers,
+    bool clearSpeakers = false,
+    List<int>? tagIds,
+  }) async {
+    final s = await _read();
+    final next = <AllowlistEntry>[
+      for (final e in s.allowlist)
+        if (e == entry)
+          e.copyWith(
+            speakers: clearSpeakers ? null : (speakers ?? e.speakers),
+            tagIds: tagIds ?? e.tagIds,
+          )
+        else
+          e,
+    ];
+    await _write(s.copyWith(allowlist: next));
+  }
+
   Future<void> setSilenceSeconds(int v) async {
     final s = await _read();
     await _write(s.copyWith(silenceSeconds: v.clamp(3, 120)));

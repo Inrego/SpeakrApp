@@ -4,6 +4,7 @@ import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../features/library/library_controller.dart';
 import '../../features/live/live_controller.dart';
 import 'auto_record_coordinator.dart';
 import 'auto_record_providers.dart';
@@ -35,6 +36,12 @@ class AutoRecordBootstrap {
       final monitor = container.read(micMonitorProvider);
       final meter = container.read(outputMeterProvider);
       final recording = container.read(recordingControllerProvider.notifier);
+      // Pre-warm the server tag list so per-app/global tag-ID overrides
+      // can be resolved to names by the time mic activity actually fires
+      // applyTriggerMetadata. Fire-and-forget — failures here just mean
+      // the first auto-recording shows nothing in `activeTags` until the
+      // user opens the live screen.
+      container.read(tagsProvider.future).ignore();
 
       final coordinator = AutoRecordCoordinator(
         micMonitor: monitor,
@@ -46,6 +53,20 @@ class AutoRecordBootstrap {
         store: store,
         onSettingsChanged: () =>
             container.invalidate(autoRecordSettingsProvider),
+        applyTriggerMetadata: ({required speakers, required tagIds}) {
+          recording.setSpeakers(speakers);
+          // Resolve tag IDs to names against the cached server tag list.
+          // If `tagsProvider` hasn't loaded yet (rare; usually warm by
+          // the time mic activity is detected), apply what we can — the
+          // user can always edit before stopping.
+          final knownTags = container.read(tagsProvider).value ?? const [];
+          final names = <String>[
+            for (final id in tagIds)
+              for (final t in knownTags)
+                if (t.id == id) t.name,
+          ];
+          recording.setActiveTags(names);
+        },
       );
       coordinator.start();
       _instance = AutoRecordBootstrap._(coordinator);

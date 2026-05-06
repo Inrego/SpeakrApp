@@ -39,6 +39,7 @@ class AutoRecordCoordinator {
     required this.cancelRecording,
     required this.store,
     required this.onSettingsChanged,
+    this.applyTriggerMetadata,
   });
 
   final MicMonitor micMonitor;
@@ -57,6 +58,17 @@ class AutoRecordCoordinator {
   final Future<void> Function() cancelRecording;
 
   final AutoRecordSettingsStore store;
+
+  /// Optional bridge into the recording controller used to seed the live
+  /// session's speaker count and tags from the matched allowlist entry
+  /// (with per-app overrides) or, when an entry has no override, from
+  /// [AutoRecordSettings.defaultSpeakers] / [AutoRecordSettings.defaultTagIds].
+  ///
+  /// Tag IDs are resolved to display names by the bootstrap (which has
+  /// access to `tagsProvider`); the coordinator hands the resolved IDs
+  /// over and lets the closure do the lookup.
+  final void Function({required int speakers, required List<int> tagIds})?
+      applyTriggerMetadata;
 
   /// Latest state from [recording], mirrored here so the coordinator
   /// can read it synchronously (the underlying [StateNotifier.state]
@@ -321,6 +333,17 @@ class AutoRecordCoordinator {
       _activeTriggerLabel = null;
       return;
     }
+
+    // Seed speakers + tags from the entry's per-app overrides, falling
+    // back to the global defaults. Re-read the store here so we pick up
+    // the freshest values (in case the user just edited them).
+    final settings = store.read();
+    final speakers = entry.speakers ?? settings.defaultSpeakers;
+    final tagIds = entry.tagIds.isNotEmpty
+        ? List<int>.unmodifiable(entry.tagIds)
+        : List<int>.unmodifiable(settings.defaultTagIds);
+    applyTriggerMetadata?.call(speakers: speakers, tagIds: tagIds);
+
     await store.recordLastTrigger(entry.displayName);
   }
 
