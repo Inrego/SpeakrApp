@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -26,19 +28,92 @@ class LibraryScreen extends ConsumerStatefulWidget {
   ConsumerState<LibraryScreen> createState() => _LibraryScreenState();
 }
 
-class _LibraryScreenState extends ConsumerState<LibraryScreen> {
+class _LibraryScreenState extends ConsumerState<LibraryScreen>
+    with WidgetsBindingObserver {
   bool _searching = false;
   final _searchCtrl = TextEditingController();
+  Timer? _pollTimer;
+  int _lastSeenScanMs = 0;
+
+  static const _pollInterval = Duration(seconds: 5);
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _pollTimer?.cancel();
+    _pollTimer = null;
     _searchCtrl.dispose();
     super.dispose();
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _onAppResumed();
+    } else {
+      // Defensive: Windows desktop's lifecycle signals are spotty, so cancel
+      // on anything that isn't an explicit resume.
+      _pollTimer?.cancel();
+      _pollTimer = null;
+    }
+  }
+
+  void _onAppResumed() {
+    if (!mounted) return;
+    ref.invalidate(pendingFilesProvider);
+    ref.invalidate(pendingFileErrorsProvider);
+    ref.read(uploadKickProvider.notifier).state++;
+    // _evaluatePolling will run on the rebuild caused by the kick.
+  }
+
+  /// Called from build with the latest items snapshot. Starts a 5s timer
+  /// when anything is in flight and cancels it when nothing is.
+  void _evaluatePolling(List<LibraryItem>? items) {
+    final inFlight = items != null &&
+        items.any((it) =>
+            it is PendingLibraryItem ||
+            (it is RemoteLibraryItem && it.recording.status.isInProgress));
+    if (inFlight && _pollTimer == null) {
+      _pollTimer = Timer.periodic(_pollInterval, (_) => _tick());
+    } else if (!inFlight && _pollTimer != null) {
+      _pollTimer!.cancel();
+      _pollTimer = null;
+    }
+  }
+
+  Future<void> _tick() async {
+    if (!mounted) return;
+    try {
+      final store = await ref.read(autoUploadStoreProvider.future);
+      await store.reload();
+      final scanMs = store.lastScanAt?.millisecondsSinceEpoch ?? 0;
+      if (scanMs > _lastSeenScanMs) _lastSeenScanMs = scanMs;
+    } catch (_) {
+      // Auto-upload store unavailable — still refresh the recordings list.
+    }
+    if (!mounted) return;
+    ref.invalidate(pendingFilesProvider);
+    ref.invalidate(pendingFileErrorsProvider);
+    ref.read(uploadKickProvider.notifier).state++;
+  }
+
+  Future<void> _refreshNow() async {
+    ref.invalidate(pendingFilesProvider);
+    ref.invalidate(pendingFileErrorsProvider);
+    ref.read(uploadKickProvider.notifier).state++;
+    await ref.read(libraryItemsProvider.future);
+  }
+
+  @override
   Widget build(BuildContext context) {
     final asyncItems = ref.watch(libraryItemsProvider);
+    _evaluatePolling(asyncItems.value);
     final filter = ref.watch(libraryFilterProvider);
     final totalCount = asyncItems.value?.length ?? 0;
     final recording = ref.watch(recordingControllerProvider);
@@ -73,12 +148,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
             Expanded(
               child: RefreshIndicator(
                 color: SpeakrColors.ink,
-                onRefresh: () async {
-                  ref.invalidate(pendingFilesProvider);
-                  ref.invalidate(pendingFileErrorsProvider);
-                  ref.invalidate(libraryRecordingsProvider);
-                  await ref.read(libraryItemsProvider.future);
-                },
+                onRefresh: _refreshNow,
                 child: asyncItems.when(
                   loading: () => const _Loading(),
                   error: (e, _) => _ErrorView(
@@ -322,7 +392,7 @@ class _PendingTileState extends ConsumerState<_PendingTile> {
       }
       ref.invalidate(pendingFilesProvider);
       ref.invalidate(pendingFileErrorsProvider);
-      ref.invalidate(libraryRecordingsProvider);
+      ref.read(uploadKickProvider.notifier).state++;
       if (mounted && fileStillExists) {
         setState(() {
           _uploading = false;

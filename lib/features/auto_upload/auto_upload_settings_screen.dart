@@ -85,7 +85,7 @@ class _AutoUploadSettingsScreenState
       ref.invalidate(folderConfigsProvider);
       ref.invalidate(pendingFilesProvider);
       ref.invalidate(pendingFileErrorsProvider);
-      ref.invalidate(libraryRecordingsProvider);
+      ref.read(uploadKickProvider.notifier).state++;
     } finally {
       if (mounted) setState(() => _scanning = false);
     }
