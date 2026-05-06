@@ -27,6 +27,7 @@ enum SpeakrIcon {
   minimize,
   trash,
   pip,
+  refresh,
 }
 
 class SpeakrIconView extends StatelessWidget {
@@ -238,6 +239,34 @@ class _IconPainter extends CustomPainter {
           ),
           fill,
         );
+        break;
+      case SpeakrIcon.refresh:
+        // Open arc with a chevron arrowhead at one end — classic refresh glyph.
+        const cx = 10.0;
+        const cy = 10.0;
+        const r = 6.0;
+        final startAngle = -math.pi / 2 + 0.35;
+        const sweep = math.pi * 1.7;
+        canvas.drawArc(
+          Rect.fromCircle(center: const Offset(cx, cy), radius: r),
+          startAngle,
+          sweep,
+          false,
+          stroke,
+        );
+        final sx = cx + r * math.cos(startAngle);
+        final sy = cy + r * math.sin(startAngle);
+        // Tangent backward from the start (points toward the gap), and radial outward.
+        final tBackX = math.sin(startAngle);
+        final tBackY = -math.cos(startAngle);
+        final radX = math.cos(startAngle);
+        final radY = math.sin(startAngle);
+        const ah = 2.6;
+        final tip = Offset(sx + tBackX * ah, sy + tBackY * ah);
+        final wingOuter = Offset(sx + radX * ah * 0.55, sy + radY * ah * 0.55);
+        final wingInner = Offset(sx - radX * ah * 0.55, sy - radY * ah * 0.55);
+        canvas.drawLine(tip, wingOuter, stroke);
+        canvas.drawLine(tip, wingInner, stroke);
         break;
       case SpeakrIcon.trash:
         // Lid
