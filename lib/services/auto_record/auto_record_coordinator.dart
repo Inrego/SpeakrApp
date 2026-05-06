@@ -67,8 +67,11 @@ class AutoRecordCoordinator {
   /// Tag IDs are resolved to display names by the bootstrap (which has
   /// access to `tagsProvider`); the coordinator hands the resolved IDs
   /// over and lets the closure do the lookup.
-  final void Function({required int speakers, required List<int> tagIds})?
-      applyTriggerMetadata;
+  final void Function({
+    required int speakers,
+    required List<int> tagIds,
+    required int? folderId,
+  })? applyTriggerMetadata;
 
   /// Latest state from [recording], mirrored here so the coordinator
   /// can read it synchronously (the underlying [StateNotifier.state]
@@ -342,7 +345,12 @@ class AutoRecordCoordinator {
     final tagIds = entry.tagIds.isNotEmpty
         ? List<int>.unmodifiable(entry.tagIds)
         : List<int>.unmodifiable(settings.defaultTagIds);
-    applyTriggerMetadata?.call(speakers: speakers, tagIds: tagIds);
+    final folderId = entry.folderId ?? settings.defaultFolderId;
+    applyTriggerMetadata?.call(
+      speakers: speakers,
+      tagIds: tagIds,
+      folderId: folderId,
+    );
 
     await store.recordLastTrigger(entry.displayName);
   }

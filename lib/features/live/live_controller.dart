@@ -171,6 +171,7 @@ class RecordingController extends StateNotifier<RecordingState> {
         minSpeakers: state.speakers,
         maxSpeakers: state.speakers,
         tagIds: tagIds,
+        folderId: state.folderId,
         fileLastModified: stat.modified,
       );
       final startedAt = _recordingStartedAt;
@@ -220,6 +221,10 @@ class RecordingController extends StateNotifier<RecordingState> {
 
   void setSpeakers(int v) {
     state = state.copyWith(speakers: v.clamp(1, 12));
+  }
+
+  void setFolder(int? id) {
+    state = state.copyWith(folderId: id);
   }
 
   void toggleTag(String name) {

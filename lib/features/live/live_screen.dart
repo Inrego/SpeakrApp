@@ -6,10 +6,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../api/models.dart';
 import '../../theme/colors.dart';
 import '../../theme/typography.dart';
 import '../../widgets/mono_eyebrow.dart';
 import '../../widgets/speakr_icons.dart';
+import '../library/library_controller.dart';
 import 'live_controller.dart';
 import 'widgets/recording_widgets.dart';
 
@@ -22,6 +24,7 @@ class LiveScreen extends ConsumerStatefulWidget {
 
 class _LiveScreenState extends ConsumerState<LiveScreen> {
   bool _tagPickerOpen = false;
+  bool _folderPickerOpen = false;
   final _newTagCtrl = TextEditingController();
   StreamSubscription<RecordingNav>? _navSub;
 
@@ -154,6 +157,12 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
                 controller.addCustomTag(v);
                 _newTagCtrl.clear();
               },
+              folders: ref.watch(foldersProvider).value ?? const <Folder>[],
+              folderId: state.folderId,
+              folderPickerOpen: _folderPickerOpen,
+              onToggleFolderEdit: () =>
+                  setState(() => _folderPickerOpen = !_folderPickerOpen),
+              onFolderChanged: controller.setFolder,
             ),
             RecordingControls(
               paused: state.paused,

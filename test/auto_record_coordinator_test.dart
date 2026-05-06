@@ -127,7 +127,8 @@ void main() {
       cancelRecording: rec.cancel,
       store: store,
       onSettingsChanged: () => settingsChangedCalls++,
-      applyTriggerMetadata: ({required speakers, required tagIds}) {
+      applyTriggerMetadata: (
+          {required speakers, required tagIds, required folderId}) {
         appliedSpeakers = speakers;
         appliedTagIds = List<int>.from(tagIds);
         applyCallCount++;
@@ -485,7 +486,8 @@ void main() {
       cancelRecording: failing.cancel,
       store: store,
       onSettingsChanged: () {},
-      applyTriggerMetadata: ({required speakers, required tagIds}) {
+      applyTriggerMetadata: (
+          {required speakers, required tagIds, required folderId}) {
         applyCallCount++;
       },
     );

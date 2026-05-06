@@ -17,6 +17,7 @@ sealed class RecordingState with _$RecordingState {
     String? error,
     @Default(2) int speakers,
     @Default(<String>[]) List<String> activeTags,
+    int? folderId,
     @Default(false) bool miniOpen,
     int? miniWindowId,
   }) = _RecordingState;

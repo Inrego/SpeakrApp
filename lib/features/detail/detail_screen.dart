@@ -12,6 +12,7 @@ import '../../services/credentials_store.dart';
 import '../../theme/colors.dart';
 import '../../theme/typography.dart';
 import '../../utils/formatters.dart';
+import '../../widgets/folder_chip.dart';
 import '../../widgets/mono_eyebrow.dart';
 import '../../widgets/speakr_icons.dart';
 import '../../widgets/tag_chip.dart';
@@ -115,7 +116,7 @@ class _DetailScreenState extends ConsumerState<DetailScreen> {
   }
 }
 
-class _DetailBody extends StatelessWidget {
+class _DetailBody extends ConsumerWidget {
   const _DetailBody({
     required this.recording,
     required this.tab,
@@ -130,7 +131,15 @@ class _DetailBody extends StatelessWidget {
   final bool audioReady;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final folder = recording.folder;
+    final folderColor = folder == null
+        ? SpeakrColors.muted
+        : resolveFolderColor(
+            recording.folderId,
+            ref.watch(foldersProvider).value ?? const <Folder>[],
+          );
+    final hasHeaderChips = folder != null || recording.tags.isNotEmpty;
     return Column(
       children: [
         _TopBar(
@@ -145,14 +154,17 @@ class _DetailBody extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (recording.tags.isNotEmpty)
+              if (hasHeaderChips)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 8),
                   child: Wrap(
                     spacing: 4,
                     runSpacing: 4,
-                    children:
-                        recording.tags.map((t) => TagChip(tag: t)).toList(),
+                    children: [
+                      if (folder != null)
+                        FolderChip(label: folder.name, color: folderColor),
+                      ...recording.tags.map((t) => TagChip(tag: t)),
+                    ],
                   ),
                 ),
               Text(

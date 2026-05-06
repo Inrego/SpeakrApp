@@ -6,19 +6,23 @@ import '../../api/providers.dart';
 import '../auto_upload/auto_upload_controller.dart';
 
 class LibraryFilter {
-  const LibraryFilter({this.statusKey = 'all', this.tagId, this.query});
+  const LibraryFilter(
+      {this.statusKey = 'all', this.tagId, this.folderId, this.query});
   final String statusKey; // all | pending | processing | completed | failed | highlighted
   final int? tagId;
+  final int? folderId;
   final String? query;
 
   LibraryFilter copyWith({
     String? statusKey,
     int? Function()? tagId,
+    int? Function()? folderId,
     String? Function()? query,
   }) =>
       LibraryFilter(
         statusKey: statusKey ?? this.statusKey,
         tagId: tagId == null ? this.tagId : tagId(),
+        folderId: folderId == null ? this.folderId : folderId(),
         query: query == null ? this.query : query(),
       );
 }
@@ -28,6 +32,7 @@ class LibraryFilterNotifier extends StateNotifier<LibraryFilter> {
 
   void setStatus(String key) => state = state.copyWith(statusKey: key);
   void setTag(int? id) => state = state.copyWith(tagId: () => id);
+  void setFolder(int? id) => state = state.copyWith(folderId: () => id);
   void setQuery(String? q) {
     final v = (q == null || q.isEmpty) ? null : q;
     state = state.copyWith(query: () => v);
@@ -51,6 +56,7 @@ final libraryRecordingsProvider =
     perPage: 50,
     status: statusParam,
     tagId: f.tagId,
+    folderId: f.folderId,
     query: f.query,
   );
   if (f.statusKey == 'highlighted') {
@@ -67,6 +73,10 @@ final libraryRecordingsProvider =
 
 final tagsProvider = FutureProvider<List<Tag>>((ref) async {
   return ref.watch(speakrApiProvider).listTags();
+});
+
+final foldersProvider = FutureProvider<List<Folder>>((ref) async {
+  return ref.watch(speakrApiProvider).listFolders();
 });
 
 /// One item in the merged Library list — either a server-side recording

@@ -53,7 +53,8 @@ class AutoRecordBootstrap {
         store: store,
         onSettingsChanged: () =>
             container.invalidate(autoRecordSettingsProvider),
-        applyTriggerMetadata: ({required speakers, required tagIds}) {
+        applyTriggerMetadata: (
+            {required speakers, required tagIds, required folderId}) {
           recording.setSpeakers(speakers);
           // Resolve tag IDs to names against the cached server tag list.
           // If `tagsProvider` hasn't loaded yet (rare; usually warm by
@@ -66,6 +67,7 @@ class AutoRecordBootstrap {
                 if (t.id == id) t.name,
           ];
           recording.setActiveTags(names);
+          recording.setFolder(folderId);
         },
       );
       coordinator.start();

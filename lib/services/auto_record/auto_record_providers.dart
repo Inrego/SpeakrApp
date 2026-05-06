@@ -81,6 +81,8 @@ class AutoRecordSettingsController {
     int? speakers,
     bool clearSpeakers = false,
     List<int>? tagIds,
+    int? folderId,
+    bool clearFolder = false,
   }) async {
     final s = await _read();
     final next = <AllowlistEntry>[
@@ -89,6 +91,7 @@ class AutoRecordSettingsController {
           e.copyWith(
             speakers: clearSpeakers ? null : (speakers ?? e.speakers),
             tagIds: tagIds ?? e.tagIds,
+            folderId: clearFolder ? null : (folderId ?? e.folderId),
           )
         else
           e,
@@ -114,6 +117,11 @@ class AutoRecordSettingsController {
   Future<void> setDefaultTagIds(List<int> ids) async {
     final s = await _read();
     await _write(s.copyWith(defaultTagIds: ids));
+  }
+
+  Future<void> setDefaultFolderId(int? id) async {
+    final s = await _read();
+    await _write(s.copyWith(defaultFolderId: id));
   }
 
   Future<void> clearRecentlySeen() async {

@@ -20,6 +20,7 @@ class AllowlistEntry {
     required this.kind,
     this.speakers,
     this.tagIds = const [],
+    this.folderId,
   });
 
   /// The match value: an exe basename or an MSIX family prefix. Stored
@@ -39,12 +40,17 @@ class AllowlistEntry {
   /// Empty means use [AutoRecordSettings.defaultTagIds].
   final List<int> tagIds;
 
+  /// Per-app Speakr folder id to file recordings triggered by this app
+  /// into. `null` means use [AutoRecordSettings.defaultFolderId].
+  final int? folderId;
+
   AllowlistEntry copyWith({
     String? key,
     String? displayName,
     AllowlistKind? kind,
     Object? speakers = _sentinel,
     List<int>? tagIds,
+    Object? folderId = _sentinel,
   }) {
     return AllowlistEntry(
       key: key ?? this.key,
@@ -52,6 +58,7 @@ class AllowlistEntry {
       kind: kind ?? this.kind,
       speakers: identical(speakers, _sentinel) ? this.speakers : speakers as int?,
       tagIds: tagIds ?? this.tagIds,
+      folderId: identical(folderId, _sentinel) ? this.folderId : folderId as int?,
     );
   }
 
@@ -61,6 +68,7 @@ class AllowlistEntry {
         'kind': kind.name,
         if (speakers != null) 'speakers': speakers,
         if (tagIds.isNotEmpty) 'tagIds': tagIds,
+        if (folderId != null) 'folderId': folderId,
       };
 
   factory AllowlistEntry.fromJson(Map<String, dynamic> json) {
@@ -78,6 +86,7 @@ class AllowlistEntry {
           .whereType<num>()
           .map((n) => n.toInt())
           .toList(growable: false),
+      folderId: (json['folderId'] as num?)?.toInt(),
     );
   }
 
@@ -145,6 +154,7 @@ class AutoRecordSettings {
     this.minKeepSeconds = 10,
     this.defaultSpeakers = 2,
     this.defaultTagIds = const [],
+    this.defaultFolderId,
   });
 
   final bool enabled;
@@ -162,6 +172,7 @@ class AutoRecordSettings {
 
   final int defaultSpeakers;
   final List<int> defaultTagIds;
+  final int? defaultFolderId;
 
   AutoRecordSettings copyWith({
     bool? enabled,
@@ -171,6 +182,7 @@ class AutoRecordSettings {
     int? minKeepSeconds,
     int? defaultSpeakers,
     List<int>? defaultTagIds,
+    Object? defaultFolderId = _sentinel,
   }) {
     return AutoRecordSettings(
       enabled: enabled ?? this.enabled,
@@ -180,6 +192,9 @@ class AutoRecordSettings {
       minKeepSeconds: minKeepSeconds ?? this.minKeepSeconds,
       defaultSpeakers: defaultSpeakers ?? this.defaultSpeakers,
       defaultTagIds: defaultTagIds ?? this.defaultTagIds,
+      defaultFolderId: identical(defaultFolderId, _sentinel)
+          ? this.defaultFolderId
+          : defaultFolderId as int?,
     );
   }
 
@@ -191,6 +206,7 @@ class AutoRecordSettings {
         'minKeepSeconds': minKeepSeconds,
         'defaultSpeakers': defaultSpeakers,
         'defaultTagIds': defaultTagIds,
+        if (defaultFolderId != null) 'defaultFolderId': defaultFolderId,
       };
 
   factory AutoRecordSettings.fromJson(Map<String, dynamic> json) {
@@ -211,6 +227,7 @@ class AutoRecordSettings {
           .whereType<num>()
           .map((n) => n.toInt())
           .toList(growable: false),
+      defaultFolderId: (json['defaultFolderId'] as num?)?.toInt(),
     );
   }
 }
