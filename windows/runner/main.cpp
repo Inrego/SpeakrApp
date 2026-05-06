@@ -22,6 +22,19 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   std::vector<std::string> command_line_arguments =
       GetCommandLineArguments();
 
+  // `--hidden` is consumed natively (auto-start launches use it to skip the
+  // initial window Show()) and not forwarded to Dart.
+  bool start_hidden = false;
+  for (auto it = command_line_arguments.begin();
+       it != command_line_arguments.end();) {
+    if (*it == "--hidden") {
+      start_hidden = true;
+      it = command_line_arguments.erase(it);
+    } else {
+      ++it;
+    }
+  }
+
   project.set_dart_entrypoint_arguments(std::move(command_line_arguments));
 
   // Single-instance guard. The mini recorder runs as a secondary Flutter
@@ -56,7 +69,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
     return EXIT_SUCCESS;
   }
 
-  FlutterWindow window(project);
+  FlutterWindow window(project, start_hidden);
   Win32Window::Point origin(10, 10);
   Win32Window::Size size(1280, 720);
   if (!window.Create(L"speakr_app", origin, size)) {
