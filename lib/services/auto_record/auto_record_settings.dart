@@ -18,6 +18,8 @@ class AllowlistEntry {
     required this.key,
     required this.displayName,
     required this.kind,
+    this.speakers,
+    this.tagIds = const [],
   });
 
   /// The match value: an exe basename or an MSIX family prefix. Stored
@@ -29,10 +31,36 @@ class AllowlistEntry {
 
   final AllowlistKind kind;
 
+  /// Per-app speaker count override. `null` means use
+  /// [AutoRecordSettings.defaultSpeakers].
+  final int? speakers;
+
+  /// Per-app tag IDs to attach to recordings triggered by this app.
+  /// Empty means use [AutoRecordSettings.defaultTagIds].
+  final List<int> tagIds;
+
+  AllowlistEntry copyWith({
+    String? key,
+    String? displayName,
+    AllowlistKind? kind,
+    Object? speakers = _sentinel,
+    List<int>? tagIds,
+  }) {
+    return AllowlistEntry(
+      key: key ?? this.key,
+      displayName: displayName ?? this.displayName,
+      kind: kind ?? this.kind,
+      speakers: identical(speakers, _sentinel) ? this.speakers : speakers as int?,
+      tagIds: tagIds ?? this.tagIds,
+    );
+  }
+
   Map<String, dynamic> toJson() => {
         'key': key,
         'displayName': displayName,
         'kind': kind.name,
+        if (speakers != null) 'speakers': speakers,
+        if (tagIds.isNotEmpty) 'tagIds': tagIds,
       };
 
   factory AllowlistEntry.fromJson(Map<String, dynamic> json) {
@@ -45,6 +73,11 @@ class AllowlistEntry {
       key: (json['key'] as String?) ?? '',
       displayName: (json['displayName'] as String?) ?? (json['key'] as String? ?? ''),
       kind: kind,
+      speakers: (json['speakers'] as num?)?.toInt(),
+      tagIds: (json['tagIds'] as List? ?? const [])
+          .whereType<num>()
+          .map((n) => n.toInt())
+          .toList(growable: false),
     );
   }
 
@@ -59,6 +92,8 @@ class AllowlistEntry {
   @override
   int get hashCode => Object.hash(key.toLowerCase(), kind);
 }
+
+const Object _sentinel = Object();
 
 @immutable
 class RecentlySeenEntry {

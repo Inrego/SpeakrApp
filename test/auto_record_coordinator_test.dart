@@ -104,10 +104,16 @@ void main() {
   late AutoRecordSettingsStore store;
   late AutoRecordCoordinator coord;
   int settingsChangedCalls = 0;
+  int? appliedSpeakers;
+  List<int>? appliedTagIds;
+  int applyCallCount = 0;
 
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
     settingsChangedCalls = 0;
+    appliedSpeakers = null;
+    appliedTagIds = null;
+    applyCallCount = 0;
     mic = FakeMicMonitor();
     meter = FakeOutputMeter();
     rec = FakeRecordingController();
@@ -121,6 +127,11 @@ void main() {
       cancelRecording: rec.cancel,
       store: store,
       onSettingsChanged: () => settingsChangedCalls++,
+      applyTriggerMetadata: ({required speakers, required tagIds}) {
+        appliedSpeakers = speakers;
+        appliedTagIds = List<int>.from(tagIds);
+        applyCallCount++;
+      },
     );
     coord.start();
   });
@@ -378,4 +389,143 @@ void main() {
     expect(rec.stoppedCalled, isTrue);
     expect(rec.cancelCalled, isFalse);
   });
+
+  test('applies per-app speakers override when entry has one', () async {
+    await store.write(const AutoRecordSettings(
+      enabled: true,
+      defaultSpeakers: 2,
+      allowlist: [
+        AllowlistEntry(
+          key: 'Teams.exe',
+          displayName: 'Teams',
+          kind: AllowlistKind.exeBasename,
+          speakers: 5,
+        ),
+      ],
+    ));
+    mic.emit([
+      _u(key: 'Teams.exe', kind: AllowlistKind.exeBasename, inUse: true),
+    ]);
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+    expect(appliedSpeakers, 5);
+    expect(appliedTagIds, isEmpty);
+  });
+
+  test('applies per-app tag IDs override when entry has them', () async {
+    await store.write(const AutoRecordSettings(
+      enabled: true,
+      defaultTagIds: [99],
+      allowlist: [
+        AllowlistEntry(
+          key: 'Teams.exe',
+          displayName: 'Teams',
+          kind: AllowlistKind.exeBasename,
+          tagIds: [3, 7],
+        ),
+      ],
+    ));
+    mic.emit([
+      _u(key: 'Teams.exe', kind: AllowlistKind.exeBasename, inUse: true),
+    ]);
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+    expect(appliedTagIds, [3, 7]);
+  });
+
+  test('falls back to defaultSpeakers when entry has no override', () async {
+    await store.write(const AutoRecordSettings(
+      enabled: true,
+      defaultSpeakers: 4,
+      allowlist: [
+        AllowlistEntry(
+          key: 'Teams.exe',
+          displayName: 'Teams',
+          kind: AllowlistKind.exeBasename,
+        ),
+      ],
+    ));
+    mic.emit([
+      _u(key: 'Teams.exe', kind: AllowlistKind.exeBasename, inUse: true),
+    ]);
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+    expect(appliedSpeakers, 4);
+  });
+
+  test('falls back to defaultTagIds when entry has no override', () async {
+    await store.write(const AutoRecordSettings(
+      enabled: true,
+      defaultTagIds: [11, 22],
+      allowlist: [
+        AllowlistEntry(
+          key: 'Teams.exe',
+          displayName: 'Teams',
+          kind: AllowlistKind.exeBasename,
+        ),
+      ],
+    ));
+    mic.emit([
+      _u(key: 'Teams.exe', kind: AllowlistKind.exeBasename, inUse: true),
+    ]);
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+    expect(appliedTagIds, [11, 22]);
+  });
+
+  test('does not apply metadata if startRecording fails to start', () async {
+    // Replace the setUp coordinator with one wired to a failing controller —
+    // start() leaves `started: false`. Disposing the original first
+    // ensures only the failing path observes the mic event.
+    await coord.dispose();
+
+    final failing = _FailingRecordingController();
+    final coord2 = AutoRecordCoordinator(
+      micMonitor: mic,
+      outputMeter: meter,
+      recording: failing,
+      startRecording: failing.start,
+      stopAndUpload: failing.stopAndUpload,
+      cancelRecording: failing.cancel,
+      store: store,
+      onSettingsChanged: () {},
+      applyTriggerMetadata: ({required speakers, required tagIds}) {
+        applyCallCount++;
+      },
+    );
+    coord2.start();
+    // Replace `coord` so the outer tearDown disposes the live one (the
+    // failed-over `_FailingRecordingController` has no resources to clean
+    // up beyond the coordinator subscription itself).
+    coord = coord2;
+
+    await store.write(const AutoRecordSettings(
+      enabled: true,
+      defaultSpeakers: 3,
+      allowlist: [
+        AllowlistEntry(
+          key: 'Teams.exe',
+          displayName: 'Teams',
+          kind: AllowlistKind.exeBasename,
+          speakers: 5,
+        ),
+      ],
+    ));
+    mic.emit([
+      _u(key: 'Teams.exe', kind: AllowlistKind.exeBasename, inUse: true),
+    ]);
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+    expect(applyCallCount, 0);
+  });
+}
+
+/// A controller whose start() *appears* to succeed but never sets
+/// `started: true` — mirrors the real "permission denied / recorder
+/// error" path. Used to verify we don't seed metadata into a bogus
+/// session.
+class _FailingRecordingController extends StateNotifier<RecordingState> {
+  _FailingRecordingController() : super(const RecordingState());
+
+  Future<void> start() async {
+    // Simulate failure: don't flip `started`.
+  }
+
+  Future<void> stopAndUpload() async {}
+  Future<void> cancel() async {}
 }

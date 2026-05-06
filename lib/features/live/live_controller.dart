@@ -239,6 +239,10 @@ class RecordingController extends StateNotifier<RecordingState> {
     state = state.copyWith(activeTags: [...state.activeTags, v]);
   }
 
+  void setActiveTags(List<String> names) {
+    state = state.copyWith(activeTags: List.unmodifiable(names));
+  }
+
   // ---------------- Mini window lifecycle ----------------
 
   /// Hide the mini-window without touching the recorder. Recording, ticker
