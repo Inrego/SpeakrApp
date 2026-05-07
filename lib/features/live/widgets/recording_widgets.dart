@@ -430,18 +430,19 @@ class RecordingControls extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final mainSize = compact ? 60.0 : 84.0;
-    final ghostSize = compact ? 44.0 : 56.0;
     final iconSize = compact ? 22.0 : 28.0;
     final hPad = compact ? 18.0 : 28.0;
+    final gap = compact ? 16.0 : 24.0;
+    final pillHeight = compact ? 40.0 : 48.0;
+    final pillHPad = compact ? 16.0 : 20.0;
+    final pillGap = compact ? 8.0 : 10.0;
+    final swatchSize = compact ? 10.0 : 12.0;
+    final pillFontSize = compact ? 10.0 : 11.0;
     return Padding(
       padding: EdgeInsets.fromLTRB(hPad, compact ? 14 : 24, hPad, 0),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          _GhostCircle(
-            size: ghostSize,
-            child: const SpeakrIconView(SpeakrIcon.flagBookmark),
-          ),
           GestureDetector(
             onTap: onTogglePause,
             child: Container(
@@ -467,43 +468,54 @@ class RecordingControls extends StatelessWidget {
               ),
             ),
           ),
+          SizedBox(width: gap),
           GestureDetector(
             onTap: busy ? null : onStop,
-            child: _GhostCircle(
-              size: ghostSize,
-              child: busy
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: SpeakrColors.ink,
+            child: Container(
+              height: pillHeight,
+              padding: EdgeInsets.symmetric(horizontal: pillHPad),
+              decoration: BoxDecoration(
+                color: Colors.transparent,
+                borderRadius: BorderRadius.circular(100),
+                border: Border.all(color: SpeakrColors.line),
+              ),
+              child: Center(
+                child: busy
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: SpeakrColors.ink,
+                        ),
+                      )
+                    : Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: swatchSize,
+                            height: swatchSize,
+                            decoration: BoxDecoration(
+                              color: SpeakrColors.recordingDot,
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
+                          SizedBox(width: pillGap),
+                          Text(
+                            'Stop & save'.toUpperCase(),
+                            style: SpeakrText.mono(
+                              size: pillFontSize,
+                              color: SpeakrColors.ink,
+                              letterSpacing: 1.5,
+                            ),
+                          ),
+                        ],
                       ),
-                    )
-                  : const SpeakrIconView(SpeakrIcon.stop),
+              ),
             ),
           ),
         ],
       ),
-    );
-  }
-}
-
-class _GhostCircle extends StatelessWidget {
-  const _GhostCircle({required this.child, this.size = 56});
-  final Widget child;
-  final double size;
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        border: Border.all(color: SpeakrColors.line),
-      ),
-      alignment: Alignment.center,
-      child: child,
     );
   }
 }
