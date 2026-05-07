@@ -18,6 +18,7 @@ class MiniRecorderScreen extends ConsumerStatefulWidget {
 
 class _MiniRecorderScreenState extends ConsumerState<MiniRecorderScreen> {
   bool _tagPickerOpen = false;
+  bool _folderPickerOpen = false;
   final _newTagCtrl = TextEditingController();
 
   @override
@@ -65,6 +66,7 @@ class _MiniRecorderScreenState extends ConsumerState<MiniRecorderScreen> {
   Widget build(BuildContext context) {
     final state = ref.watch(recordingMirrorProvider);
     final mirror = ref.read(recordingMirrorProvider.notifier);
+    final folders = ref.watch(miniFoldersProvider);
 
     return Scaffold(
       backgroundColor: SpeakrColors.bg,
@@ -100,8 +102,12 @@ class _MiniRecorderScreenState extends ConsumerState<MiniRecorderScreen> {
               activeTags: state.activeTags,
               tagPickerOpen: _tagPickerOpen,
               onToggleTag: mirror.toggleTag,
-              onToggleEdit: () =>
-                  setState(() => _tagPickerOpen = !_tagPickerOpen),
+              onToggleEdit: () => setState(() {
+                _tagPickerOpen = !_tagPickerOpen;
+                // Keep the compact window from growing too tall by ensuring
+                // only one picker is open at a time.
+                if (_tagPickerOpen) _folderPickerOpen = false;
+              }),
               newTagCtrl: _newTagCtrl,
               onAddCustom: () {
                 final v = _newTagCtrl.text.trim();
@@ -109,6 +115,14 @@ class _MiniRecorderScreenState extends ConsumerState<MiniRecorderScreen> {
                 mirror.addCustomTag(v);
                 _newTagCtrl.clear();
               },
+              folders: folders,
+              folderId: state.folderId,
+              folderPickerOpen: _folderPickerOpen,
+              onToggleFolderEdit: () => setState(() {
+                _folderPickerOpen = !_folderPickerOpen;
+                if (_folderPickerOpen) _tagPickerOpen = false;
+              }),
+              onFolderChanged: mirror.setFolder,
               compact: true,
             ),
             const Spacer(),
