@@ -35,16 +35,19 @@ class SpeakrApi {
     int? folderId,
     String? query,
   }) async {
-    final res = await _get<Map<String, dynamic>>('/recordings', query: {
-      'page': page,
-      'per_page': perPage,
-      if (status != null) 'status': status,
-      'sort_by': sortBy,
-      'sort_order': sortOrder,
-      if (tagId != null) 'tag_id': tagId,
-      if (folderId != null) 'folder_id': folderId,
-      if (query != null && query.isNotEmpty) 'q': query,
-    });
+    final res = await _get<Map<String, dynamic>>(
+      '/recordings',
+      query: {
+        'page': page,
+        'per_page': perPage,
+        if (status != null) 'status': status,
+        'sort_by': sortBy,
+        'sort_order': sortOrder,
+        if (tagId != null) 'tag_id': tagId,
+        if (folderId != null) 'folder_id': folderId,
+        if (query != null && query.isNotEmpty) 'q': query,
+      },
+    );
     return RecordingPage.fromJson(res);
   }
 
@@ -74,16 +77,18 @@ class SpeakrApi {
     await _delete<void>('/recordings/$id');
   }
 
-  Future<ChatResponse> chat(int id, String message,
-      {List<ChatMessage> history = const []}) async {
+  Future<ChatResponse> chat(
+    int id,
+    String message, {
+    List<ChatMessage> history = const [],
+  }) async {
     final body = {
       'message': message,
       'conversation_history': history
           .map((m) => {'role': m.role, 'text': m.text})
           .toList(growable: false),
     };
-    final res = await _post<Map<String, dynamic>>(
-        '/recordings/$id/chat', body);
+    final res = await _post<Map<String, dynamic>>('/recordings/$id/chat', body);
     return ChatResponse.fromJson(res);
   }
 
@@ -99,15 +104,17 @@ class SpeakrApi {
     void Function(int sent, int total)? onProgress,
   }) async {
     final form = FormData.fromMap({
-      'file': await MultipartFile.fromFile(file.path,
-          filename: file.path.split(RegExp(r'[\\/]')).last),
+      'file': await MultipartFile.fromFile(
+        file.path,
+        filename: file.path.split(RegExp(r'[\\/]')).last,
+      ),
       if (language != null) 'language': language,
       if (minSpeakers != null) 'min_speakers': minSpeakers,
       if (maxSpeakers != null) 'max_speakers': maxSpeakers,
       if (folderId != null) 'folder_id': folderId,
       if (fileLastModified != null)
-        'file_last_modified':
-            fileLastModified.millisecondsSinceEpoch.toString(),
+        'file_last_modified': fileLastModified.millisecondsSinceEpoch
+            .toString(),
       if (notes != null) 'notes': notes,
       for (var i = 0; i < tagIds.length; i++) 'tag_ids[$i]': tagIds[i],
     });
@@ -166,10 +173,13 @@ class SpeakrApi {
   }
 
   Future<void> addTagsToRecording(int recId, List<int> tagIds) async {
-    await _post<Map<String, dynamic>>(
-      '/recordings/$recId/tags',
-      {'tag_ids': tagIds},
-    );
+    await _post<Map<String, dynamic>>('/recordings/$recId/tags', {
+      'tag_ids': tagIds,
+    });
+  }
+
+  Future<void> removeTagFromRecording(int recId, int tagId) async {
+    await _delete<void>('/recordings/$recId/tags/$tagId');
   }
 
   // ── Processing ────────────────────────────────────────────────────────────
@@ -231,7 +241,8 @@ class SpeakrApi {
   // Returns label → ranked list (best first). Empty list and missing key are
   // treated identically by callers.
   Future<Map<String, List<SpeakerSuggestion>>> getSpeakerSuggestions(
-      int recordingId) async {
+    int recordingId,
+  ) async {
     final res = await _request<Map<String, dynamic>>(
       () => _dio.get<Map<String, dynamic>>(
         '/speakers/suggestions/$recordingId',
@@ -240,7 +251,9 @@ class SpeakrApi {
     );
     if (res['success'] == false) {
       throw SpeakrApiException(
-          null, (res['error'] ?? 'Failed to load suggestions').toString());
+        null,
+        (res['error'] ?? 'Failed to load suggestions').toString(),
+      );
     }
     final raw = res['suggestions'];
     if (raw is! Map) return const {};
@@ -264,8 +277,10 @@ class SpeakrApi {
 
   // ── Stats ─────────────────────────────────────────────────────────────────
   Future<StatsResponse> getStats({String scope = 'user'}) async {
-    final res =
-        await _get<Map<String, dynamic>>('/stats', query: {'scope': scope});
+    final res = await _get<Map<String, dynamic>>(
+      '/stats',
+      query: {'scope': scope},
+    );
     return StatsResponse.fromJson(res);
   }
 
@@ -291,8 +306,7 @@ class SpeakrApi {
       _request<T>(() => _dio.put<T>(path, data: body));
   Future<T> _patch<T>(String path, dynamic body) =>
       _request<T>(() => _dio.patch<T>(path, data: body));
-  Future<T> _delete<T>(String path) =>
-      _request<T>(() => _dio.delete<T>(path));
+  Future<T> _delete<T>(String path) => _request<T>(() => _dio.delete<T>(path));
 
   Future<T> _request<T>(Future<Response<T>> Function() send) async {
     try {

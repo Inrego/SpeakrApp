@@ -12,16 +12,15 @@ import '../../services/credentials_store.dart';
 import '../../theme/colors.dart';
 import '../../theme/typography.dart';
 import '../../utils/formatters.dart';
-import '../../widgets/folder_chip.dart';
 import '../../widgets/mono_eyebrow.dart';
 import '../../widgets/speakr_icons.dart';
-import '../../widgets/tag_chip.dart';
 import '../library/library_controller.dart';
 import 'detail_controller.dart';
 import 'speaker_review_screen.dart';
 import 'tabs/chat_tab.dart';
 import 'tabs/summary_tab.dart';
 import 'tabs/transcript_tab.dart';
+import 'widgets/folder_tags_editor.dart';
 
 class DetailScreen extends ConsumerStatefulWidget {
   const DetailScreen({super.key, required this.recordingId});
@@ -45,7 +44,8 @@ class _DetailScreenState extends ConsumerState<DetailScreen> {
     // stalls on setUrl() even when the player ultimately reaches a playable
     // state — gating the UI on the future leaves the play button disabled.
     _playerStateSub = _audioPlayer.playerStateStream.listen((state) {
-      final ready = state.processingState == ProcessingState.ready ||
+      final ready =
+          state.processingState == ProcessingState.ready ||
           state.processingState == ProcessingState.buffering;
       if (ready && !_audioReady && mounted) {
         setState(() => _audioReady = true);
@@ -60,10 +60,7 @@ class _DetailScreenState extends ConsumerState<DetailScreen> {
     final url =
         '${creds.baseUrl}/api/v1/recordings/${widget.recordingId}/audio';
     try {
-      await _audioPlayer.setUrl(
-        url,
-        headers: {'X-API-Token': creds.token},
-      );
+      await _audioPlayer.setUrl(url, headers: {'X-API-Token': creds.token});
     } catch (e, st) {
       debugPrint(
         'Speakr audio: setUrl failed for recording ${widget.recordingId}: $e\n$st',
@@ -88,7 +85,9 @@ class _DetailScreenState extends ConsumerState<DetailScreen> {
         child: asyncR.when(
           loading: () => const Center(
             child: CircularProgressIndicator(
-                color: SpeakrColors.ink, strokeWidth: 2),
+              color: SpeakrColors.ink,
+              strokeWidth: 2,
+            ),
           ),
           error: (e, _) => Padding(
             padding: const EdgeInsets.all(24),
@@ -132,20 +131,12 @@ class _DetailBody extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final folder = recording.folder;
-    final folderColor = folder == null
-        ? SpeakrColors.muted
-        : resolveFolderColor(
-            recording.folderId,
-            ref.watch(foldersProvider).value ?? const <Folder>[],
-          );
-    final hasHeaderChips = folder != null || recording.tags.isNotEmpty;
     return Column(
       children: [
         _TopBar(
-          date: formatRelativeDay(recording.meetingDate ??
-              recording.createdAt ??
-              DateTime.now()),
+          date: formatRelativeDay(
+            recording.meetingDate ?? recording.createdAt ?? DateTime.now(),
+          ),
           onBack: () => context.pop(),
           recording: recording,
         ),
@@ -154,19 +145,10 @@ class _DetailBody extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (hasHeaderChips)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Wrap(
-                    spacing: 4,
-                    runSpacing: 4,
-                    children: [
-                      if (folder != null)
-                        FolderChip(label: folder.name, color: folderColor),
-                      ...recording.tags.map((t) => TagChip(tag: t)),
-                    ],
-                  ),
-                ),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: FolderTagsEditor(recording: recording),
+              ),
               Text(
                 recording.title?.isNotEmpty == true
                     ? recording.title!
@@ -177,8 +159,7 @@ class _DetailBody extends ConsumerWidget {
                 const SizedBox(height: 8),
                 Text(
                   recording.participants!,
-                  style:
-                      SpeakrText.sans(size: 12, color: SpeakrColors.muted),
+                  style: SpeakrText.sans(size: 12, color: SpeakrColors.muted),
                 ),
               ],
             ],
@@ -223,11 +204,7 @@ class _TopBar extends StatelessWidget {
       child: Row(
         children: [
           GhostIconButton(icon: SpeakrIcon.back, onTap: onBack),
-          Expanded(
-            child: Center(
-              child: MonoEyebrow(date, size: 10),
-            ),
-          ),
+          Expanded(child: Center(child: MonoEyebrow(date, size: 10))),
           GhostIconButton(
             icon: SpeakrIcon.more,
             onTap: r == null
@@ -270,8 +247,9 @@ class _MoreSheet extends ConsumerWidget {
                 context,
                 ref,
                 patch: {'is_highlighted': !highlighted},
-                successMessage:
-                    highlighted ? 'Highlight removed' : 'Highlighted',
+                successMessage: highlighted
+                    ? 'Highlight removed'
+                    : 'Highlighted',
               ),
             ),
             ListTile(
@@ -284,15 +262,15 @@ class _MoreSheet extends ConsumerWidget {
                 context,
                 ref,
                 patch: {'is_inbox': !inInbox},
-                successMessage:
-                    inInbox ? 'Removed from inbox' : 'Moved to inbox',
+                successMessage: inInbox
+                    ? 'Removed from inbox'
+                    : 'Moved to inbox',
               ),
             ),
             const Divider(color: SpeakrColors.line, height: 1),
             ListTile(
               leading: const SpeakrIconView(SpeakrIcon.search),
-              title: Text('Edit speakers',
-                  style: SpeakrText.sans(size: 14)),
+              title: Text('Edit speakers', style: SpeakrText.sans(size: 14)),
               subtitle: Text(
                 'Rename detected speakers',
                 style: SpeakrText.sans(size: 12, color: SpeakrColors.muted),
@@ -310,31 +288,29 @@ class _MoreSheet extends ConsumerWidget {
             ),
             ListTile(
               leading: const SpeakrIconView(SpeakrIcon.mic),
-              title: Text('Reprocess transcription',
-                  style: SpeakrText.sans(size: 14)),
+              title: Text(
+                'Reprocess transcription',
+                style: SpeakrText.sans(size: 14),
+              ),
               subtitle: Text(
                 'Replaces the current transcript',
                 style: SpeakrText.sans(size: 12, color: SpeakrColors.muted),
               ),
-              onTap: () => _reprocess(
-                context,
-                ref,
-                kind: _ReprocessKind.transcription,
-              ),
+              onTap: () =>
+                  _reprocess(context, ref, kind: _ReprocessKind.transcription),
             ),
             ListTile(
               leading: const SpeakrIconView(SpeakrIcon.flagBookmark),
-              title: Text('Reprocess summary',
-                  style: SpeakrText.sans(size: 14)),
+              title: Text(
+                'Reprocess summary',
+                style: SpeakrText.sans(size: 14),
+              ),
               subtitle: Text(
                 'Regenerates the summary from the transcript',
                 style: SpeakrText.sans(size: 12, color: SpeakrColors.muted),
               ),
-              onTap: () => _reprocess(
-                context,
-                ref,
-                kind: _ReprocessKind.summary,
-              ),
+              onTap: () =>
+                  _reprocess(context, ref, kind: _ReprocessKind.summary),
             ),
             const Divider(color: SpeakrColors.line, height: 1),
             ListTile(
@@ -405,17 +381,21 @@ class _MoreSheet extends ConsumerWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text('Cancel',
-                style: SpeakrText.sans(
-                    size: 13, color: SpeakrColors.muted)),
+            child: Text(
+              'Cancel',
+              style: SpeakrText.sans(size: 13, color: SpeakrColors.muted),
+            ),
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: Text('Reprocess',
-                style: SpeakrText.sans(
-                    size: 13,
-                    weight: FontWeight.w600,
-                    color: SpeakrColors.ink)),
+            child: Text(
+              'Reprocess',
+              style: SpeakrText.sans(
+                size: 13,
+                weight: FontWeight.w600,
+                color: SpeakrColors.ink,
+              ),
+            ),
           ),
         ],
       ),
@@ -455,10 +435,7 @@ class _MoreSheet extends ConsumerWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: SpeakrColors.bg,
-        title: Text(
-          'Delete recording?',
-          style: SpeakrText.serif(size: 20),
-        ),
+        title: Text('Delete recording?', style: SpeakrText.serif(size: 20)),
         content: Text(
           'This permanently deletes the recording, its transcript, and its audio. This cannot be undone.',
           style: SpeakrText.sans(size: 14, height: 1.4),
@@ -466,19 +443,22 @@ class _MoreSheet extends ConsumerWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text('Cancel',
-                style: SpeakrText.sans(
-                    size: 13, color: SpeakrColors.muted)),
+            child: Text(
+              'Cancel',
+              style: SpeakrText.sans(size: 13, color: SpeakrColors.muted),
+            ),
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            style:
-                TextButton.styleFrom(foregroundColor: SpeakrColors.danger),
-            child: Text('Delete',
-                style: SpeakrText.sans(
-                    size: 13,
-                    weight: FontWeight.w600,
-                    color: SpeakrColors.danger)),
+            style: TextButton.styleFrom(foregroundColor: SpeakrColors.danger),
+            child: Text(
+              'Delete',
+              style: SpeakrText.sans(
+                size: 13,
+                weight: FontWeight.w600,
+                color: SpeakrColors.danger,
+              ),
+            ),
           ),
         ],
       ),
@@ -526,9 +506,9 @@ class _AudioPlayerBarState extends State<_AudioPlayerBar> {
     if (drag) {
       setState(() => _dragFraction = clamped);
     }
-    widget.player.seek(Duration(
-      milliseconds: (dur.inMilliseconds * clamped).round(),
-    ));
+    widget.player.seek(
+      Duration(milliseconds: (dur.inMilliseconds * clamped).round()),
+    );
   }
 
   void _clearDrag() {
@@ -557,8 +537,8 @@ class _AudioPlayerBarState extends State<_AudioPlayerBar> {
                 onTap: !widget.ready
                     ? null
                     : () => playing
-                        ? widget.player.pause()
-                        : widget.player.play(),
+                          ? widget.player.pause()
+                          : widget.player.play(),
                 child: Container(
                   width: 40,
                   height: 40,
@@ -588,8 +568,8 @@ class _AudioPlayerBarState extends State<_AudioPlayerBar> {
                 final streamProgress = dur.inMilliseconds == 0
                     ? 0.0
                     : (pos.inMilliseconds / dur.inMilliseconds)
-                        .clamp(0.0, 1.0)
-                        .toDouble();
+                          .clamp(0.0, 1.0)
+                          .toDouble();
                 final progress = _dragFraction ?? streamProgress;
                 final displayedMs = _dragFraction != null
                     ? (dur.inMilliseconds * _dragFraction!).round()
@@ -607,13 +587,19 @@ class _AudioPlayerBarState extends State<_AudioPlayerBar> {
                           child: GestureDetector(
                             behavior: HitTestBehavior.opaque,
                             onTapDown: (d) => _seekToFraction(
-                                d.localPosition.dx / width, dur),
+                              d.localPosition.dx / width,
+                              dur,
+                            ),
                             onHorizontalDragStart: (d) => _seekToFraction(
-                                d.localPosition.dx / width, dur,
-                                drag: true),
+                              d.localPosition.dx / width,
+                              dur,
+                              drag: true,
+                            ),
                             onHorizontalDragUpdate: (d) => _seekToFraction(
-                                d.localPosition.dx / width, dur,
-                                drag: true),
+                              d.localPosition.dx / width,
+                              dur,
+                              drag: true,
+                            ),
                             onHorizontalDragEnd: (_) => _clearDrag(),
                             onHorizontalDragCancel: _clearDrag,
                             child: SizedBox(
@@ -628,7 +614,8 @@ class _AudioPlayerBarState extends State<_AudioPlayerBar> {
                                       value: progress,
                                       backgroundColor: SpeakrColors.line,
                                       valueColor: const AlwaysStoppedAnimation(
-                                          SpeakrColors.ink),
+                                        SpeakrColors.ink,
+                                      ),
                                       minHeight: 4,
                                     ),
                                   ),
@@ -645,18 +632,20 @@ class _AudioPlayerBarState extends State<_AudioPlayerBar> {
                         Text(
                           formatDuration(displayedMs / 1000.0),
                           style: SpeakrText.mono(
-                              size: 10,
-                              color: SpeakrColors.muted,
-                              letterSpacing: 0),
+                            size: 10,
+                            color: SpeakrColors.muted,
+                            letterSpacing: 0,
+                          ),
                         ),
                         Text(
                           dur.inMilliseconds > 0
                               ? formatDuration(dur.inMilliseconds / 1000.0)
                               : widget.totalLabel,
                           style: SpeakrText.mono(
-                              size: 10,
-                              color: SpeakrColors.muted,
-                              letterSpacing: 0),
+                            size: 10,
+                            color: SpeakrColors.muted,
+                            letterSpacing: 0,
+                          ),
                         ),
                       ],
                     ),
@@ -682,7 +671,8 @@ class _TabBar extends StatelessWidget {
     return Container(
       decoration: const BoxDecoration(
         border: Border.symmetric(
-            horizontal: BorderSide(color: SpeakrColors.line)),
+          horizontal: BorderSide(color: SpeakrColors.line),
+        ),
       ),
       child: Row(
         children: List.generate(_labels.length, (i) {
@@ -694,9 +684,7 @@ class _TabBar extends StatelessWidget {
                 decoration: BoxDecoration(
                   border: Border(
                     bottom: BorderSide(
-                      color: selected
-                          ? SpeakrColors.ink
-                          : Colors.transparent,
+                      color: selected ? SpeakrColors.ink : Colors.transparent,
                       width: 2,
                     ),
                   ),
@@ -727,4 +715,3 @@ class _TabBar extends StatelessWidget {
     );
   }
 }
-
