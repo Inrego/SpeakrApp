@@ -18,6 +18,7 @@ class MiniRecorderScreen extends ConsumerStatefulWidget {
 
 class _MiniRecorderScreenState extends ConsumerState<MiniRecorderScreen> {
   bool _tagPickerOpen = false;
+  bool _folderPickerOpen = false;
 
   Future<void> _confirmDiscard() async {
     final confirmed = await showDialog<bool>(
@@ -59,6 +60,7 @@ class _MiniRecorderScreenState extends ConsumerState<MiniRecorderScreen> {
     final state = ref.watch(recordingMirrorProvider);
     final mirror = ref.read(recordingMirrorProvider.notifier);
     final tags = ref.watch(miniTagsProvider);
+    final folders = ref.watch(miniFoldersProvider);
 
     return Scaffold(
       backgroundColor: SpeakrColors.bg,
@@ -94,9 +96,21 @@ class _MiniRecorderScreenState extends ConsumerState<MiniRecorderScreen> {
               activeTags: state.activeTags,
               tagPickerOpen: _tagPickerOpen,
               onToggleTag: mirror.toggleTag,
-              onToggleEdit: () =>
-                  setState(() => _tagPickerOpen = !_tagPickerOpen),
+              onToggleEdit: () => setState(() {
+                _tagPickerOpen = !_tagPickerOpen;
+                // Keep the compact window from growing too tall by ensuring
+                // only one picker is open at a time.
+                if (_tagPickerOpen) _folderPickerOpen = false;
+              }),
               tags: tags,
+              folders: folders,
+              folderId: state.folderId,
+              folderPickerOpen: _folderPickerOpen,
+              onToggleFolderEdit: () => setState(() {
+                _folderPickerOpen = !_folderPickerOpen;
+                if (_folderPickerOpen) _tagPickerOpen = false;
+              }),
+              onFolderChanged: mirror.setFolder,
               compact: true,
             ),
             const Spacer(),

@@ -11,6 +11,11 @@ import '../recording_state.dart';
 import 'mini_ipc.dart';
 import 'mini_window_native.dart';
 
+/// Folder list pushed from the main engine via [MiniIpc.foldersUpdate].
+/// Held separately from [RecordingState] because folders are reference
+/// data, not per-tick session state.
+final miniFoldersProvider = StateProvider<List<Folder>>((_) => const []);
+
 /// Lives in the mini window's Flutter engine. Mirrors [RecordingState]
 /// pushed from the main engine and forwards user actions back as
 /// command messages.
@@ -53,6 +58,17 @@ class RecordingMirror extends StateNotifier<RecordingState> {
           }
         } catch (_) {}
         return null;
+      case MiniIpc.foldersUpdate:
+        try {
+          final raw = call.arguments;
+          final list = raw is String ? jsonDecode(raw) : raw;
+          final folders = <Folder>[
+            for (final e in (list as List))
+              Folder.fromJson(Map<String, dynamic>.from(e as Map)),
+          ];
+          _ref.read(miniFoldersProvider.notifier).state = folders;
+        } catch (_) {}
+        return null;
       case MiniIpc.lifecycleClose:
         // Main is closing us; the host window will be destroyed shortly.
         await MiniWindowNative.closeMini();
@@ -83,6 +99,8 @@ class RecordingMirror extends StateNotifier<RecordingState> {
       _send(MiniIpc.cmdSetSpeakers, {'value': v});
   Future<void> toggleTag(String name) =>
       _send(MiniIpc.cmdToggleTag, {'name': name});
+  Future<void> setFolder(int? id) =>
+      _send(MiniIpc.cmdSetFolder, {'id': id});
   Future<void> beginDrag() => _send(MiniIpc.cmdBeginDrag);
 }
 
