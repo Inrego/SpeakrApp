@@ -23,6 +23,7 @@ import '../auto_upload/auto_upload_settings_store.dart';
 import '../auto_upload/auto_upload_worker.dart';
 import '../live/live_controller.dart';
 import 'library_controller.dart';
+import 'library_filter_bar.dart';
 
 class LibraryScreen extends ConsumerStatefulWidget {
   const LibraryScreen({super.key});
@@ -142,7 +143,6 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
   Widget build(BuildContext context) {
     final asyncItems = ref.watch(libraryItemsProvider);
     _evaluatePolling(asyncItems.value);
-    final filter = ref.watch(libraryFilterProvider);
     final totalCount = asyncItems.value?.length ?? 0;
     final recording = ref.watch(recordingControllerProvider);
     final isRecording = recording.started || recording.uploading;
@@ -172,8 +172,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
               onRefresh: _refreshNow,
             ),
             _Title(total: totalCount),
-            _FilterChips(filter: filter),
-            _FolderFilterRow(filter: filter),
+            const LibraryFilterBar(),
             const SizedBox(height: 8),
             Expanded(
               child: RefreshIndicator(
@@ -277,101 +276,6 @@ class _Title extends StatelessWidget {
             style: SpeakrText.sans(size: 13, color: SpeakrColors.muted),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _FilterChips extends ConsumerWidget {
-  const _FilterChips({required this.filter});
-  final LibraryFilter filter;
-
-  static const _chips = [
-    ('all', 'All'),
-    ('highlighted', 'Highlighted'),
-    ('completed', 'Completed'),
-    ('processing', 'Processing'),
-  ];
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return SizedBox(
-      height: 36,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 24),
-        itemCount: _chips.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 6),
-        itemBuilder: (_, i) {
-          final (key, label) = _chips[i];
-          final selected = filter.statusKey == key;
-          return InkWell(
-            borderRadius: BorderRadius.circular(100),
-            onTap: () =>
-                ref.read(libraryFilterProvider.notifier).setStatus(key),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-              decoration: BoxDecoration(
-                color: selected ? SpeakrColors.ink : Colors.transparent,
-                borderRadius: BorderRadius.circular(100),
-                border: selected ? null : Border.all(color: SpeakrColors.line),
-              ),
-              child: Center(
-                child: Text(
-                  label,
-                  style: SpeakrText.sans(
-                    size: 13,
-                    color: selected ? SpeakrColors.bg : SpeakrColors.ink2,
-                  ),
-                ),
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _FolderFilterRow extends ConsumerWidget {
-  const _FolderFilterRow({required this.filter});
-  final LibraryFilter filter;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final foldersAsync = ref.watch(foldersProvider);
-    final folders = foldersAsync.value ?? const <Folder>[];
-    if (folders.isEmpty) return const SizedBox.shrink();
-    final notifier = ref.read(libraryFilterProvider.notifier);
-    return Padding(
-      padding: const EdgeInsets.only(top: 6),
-      child: SizedBox(
-        height: 32,
-        child: ListView.separated(
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          itemCount: folders.length + 1,
-          separatorBuilder: (_, __) => const SizedBox(width: 6),
-          itemBuilder: (_, i) {
-            if (i == 0) {
-              return FolderFilterChip(
-                label: 'All',
-                color: SpeakrColors.muted,
-                selected: filter.folderId == null,
-                onTap: () => notifier.setFolder(null),
-                showSwatch: false,
-              );
-            }
-            final f = folders[i - 1];
-            return FolderFilterChip(
-              label: f.name,
-              color: parseHexColor(f.color),
-              selected: filter.folderId == f.id,
-              onTap: () => notifier
-                  .setFolder(filter.folderId == f.id ? null : f.id),
-            );
-          },
-        ),
       ),
     );
   }

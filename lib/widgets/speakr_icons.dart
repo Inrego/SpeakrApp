@@ -28,6 +28,7 @@ enum SpeakrIcon {
   trash,
   pip,
   refresh,
+  filter,
 }
 
 class SpeakrIconView extends StatelessWidget {
@@ -267,6 +268,20 @@ class _IconPainter extends CustomPainter {
         final wingInner = Offset(sx - radX * ah * 0.55, sy - radY * ah * 0.55);
         canvas.drawLine(tip, wingOuter, stroke);
         canvas.drawLine(tip, wingInner, stroke);
+        break;
+      case SpeakrIcon.filter:
+        // Three stacked horizontal lines that taper toward the bottom — the
+        // funnel glyph from the design (`M1.5 3h10M3 6.5h7M5 10h3`, scaled
+        // from a 13×13 viewBox to the 20×20 painter grid).
+        const k = 20.0 / 13.0;
+        final funnel = Paint()
+          ..color = color
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.4 * k
+          ..strokeCap = StrokeCap.round;
+        canvas.drawLine(Offset(1.5 * k, 3 * k), Offset(11.5 * k, 3 * k), funnel);
+        canvas.drawLine(Offset(3 * k, 6.5 * k), Offset(10 * k, 6.5 * k), funnel);
+        canvas.drawLine(Offset(5 * k, 10 * k), Offset(8 * k, 10 * k), funnel);
         break;
       case SpeakrIcon.trash:
         // Lid
