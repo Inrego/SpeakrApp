@@ -3,8 +3,10 @@ import 'dart:convert';
 
 import 'package:desktop_multi_window/desktop_multi_window.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
+import '../../../api/models.dart';
 import '../recording_state.dart';
 import 'mini_ipc.dart';
 import 'mini_window_native.dart';
@@ -13,9 +15,11 @@ import 'mini_window_native.dart';
 /// pushed from the main engine and forwards user actions back as
 /// command messages.
 class RecordingMirror extends StateNotifier<RecordingState> {
-  RecordingMirror() : super(const RecordingState()) {
+  RecordingMirror(this._ref) : super(const RecordingState()) {
     _registerHandler();
   }
+
+  final Ref _ref;
 
   void _registerHandler() {
     try {
@@ -34,6 +38,19 @@ class RecordingMirror extends StateNotifier<RecordingState> {
               ? jsonDecode(raw) as Map<String, dynamic>
               : Map<String, dynamic>.from(raw as Map);
           state = RecordingState.fromJson(json);
+        } catch (_) {}
+        return null;
+      case MiniIpc.tagsUpdate:
+        try {
+          final raw = call.arguments;
+          final list = raw is String ? jsonDecode(raw) : raw;
+          if (list is List) {
+            final tags = list
+                .whereType<Map>()
+                .map((m) => Tag.fromJson(Map<String, dynamic>.from(m)))
+                .toList(growable: false);
+            _ref.read(miniTagsProvider.notifier).state = tags;
+          }
         } catch (_) {}
         return null;
       case MiniIpc.lifecycleClose:
@@ -66,12 +83,15 @@ class RecordingMirror extends StateNotifier<RecordingState> {
       _send(MiniIpc.cmdSetSpeakers, {'value': v});
   Future<void> toggleTag(String name) =>
       _send(MiniIpc.cmdToggleTag, {'name': name});
-  Future<void> addCustomTag(String name) =>
-      _send(MiniIpc.cmdAddCustomTag, {'name': name});
   Future<void> beginDrag() => _send(MiniIpc.cmdBeginDrag);
 }
 
 final recordingMirrorProvider =
     StateNotifierProvider<RecordingMirror, RecordingState>(
-  (_) => RecordingMirror(),
+  (ref) => RecordingMirror(ref),
 );
+
+/// Server tag list pushed from the main engine via [MiniIpc.tagsUpdate].
+/// The mini's `MetadataCard` watches this to render the same suggestion
+/// list users see on the main live screen.
+final miniTagsProvider = StateProvider<List<Tag>>((_) => const <Tag>[]);

@@ -25,7 +25,6 @@ class LiveScreen extends ConsumerStatefulWidget {
 class _LiveScreenState extends ConsumerState<LiveScreen> {
   bool _tagPickerOpen = false;
   bool _folderPickerOpen = false;
-  final _newTagCtrl = TextEditingController();
   StreamSubscription<RecordingNav>? _navSub;
 
   @override
@@ -62,7 +61,6 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
   @override
   void dispose() {
     _navSub?.cancel();
-    _newTagCtrl.dispose();
     super.dispose();
   }
 
@@ -150,13 +148,7 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
               onToggleTag: controller.toggleTag,
               onToggleEdit: () =>
                   setState(() => _tagPickerOpen = !_tagPickerOpen),
-              newTagCtrl: _newTagCtrl,
-              onAddCustom: () {
-                final v = _newTagCtrl.text.trim();
-                if (v.isEmpty) return;
-                controller.addCustomTag(v);
-                _newTagCtrl.clear();
-              },
+              tags: ref.watch(tagsProvider).value ?? const <Tag>[],
               folders: ref.watch(foldersProvider).value ?? const <Folder>[],
               folderId: state.folderId,
               folderPickerOpen: _folderPickerOpen,

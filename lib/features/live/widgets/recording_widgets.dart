@@ -7,7 +7,6 @@ import '../../../widgets/folder_chip.dart';
 import '../../../widgets/mono_eyebrow.dart';
 import '../../../widgets/speakr_icons.dart';
 import '../../../widgets/tag_chip.dart';
-import '../preset_tags.dart';
 
 class LiveIndicator extends StatefulWidget {
   const LiveIndicator({super.key, required this.paused});
@@ -114,8 +113,7 @@ class MetadataCard extends StatelessWidget {
     required this.tagPickerOpen,
     required this.onToggleTag,
     required this.onToggleEdit,
-    required this.newTagCtrl,
-    required this.onAddCustom,
+    this.tags = const <Tag>[],
     this.folders = const <Folder>[],
     this.folderId,
     this.folderPickerOpen = false,
@@ -129,8 +127,7 @@ class MetadataCard extends StatelessWidget {
   final bool tagPickerOpen;
   final ValueChanged<String> onToggleTag;
   final VoidCallback onToggleEdit;
-  final TextEditingController newTagCtrl;
-  final VoidCallback onAddCustom;
+  final List<Tag> tags;
   final List<Folder> folders;
   final int? folderId;
   final bool folderPickerOpen;
@@ -138,11 +135,24 @@ class MetadataCard extends StatelessWidget {
   final ValueChanged<int?>? onFolderChanged;
   final bool compact;
 
+  Color _colorFor(String name) {
+    final lower = name.toLowerCase();
+    for (final t in tags) {
+      if (t.name.toLowerCase() == lower) return parseHexColor(t.color);
+    }
+    return SpeakrColors.ink;
+  }
+
   @override
   Widget build(BuildContext context) {
     final hPad = compact ? 12.0 : 16.0;
     final vPad = compact ? 10.0 : 12.0;
     final hMargin = compact ? 12.0 : 20.0;
+    final activeLower = activeTags.map((n) => n.toLowerCase()).toSet();
+    final suggestable = [
+      for (final t in tags)
+        if (!activeLower.contains(t.name.toLowerCase())) t,
+    ];
     return Container(
       margin: EdgeInsets.symmetric(horizontal: hMargin),
       decoration: BoxDecoration(
@@ -243,21 +253,21 @@ class MetadataCard extends StatelessWidget {
                     for (final name in activeTags)
                       CustomColorTagChip(
                         label: name,
-                        color: colorForTag(name),
+                        color: _colorFor(name),
                         filled: true,
                         onTap: tagPickerOpen ? () => onToggleTag(name) : null,
                         trailing: tagPickerOpen
                             ? Text('×',
                                 style: SpeakrText.serif(
                                   size: 11,
-                                  color: colorForTag(name)
+                                  color: _colorFor(name)
                                       .withValues(alpha: 0.6),
                                 ))
                             : null,
                       ),
                   ],
                 ),
-                if (tagPickerOpen) ...[
+                if (tagPickerOpen && suggestable.isNotEmpty) ...[
                   const SizedBox(height: 10),
                   const Divider(
                       color: SpeakrColors.line, thickness: 1, height: 1),
@@ -268,57 +278,12 @@ class MetadataCard extends StatelessWidget {
                     spacing: 4,
                     runSpacing: 4,
                     children: [
-                      for (final t in presetTags)
-                        if (!activeTags.contains(t.$1))
-                          DashedTagChip(
-                            label: t.$1,
-                            color: t.$2,
-                            onTap: () => onToggleTag(t.$1),
-                          ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: newTagCtrl,
-                          onSubmitted: (_) => onAddCustom(),
-                          style: SpeakrText.sans(size: 12),
-                          decoration: const InputDecoration(
-                            hintText: 'New tag…',
-                            isDense: true,
-                            filled: false,
-                            contentPadding: EdgeInsets.symmetric(vertical: 6),
-                            border: UnderlineInputBorder(
-                              borderSide:
-                                  BorderSide(color: SpeakrColors.line),
-                            ),
-                            enabledBorder: UnderlineInputBorder(
-                              borderSide:
-                                  BorderSide(color: SpeakrColors.line),
-                            ),
-                            focusedBorder: UnderlineInputBorder(
-                              borderSide:
-                                  BorderSide(color: SpeakrColors.ink),
-                            ),
-                          ),
+                      for (final t in suggestable)
+                        DashedTagChip(
+                          label: t.name,
+                          color: parseHexColor(t.color),
+                          onTap: () => onToggleTag(t.name),
                         ),
-                      ),
-                      const SizedBox(width: 6),
-                      InkWell(
-                        onTap: onAddCustom,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            border: Border.all(color: SpeakrColors.line),
-                            borderRadius: BorderRadius.circular(3),
-                          ),
-                          child: const MonoEyebrow('Add',
-                              size: 9, color: SpeakrColors.ink),
-                        ),
-                      ),
                     ],
                   ),
                 ],

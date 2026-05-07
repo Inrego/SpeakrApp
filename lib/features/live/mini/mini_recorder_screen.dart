@@ -18,13 +18,6 @@ class MiniRecorderScreen extends ConsumerStatefulWidget {
 
 class _MiniRecorderScreenState extends ConsumerState<MiniRecorderScreen> {
   bool _tagPickerOpen = false;
-  final _newTagCtrl = TextEditingController();
-
-  @override
-  void dispose() {
-    _newTagCtrl.dispose();
-    super.dispose();
-  }
 
   Future<void> _confirmDiscard() async {
     final confirmed = await showDialog<bool>(
@@ -65,6 +58,7 @@ class _MiniRecorderScreenState extends ConsumerState<MiniRecorderScreen> {
   Widget build(BuildContext context) {
     final state = ref.watch(recordingMirrorProvider);
     final mirror = ref.read(recordingMirrorProvider.notifier);
+    final tags = ref.watch(miniTagsProvider);
 
     return Scaffold(
       backgroundColor: SpeakrColors.bg,
@@ -102,13 +96,7 @@ class _MiniRecorderScreenState extends ConsumerState<MiniRecorderScreen> {
               onToggleTag: mirror.toggleTag,
               onToggleEdit: () =>
                   setState(() => _tagPickerOpen = !_tagPickerOpen),
-              newTagCtrl: _newTagCtrl,
-              onAddCustom: () {
-                final v = _newTagCtrl.text.trim();
-                if (v.isEmpty) return;
-                mirror.addCustomTag(v);
-                _newTagCtrl.clear();
-              },
+              tags: tags,
               compact: true,
             ),
             const Spacer(),
