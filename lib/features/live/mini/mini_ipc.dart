@@ -5,6 +5,7 @@ class MiniIpc {
 
   // Main → Mini
   static const stateUpdate = 'state.update';
+  static const tagsUpdate = 'tags.update';
   static const foldersUpdate = 'folders.update';
   static const lifecycleClose = 'lifecycle.close';
 
@@ -15,7 +16,6 @@ class MiniIpc {
   static const cmdHideMini = 'cmd.hideMini';
   static const cmdSetSpeakers = 'cmd.setSpeakers';
   static const cmdToggleTag = 'cmd.toggleTag';
-  static const cmdAddCustomTag = 'cmd.addCustomTag';
   static const cmdSetFolder = 'cmd.setFolder';
   static const cmdBeginDrag = 'cmd.beginDrag';
 

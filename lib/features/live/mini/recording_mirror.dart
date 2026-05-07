@@ -45,6 +45,19 @@ class RecordingMirror extends StateNotifier<RecordingState> {
           state = RecordingState.fromJson(json);
         } catch (_) {}
         return null;
+      case MiniIpc.tagsUpdate:
+        try {
+          final raw = call.arguments;
+          final list = raw is String ? jsonDecode(raw) : raw;
+          if (list is List) {
+            final tags = list
+                .whereType<Map>()
+                .map((m) => Tag.fromJson(Map<String, dynamic>.from(m)))
+                .toList(growable: false);
+            _ref.read(miniTagsProvider.notifier).state = tags;
+          }
+        } catch (_) {}
+        return null;
       case MiniIpc.foldersUpdate:
         try {
           final raw = call.arguments;
@@ -86,8 +99,6 @@ class RecordingMirror extends StateNotifier<RecordingState> {
       _send(MiniIpc.cmdSetSpeakers, {'value': v});
   Future<void> toggleTag(String name) =>
       _send(MiniIpc.cmdToggleTag, {'name': name});
-  Future<void> addCustomTag(String name) =>
-      _send(MiniIpc.cmdAddCustomTag, {'name': name});
   Future<void> setFolder(int? id) =>
       _send(MiniIpc.cmdSetFolder, {'id': id});
   Future<void> beginDrag() => _send(MiniIpc.cmdBeginDrag);
@@ -97,3 +108,8 @@ final recordingMirrorProvider =
     StateNotifierProvider<RecordingMirror, RecordingState>(
   (ref) => RecordingMirror(ref),
 );
+
+/// Server tag list pushed from the main engine via [MiniIpc.tagsUpdate].
+/// The mini's `MetadataCard` watches this to render the same suggestion
+/// list users see on the main live screen.
+final miniTagsProvider = StateProvider<List<Tag>>((_) => const <Tag>[]);

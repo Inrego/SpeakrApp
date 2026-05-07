@@ -26,6 +26,11 @@ class RecordingController extends StateNotifier<RecordingState> {
   RecordingController(this._ref) : super(const RecordingState()) {
     _registerMainIpcHandler();
     addListener(_pushStateToMini, fireImmediately: false);
+    _ref.listen<AsyncValue<List<Tag>>>(tagsProvider, (_, next) {
+      final tags = next.value;
+      if (tags == null) return;
+      if (state.miniOpen) _pushTagsToMini(tags);
+    });
     // Re-push folder list to the mini whenever the main app's folders
     // provider updates (e.g. after a refresh) and a mini window is open.
     _ref.listen<AsyncValue<List<Folder>>>(foldersProvider, (_, next) {
@@ -77,10 +82,6 @@ class RecordingController extends StateNotifier<RecordingState> {
         final name = (call.arguments as Map?)?['name'];
         if (name is String) toggleTag(name);
         return null;
-      case MiniIpc.cmdAddCustomTag:
-        final name = (call.arguments as Map?)?['name'];
-        if (name is String) addCustomTag(name);
-        return null;
       case MiniIpc.cmdSetFolder:
         final id = (call.arguments as Map?)?['id'];
         if (id == null) {
@@ -113,6 +114,16 @@ class RecordingController extends StateNotifier<RecordingState> {
       mini.windowId,
       MiniIpc.stateUpdate,
       jsonEncode(s.toJson()),
+    ).catchError((_) => null);
+  }
+
+  void _pushTagsToMini(List<Tag> tags) {
+    final mini = _miniController;
+    if (mini == null) return;
+    DesktopMultiWindow.invokeMethod(
+      mini.windowId,
+      MiniIpc.tagsUpdate,
+      jsonEncode([for (final t in tags) t.toJson()]),
     ).catchError((_) => null);
   }
 
@@ -262,13 +273,6 @@ class RecordingController extends StateNotifier<RecordingState> {
     state = state.copyWith(activeTags: tags);
   }
 
-  void addCustomTag(String name) {
-    final v = name.trim();
-    if (v.isEmpty) return;
-    if (state.activeTags.contains(v)) return;
-    state = state.copyWith(activeTags: [...state.activeTags, v]);
-  }
-
   void setActiveTags(List<String> names) {
     state = state.copyWith(activeTags: List.unmodifiable(names));
   }
@@ -302,6 +306,9 @@ class RecordingController extends StateNotifier<RecordingState> {
       await c.show();
       // Update state — listener will push the current snapshot to the mini.
       state = state.copyWith(miniOpen: true, miniWindowId: c.windowId);
+      // Push initial server tags so the mini's suggestion list matches main.
+      final initialTags = _ref.read(tagsProvider).value;
+      if (initialTags != null) _pushTagsToMini(initialTags);
       // Push the folder list so the mini can render its picker. Reference
       // data isn't part of RecordingState, so it goes via its own IPC call.
       final folders = _ref.read(foldersProvider).value ?? const <Folder>[];
