@@ -11,6 +11,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:record/record.dart';
 
+import '../../api/models.dart';
 import '../../api/providers.dart';
 import '../library/library_controller.dart';
 import 'mini/mini_ipc.dart';
@@ -25,6 +26,12 @@ class RecordingController extends StateNotifier<RecordingState> {
   RecordingController(this._ref) : super(const RecordingState()) {
     _registerMainIpcHandler();
     addListener(_pushStateToMini, fireImmediately: false);
+    // Re-push folder list to the mini whenever the main app's folders
+    // provider updates (e.g. after a refresh) and a mini window is open.
+    _ref.listen<AsyncValue<List<Folder>>>(foldersProvider, (_, next) {
+      final list = next.value;
+      if (list != null) _pushFoldersToMini(list);
+    });
   }
 
   final Ref _ref;
@@ -74,11 +81,29 @@ class RecordingController extends StateNotifier<RecordingState> {
         final name = (call.arguments as Map?)?['name'];
         if (name is String) addCustomTag(name);
         return null;
+      case MiniIpc.cmdSetFolder:
+        final id = (call.arguments as Map?)?['id'];
+        if (id == null) {
+          setFolder(null);
+        } else if (id is int) {
+          setFolder(id);
+        }
+        return null;
       case MiniIpc.cmdBeginDrag:
         await MiniWindowNative.beginMiniDrag();
         return null;
     }
     return null;
+  }
+
+  void _pushFoldersToMini(List<Folder> folders) {
+    final mini = _miniController;
+    if (mini == null || !state.miniOpen) return;
+    DesktopMultiWindow.invokeMethod(
+      mini.windowId,
+      MiniIpc.foldersUpdate,
+      jsonEncode([for (final f in folders) f.toJson()]),
+    ).catchError((_) => null);
   }
 
   void _pushStateToMini(RecordingState s) {
@@ -277,6 +302,10 @@ class RecordingController extends StateNotifier<RecordingState> {
       await c.show();
       // Update state — listener will push the current snapshot to the mini.
       state = state.copyWith(miniOpen: true, miniWindowId: c.windowId);
+      // Push the folder list so the mini can render its picker. Reference
+      // data isn't part of RecordingState, so it goes via its own IPC call.
+      final folders = _ref.read(foldersProvider).value ?? const <Folder>[];
+      _pushFoldersToMini(folders);
       // Apply always-on-top + tool-window styles + initial frame via the
       // native helper (the package doesn't expose these on Windows).
       await MiniWindowNative.applyMiniChrome();

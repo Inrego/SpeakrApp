@@ -3,19 +3,28 @@ import 'dart:convert';
 
 import 'package:desktop_multi_window/desktop_multi_window.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
+import '../../../api/models.dart';
 import '../recording_state.dart';
 import 'mini_ipc.dart';
 import 'mini_window_native.dart';
+
+/// Folder list pushed from the main engine via [MiniIpc.foldersUpdate].
+/// Held separately from [RecordingState] because folders are reference
+/// data, not per-tick session state.
+final miniFoldersProvider = StateProvider<List<Folder>>((_) => const []);
 
 /// Lives in the mini window's Flutter engine. Mirrors [RecordingState]
 /// pushed from the main engine and forwards user actions back as
 /// command messages.
 class RecordingMirror extends StateNotifier<RecordingState> {
-  RecordingMirror() : super(const RecordingState()) {
+  RecordingMirror(this._ref) : super(const RecordingState()) {
     _registerHandler();
   }
+
+  final Ref _ref;
 
   void _registerHandler() {
     try {
@@ -34,6 +43,17 @@ class RecordingMirror extends StateNotifier<RecordingState> {
               ? jsonDecode(raw) as Map<String, dynamic>
               : Map<String, dynamic>.from(raw as Map);
           state = RecordingState.fromJson(json);
+        } catch (_) {}
+        return null;
+      case MiniIpc.foldersUpdate:
+        try {
+          final raw = call.arguments;
+          final list = raw is String ? jsonDecode(raw) : raw;
+          final folders = <Folder>[
+            for (final e in (list as List))
+              Folder.fromJson(Map<String, dynamic>.from(e as Map)),
+          ];
+          _ref.read(miniFoldersProvider.notifier).state = folders;
         } catch (_) {}
         return null;
       case MiniIpc.lifecycleClose:
@@ -68,10 +88,12 @@ class RecordingMirror extends StateNotifier<RecordingState> {
       _send(MiniIpc.cmdToggleTag, {'name': name});
   Future<void> addCustomTag(String name) =>
       _send(MiniIpc.cmdAddCustomTag, {'name': name});
+  Future<void> setFolder(int? id) =>
+      _send(MiniIpc.cmdSetFolder, {'id': id});
   Future<void> beginDrag() => _send(MiniIpc.cmdBeginDrag);
 }
 
 final recordingMirrorProvider =
     StateNotifierProvider<RecordingMirror, RecordingState>(
-  (_) => RecordingMirror(),
+  (ref) => RecordingMirror(ref),
 );
