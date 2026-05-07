@@ -37,8 +37,11 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
   final _searchCtrl = TextEditingController();
   Timer? _pollTimer;
   int _lastSeenScanMs = 0;
+  DateTime? _lastInactiveAt;
+  bool _resumeRefreshQueued = false;
 
   static const _pollInterval = Duration(seconds: 5);
+  static const _staleRefreshThreshold = Duration(seconds: 30);
 
   @override
   void initState() {
@@ -60,7 +63,11 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
     if (state == AppLifecycleState.resumed) {
       _onAppResumed();
     } else {
-      // Defensive: Windows desktop's lifecycle signals are spotty, so cancel
+      // Track when the app last left the foreground so the resume hook can
+      // distinguish a casual focus event (or a click-to-focus) from an
+      // actual return after a long absence.
+      _lastInactiveAt = DateTime.now();
+      // Windows desktop's lifecycle signals are spotty, so cancel polling
       // on anything that isn't an explicit resume.
       _pollTimer?.cancel();
       _pollTimer = null;
@@ -69,10 +76,32 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
 
   void _onAppResumed() {
     if (!mounted) return;
+    // On Windows, AppLifecycleState.resumed fires on every window focus —
+    // including the click that delivers focus to an unfocused window. Skip
+    // the refresh unless the app was actually away long enough for data to
+    // plausibly be stale; otherwise the refresh races the InkWell tap and
+    // swallows the navigation to the recording detail screen.
+    final lastInactiveAt = _lastInactiveAt;
+    if (lastInactiveAt != null &&
+        DateTime.now().difference(lastInactiveAt) < _staleRefreshThreshold) {
+      return;
+    }
+    if (_resumeRefreshQueued) return;
+    _resumeRefreshQueued = true;
+    // Defer to the next frame so any in-flight tap on the previous frame
+    // dispatches before the provider invalidation rebuilds the list.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _resumeRefreshQueued = false;
+      if (!mounted) return;
+      _kickLibraryRefresh();
+      // _evaluatePolling will run on the rebuild caused by the kick.
+    });
+  }
+
+  void _kickLibraryRefresh() {
     ref.invalidate(pendingFilesProvider);
     ref.invalidate(pendingFileErrorsProvider);
     ref.read(uploadKickProvider.notifier).state++;
-    // _evaluatePolling will run on the rebuild caused by the kick.
   }
 
   /// Called from build with the latest items snapshot. Starts a 5s timer
@@ -101,15 +130,11 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
       // Auto-upload store unavailable — still refresh the recordings list.
     }
     if (!mounted) return;
-    ref.invalidate(pendingFilesProvider);
-    ref.invalidate(pendingFileErrorsProvider);
-    ref.read(uploadKickProvider.notifier).state++;
+    _kickLibraryRefresh();
   }
 
   Future<void> _refreshNow() async {
-    ref.invalidate(pendingFilesProvider);
-    ref.invalidate(pendingFileErrorsProvider);
-    ref.read(uploadKickProvider.notifier).state++;
+    _kickLibraryRefresh();
     await ref.read(libraryItemsProvider.future);
   }
 
@@ -155,6 +180,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                 color: SpeakrColors.ink,
                 onRefresh: _refreshNow,
                 child: asyncItems.when(
+                  skipLoadingOnReload: true,
                   loading: () => const _Loading(),
                   error: (e, _) => _ErrorView(
                     message: e.toString(),
