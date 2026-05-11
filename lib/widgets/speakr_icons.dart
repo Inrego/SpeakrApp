@@ -30,6 +30,7 @@ enum SpeakrIcon {
   refresh,
   filter,
   speaker,
+  expand,
 }
 
 class SpeakrIconView extends StatelessWidget {
@@ -311,6 +312,26 @@ class _IconPainter extends CustomPainter {
               largeArc: false,
               clockwise: true);
         canvas.drawPath(wave2, stroke);
+        break;
+      case SpeakrIcon.expand:
+        // Diagonal arrows pointing outward — "open larger window".
+        // Paths from mini-window.jsx:130-134 on a 16×16 viewBox, scaled to 20×20.
+        // Top-right corner: M9 2 h5 v5 + diagonal M14 2 l-5 5
+        final tr = Path()
+          ..moveTo(11.25, 2.5)
+          ..lineTo(17.5, 2.5)
+          ..lineTo(17.5, 8.75);
+        canvas.drawPath(tr, stroke);
+        canvas.drawLine(
+            const Offset(17.5, 2.5), const Offset(11.25, 8.75), stroke);
+        // Bottom-left corner: M7 14 H2 V9 + diagonal M2 14 l5 -5
+        final bl = Path()
+          ..moveTo(8.75, 17.5)
+          ..lineTo(2.5, 17.5)
+          ..lineTo(2.5, 11.25);
+        canvas.drawPath(bl, stroke);
+        canvas.drawLine(
+            const Offset(2.5, 17.5), const Offset(8.75, 11.25), stroke);
         break;
       case SpeakrIcon.trash:
         // Lid

@@ -45,8 +45,8 @@ void MiniWindowNative::HandleMethodCall(
     std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
   const auto& method = call.method_name();
   if (method == "applyMiniChrome") {
-    int width = 320;
-    int height = 540;
+    int width = 248;
+    int height = 40;
     if (const auto* args =
             std::get_if<flutter::EncodableMap>(call.arguments())) {
       auto wit = args->find(flutter::EncodableValue("width"));
@@ -62,6 +62,18 @@ void MiniWindowNative::HandleMethodCall(
     HWND mini = FindMiniHwnd();
     if (mini != nullptr) {
       ::PostMessage(mini, WM_CLOSE, 0, 0);
+    }
+    result->Success();
+    return;
+  }
+  if (method == "focusMain") {
+    // Restore if minimized, then bring the main HWND to the foreground.
+    // ShowWindow(SW_RESTORE) is a no-op when the window isn't minimized.
+    if (main_hwnd_ != nullptr) {
+      if (::IsIconic(main_hwnd_)) {
+        ::ShowWindow(main_hwnd_, SW_RESTORE);
+      }
+      ::SetForegroundWindow(main_hwnd_);
     }
     result->Success();
     return;
@@ -168,6 +180,16 @@ void MiniWindowNative::TryApplyOnce() {
 
   ::SetWindowPos(mini, HWND_TOPMOST, x, y, pending_width_, pending_height_,
                  SWP_NOACTIVATE | SWP_FRAMECHANGED | SWP_SHOWWINDOW);
+
+  // Clip the window to a rounded rectangle so the dark pill body has true
+  // rounded corners on the desktop (CreateRoundRectRgn uses inclusive
+  // coordinates, hence the +1). Windows takes ownership of the region.
+  const int kCornerDiameter = 40;
+  HRGN rgn = ::CreateRoundRectRgn(0, 0, pending_width_ + 1,
+                                  pending_height_ + 1, kCornerDiameter,
+                                  kCornerDiameter);
+  ::SetWindowRgn(mini, rgn, TRUE);
+
   apply_in_progress_ = false;
 }
 
