@@ -74,34 +74,15 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
   }
 
   Future<void> _confirmDiscard() async {
-    final confirmed = await showDialog<bool>(
+    final elapsed =
+        ref.read(recordingControllerProvider).formattedElapsed;
+    final confirmed = await showModalBottomSheet<bool>(
       context: context,
-      barrierDismissible: true,
-      builder: (_) => AlertDialog(
-        backgroundColor: SpeakrColors.bg,
-        title: Text('Discard recording?', style: SpeakrText.serif(size: 20)),
-        content: Text(
-          'This will stop the recording and delete the audio. '
-          'This cannot be undone.',
-          style: SpeakrText.sans(size: 14, color: SpeakrColors.ink2),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: Text(
-              'Keep recording',
-              style: SpeakrText.sans(size: 14, color: SpeakrColors.ink),
-            ),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: Text(
-              'Discard',
-              style: SpeakrText.sans(size: 14, color: SpeakrColors.danger),
-            ),
-          ),
-        ],
-      ),
+      backgroundColor: Colors.transparent,
+      barrierColor: const Color(0x73141210),
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (sheetContext) => _DiscardSheet(elapsed: elapsed),
     );
     if (confirmed == true && mounted) {
       await ref.read(recordingControllerProvider.notifier).cancel();
@@ -124,7 +105,6 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
           children: [
             _TopBar(
               onMinimize: _minimize,
-              onDiscard: _confirmDiscard,
               onShowMini: canOpenMini ? controller.openMini : null,
             ),
             const SizedBox(height: 4),
@@ -172,6 +152,9 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
               busy: state.uploading,
               onTogglePause: state.started ? controller.togglePause : null,
               onStop: state.started ? controller.stopAndUpload : null,
+              onDiscard: state.started && !state.uploading
+                  ? _confirmDiscard
+                  : null,
             ),
             const SizedBox(height: 28),
           ],
@@ -184,11 +167,9 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
 class _TopBar extends StatelessWidget {
   const _TopBar({
     required this.onMinimize,
-    required this.onDiscard,
     this.onShowMini,
   });
   final VoidCallback onMinimize;
-  final Future<void> Function() onDiscard;
   final Future<void> Function()? onShowMini;
 
   @override
@@ -209,7 +190,114 @@ class _TopBar extends StatelessWidget {
             ],
           ),
           const MonoEyebrow('Recording', size: 10),
-          GhostIconButton(icon: SpeakrIcon.trash, onTap: () => onDiscard()),
+          const SizedBox(width: 36, height: 36),
+        ],
+      ),
+    );
+  }
+}
+
+class _DiscardSheet extends StatelessWidget {
+  const _DiscardSheet({required this.elapsed});
+
+  final String elapsed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      decoration: const BoxDecoration(
+        color: SpeakrColors.bg,
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(14),
+          topRight: Radius.circular(14),
+        ),
+        border: Border(top: BorderSide(color: SpeakrColors.line)),
+        boxShadow: [
+          BoxShadow(
+            color: Color(0x2E000000),
+            blurRadius: 40,
+            offset: Offset(0, -12),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.fromLTRB(22, 22, 22, 24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Center(
+            child: Container(
+              width: 36,
+              height: 3,
+              decoration: BoxDecoration(
+                color: SpeakrColors.line,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          const Center(
+            child: MonoEyebrow(
+              'Discard recording',
+              size: 9,
+              color: SpeakrColors.danger,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Throw away $elapsed of audio?',
+            textAlign: TextAlign.center,
+            style: SpeakrText.serif(size: 22, height: 1.25),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            "This recording will be permanently deleted. It won't be "
+            'transcribed or saved to your library.',
+            textAlign: TextAlign.center,
+            style: SpeakrText.sans(
+              size: 13,
+              color: SpeakrColors.muted,
+              height: 1.45,
+            ).copyWith(fontStyle: FontStyle.italic),
+          ),
+          const SizedBox(height: 20),
+          GestureDetector(
+            onTap: () => Navigator.of(context).pop(true),
+            child: Container(
+              height: 48,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: SpeakrColors.danger,
+                borderRadius: BorderRadius.circular(100),
+              ),
+              child: Text(
+                'Discard recording'.toUpperCase(),
+                style: SpeakrText.mono(
+                  size: 11,
+                  color: SpeakrColors.bg,
+                  letterSpacing: 1.5,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          GestureDetector(
+            onTap: () => Navigator.of(context).pop(false),
+            child: Container(
+              height: 44,
+              alignment: Alignment.center,
+              color: Colors.transparent,
+              child: Text(
+                'Keep recording'.toUpperCase(),
+                style: SpeakrText.mono(
+                  size: 11,
+                  color: SpeakrColors.ink,
+                  letterSpacing: 1.5,
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
