@@ -364,8 +364,11 @@ void SpeakrAudioRecorder::HandleMethodCall(
     return;
   }
   if (name == "stop") {
-    std::string path = Stop();
-    if (path.empty()) {
+    std::string err;
+    std::string path = Stop(&err);
+    if (!err.empty()) {
+      result->Error("stop_failed", err);
+    } else if (path.empty()) {
       result->Success();
     } else {
       result->Success(EncodableValue(path));
@@ -424,7 +427,7 @@ bool SpeakrAudioRecorder::Start(const std::string& path, bool mic_enabled,
   return true;
 }
 
-std::string SpeakrAudioRecorder::Stop() {
+std::string SpeakrAudioRecorder::Stop(std::string* out_error) {
   if (!running_.load()) return {};
   stop_requested_.store(true);
   if (worker_.joinable()) worker_.join();
@@ -432,6 +435,7 @@ std::string SpeakrAudioRecorder::Stop() {
   std::lock_guard<std::mutex> lock(error_mu_);
   if (!last_error_.empty()) {
     // Worker bailed mid-recording; the partial m4a is already deleted.
+    if (out_error) *out_error = last_error_;
     return {};
   }
   return output_path_;
@@ -580,6 +584,7 @@ void SpeakrAudioRecorder::RunWorker() {
 
   // Pre-allocate an MF sample buffer and reuse it each iteration.
   LONGLONG pts_hns = 0;
+  uint64_t chunks_written = 0;
 
   // Loop until stop_requested.
   while (!stop_requested_.load()) {
@@ -597,9 +602,18 @@ void SpeakrAudioRecorder::RunWorker() {
       break;
     }
     if (have_system) {
+      const size_t sys_before = sys_src.pcm.size();
       dh = sys_src.Drain(/*gate_to_silence=*/!system_enabled_.load());
       if (FAILED(dh)) {
         // Loopback can transiently fail; treat as silence and keep going.
+        sys_src.AppendSilence(kChunkFrames);
+      } else if (sys_src.pcm.size() == sys_before) {
+        // WASAPI loopback returns no packets while nothing is playing,
+        // rather than zero-filled silence buffers. Pad with our own
+        // silence so the chunk-write condition below (which AND-s mic
+        // and system queue sizes) can still fire — otherwise a silent
+        // system stalls the whole pipeline and the recording ends with
+        // zero chunks written.
         sys_src.AppendSilence(kChunkFrames);
       }
     } else {
@@ -659,6 +673,7 @@ void SpeakrAudioRecorder::RunWorker() {
         break;
       }
       pts_hns += duration_hns;
+      ++chunks_written;
     }
     {
       std::lock_guard<std::mutex> lock(error_mu_);
@@ -670,7 +685,11 @@ void SpeakrAudioRecorder::RunWorker() {
   HRESULT fin = writer->Finalize();
   SafeRelease(&writer);
   if (FAILED(fin)) {
-    record_error("Sink writer finalize failed.");
+    char hex[16];
+    snprintf(hex, sizeof(hex), "0x%08X", static_cast<unsigned>(fin));
+    record_error(std::string("Sink writer finalize failed (HRESULT ") +
+                 hex + ", " + std::to_string(chunks_written) +
+                 " chunks written).");
   }
 
   bool had_error;
