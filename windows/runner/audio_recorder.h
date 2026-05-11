@@ -40,7 +40,7 @@ class SpeakrAudioRecorder {
 
   bool Start(const std::string& path, bool micEnabled, bool systemEnabled,
              std::string* outError);
-  std::string Stop();
+  std::string Stop(std::string* out_error = nullptr);
   void DisposeRecorder();
 
   // The worker entry point. Owns COM + MF init, the two WASAPI capture

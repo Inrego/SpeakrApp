@@ -118,8 +118,8 @@ class NativeLiveAudioRecorder implements LiveAudioRecorder {
   Future<String?> stop() async {
     try {
       return await _channel.invokeMethod<String>('stop');
-    } on PlatformException {
-      return null;
+    } on PlatformException catch (e) {
+      throw Exception(e.message ?? 'Recorder failed to stop.');
     }
   }
 
