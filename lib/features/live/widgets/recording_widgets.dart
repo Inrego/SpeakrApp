@@ -419,25 +419,16 @@ class RecordingControls extends StatelessWidget {
     required this.busy,
     required this.onTogglePause,
     required this.onStop,
-    this.onDiscard,
-    this.compact = false,
+    required this.onDiscard,
   });
   final bool paused;
   final bool busy;
   final VoidCallback? onTogglePause;
   final VoidCallback? onStop;
   final VoidCallback? onDiscard;
-  final bool compact;
 
   @override
   Widget build(BuildContext context) {
-    if (onDiscard != null) {
-      return _buildThreeButton();
-    }
-    return _buildLegacyTwoButton();
-  }
-
-  Widget _buildThreeButton() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(28, 24, 28, 0),
       child: Row(
@@ -466,7 +457,7 @@ class RecordingControls extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 18),
-          _pauseCircle(size: 84, iconSize: 28),
+          _pauseCircle(),
           const SizedBox(width: 18),
           _outlinedPill(
             horizontalPadding: 18,
@@ -528,12 +519,12 @@ class RecordingControls extends StatelessWidget {
     );
   }
 
-  Widget _pauseCircle({required double size, required double iconSize}) {
+  Widget _pauseCircle() {
     return GestureDetector(
       onTap: onTogglePause,
       child: Container(
-        width: size,
-        height: size,
+        width: 84,
+        height: 84,
         decoration: const BoxDecoration(
           color: SpeakrColors.ink,
           shape: BoxShape.circle,
@@ -548,77 +539,10 @@ class RecordingControls extends StatelessWidget {
         child: Center(
           child: SpeakrIconView(
             paused ? SpeakrIcon.play : SpeakrIcon.pause,
-            size: iconSize,
+            size: 28,
             color: SpeakrColors.bg,
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildLegacyTwoButton() {
-    final mainSize = compact ? 60.0 : 84.0;
-    final iconSize = compact ? 22.0 : 28.0;
-    final hPad = compact ? 18.0 : 28.0;
-    final gap = compact ? 16.0 : 24.0;
-    final pillHeight = compact ? 40.0 : 48.0;
-    final pillHPad = compact ? 16.0 : 20.0;
-    final pillGap = compact ? 8.0 : 10.0;
-    final swatchSize = compact ? 10.0 : 12.0;
-    final pillFontSize = compact ? 10.0 : 11.0;
-    return Padding(
-      padding: EdgeInsets.fromLTRB(hPad, compact ? 14 : 24, hPad, 0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          _pauseCircle(size: mainSize, iconSize: iconSize),
-          SizedBox(width: gap),
-          GestureDetector(
-            onTap: busy ? null : onStop,
-            child: Container(
-              height: pillHeight,
-              padding: EdgeInsets.symmetric(horizontal: pillHPad),
-              decoration: BoxDecoration(
-                color: Colors.transparent,
-                borderRadius: BorderRadius.circular(100),
-                border: Border.all(color: SpeakrColors.line),
-              ),
-              child: Center(
-                child: busy
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: SpeakrColors.ink,
-                        ),
-                      )
-                    : Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: swatchSize,
-                            height: swatchSize,
-                            decoration: BoxDecoration(
-                              color: SpeakrColors.recordingDot,
-                              borderRadius: BorderRadius.circular(2),
-                            ),
-                          ),
-                          SizedBox(width: pillGap),
-                          Text(
-                            'Stop & save'.toUpperCase(),
-                            style: SpeakrText.mono(
-                              size: pillFontSize,
-                              color: SpeakrColors.ink,
-                              letterSpacing: 1.5,
-                            ),
-                          ),
-                        ],
-                      ),
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }
