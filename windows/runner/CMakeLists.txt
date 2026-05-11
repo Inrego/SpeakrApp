@@ -7,6 +7,7 @@ project(runner LANGUAGES CXX)
 #
 # Any new source files that you add to the application should be added here.
 add_executable(${BINARY_NAME} WIN32
+  "audio_recorder.cpp"
   "autostart.cpp"
   "flutter_window.cpp"
   "main.cpp"
@@ -37,6 +38,16 @@ target_compile_definitions(${BINARY_NAME} PRIVATE "NOMINMAX")
 # dependencies here.
 target_link_libraries(${BINARY_NAME} PRIVATE flutter flutter_wrapper_app)
 target_link_libraries(${BINARY_NAME} PRIVATE "dwmapi.lib")
+# Audio recorder: WASAPI (Mmdevapi/AvRt) + Media Foundation Sink Writer.
+target_link_libraries(${BINARY_NAME} PRIVATE
+  "Mmdevapi.lib"
+  "Avrt.lib"
+  "Mfplat.lib"
+  "Mfreadwrite.lib"
+  "Mfuuid.lib"
+  "Mf.lib"
+  "Ole32.lib"
+)
 target_include_directories(${BINARY_NAME} PRIVATE "${CMAKE_SOURCE_DIR}")
 
 # Run the Flutter tool portions of the build. This must not be removed.

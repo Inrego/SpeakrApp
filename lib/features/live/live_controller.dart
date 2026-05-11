@@ -8,11 +8,13 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:permission_handler/permission_handler.dart';
-import 'package:record/record.dart';
 
 import '../../api/models.dart';
 import '../../api/providers.dart';
+import '../../services/audio/live_audio_recorder.dart';
+import '../../services/audio/live_audio_recorder_factory.dart';
+import '../../services/auto_record/auto_record_providers.dart';
+import '../../services/auto_record/auto_record_settings.dart';
 import '../library/library_controller.dart';
 import 'mini/mini_ipc.dart';
 import 'mini/mini_window_native.dart';
@@ -37,10 +39,16 @@ class RecordingController extends StateNotifier<RecordingState> {
       final list = next.value;
       if (list != null) _pushFoldersToMini(list);
     });
+    // Start with a fallback recorder so the controller is usable
+    // synchronously; probe for the native pipeline in the background and
+    // swap once available. Sets `state.systemAudioSupported` so the UI
+    // can enable the System Audio toggle when capable.
+    _initRecorder();
   }
 
   final Ref _ref;
-  final AudioRecorder _recorder = AudioRecorder();
+  LiveAudioRecorder _recorder = LiveAudioRecorderFactory.createSync();
+  bool _recorderProbed = false;
   Timer? _ticker;
   WindowController? _miniController;
   bool _ipcRegistered = false;
@@ -48,6 +56,30 @@ class RecordingController extends StateNotifier<RecordingState> {
 
   final _navController = StreamController<RecordingNav>.broadcast();
   Stream<RecordingNav> get navStream => _navController.stream;
+
+  Future<void> _initRecorder() async {
+    try {
+      final r = await LiveAudioRecorderFactory.createAsync();
+      if (_recorderProbed) {
+        // Race: controller disposed during probe.
+        await r.dispose();
+        return;
+      }
+      final old = _recorder;
+      _recorder = r;
+      _recorderProbed = true;
+      if (state.systemAudioSupported != r.supportsSystemAudio) {
+        state = state.copyWith(systemAudioSupported: r.supportsSystemAudio);
+      }
+      // The fallback recorder we constructed synchronously is no longer
+      // needed once the native one is wired up.
+      if (!identical(old, r)) {
+        await old.dispose();
+      }
+    } catch (e) {
+      debugPrint('Recorder probe failed: $e');
+    }
+  }
 
   void _registerMainIpcHandler() {
     if (kIsWeb || !Platform.isWindows) return;
@@ -90,6 +122,14 @@ class RecordingController extends StateNotifier<RecordingState> {
           setFolder(id);
         }
         return null;
+      case MiniIpc.cmdSetMicEnabled:
+        final v = (call.arguments as Map?)?['enabled'];
+        if (v is bool) await setMicEnabled(v);
+        return null;
+      case MiniIpc.cmdSetSystemEnabled:
+        final v = (call.arguments as Map?)?['enabled'];
+        if (v is bool) await setSystemEnabled(v);
+        return null;
       case MiniIpc.cmdBeginDrag:
         await MiniWindowNative.beginMiniDrag();
         return null;
@@ -129,29 +169,75 @@ class RecordingController extends StateNotifier<RecordingState> {
 
   // ---------------- Public actions ----------------
 
-  Future<void> start() async {
+  /// Start a new recording. When [micEnabled] / [systemEnabled] are
+  /// passed (auto-record coordinator path), those values win; otherwise
+  /// the controller falls back to [AutoRecordSettings.defaultMicEnabled]
+  /// / [AutoRecordSettings.defaultSystemEnabled]. The system flag is
+  /// silently downgraded to false on platforms where the recorder can't
+  /// capture system audio.
+  Future<void> start({bool? micEnabled, bool? systemEnabled}) async {
     if (state.started) return;
     state = state.copyWith(error: null);
-    final granted = await Permission.microphone.request();
-    if (!granted.isGranted) {
-      state = state.copyWith(error: 'Microphone permission is required to record.');
-      return;
+
+    bool mic;
+    bool sys;
+    if (micEnabled != null && systemEnabled != null) {
+      mic = micEnabled;
+      sys = systemEnabled;
+    } else {
+      AutoRecordSettings settings;
+      try {
+        settings = await _ref.read(autoRecordSettingsProvider.future);
+      } catch (_) {
+        settings = const AutoRecordSettings();
+      }
+      mic = micEnabled ?? settings.defaultMicEnabled;
+      sys = systemEnabled ?? settings.defaultSystemEnabled;
     }
-    if (!await _recorder.hasPermission()) {
-      state = state.copyWith(error: 'Recorder reports no permission.');
-      return;
+    if (sys && !_recorder.supportsSystemAudio) sys = false;
+    // At least one source must be on at session start, so the user
+    // gets a meaningful recording. If both got resolved to off, fall
+    // back to mic on — that matches the prior plugin behavior.
+    if (!mic && !sys) mic = true;
+
+    state = state.copyWith(
+      micEnabled: mic,
+      systemEnabled: sys,
+      systemAudioSupported: _recorder.supportsSystemAudio,
+    );
+
+    if (mic) {
+      final granted = await _recorder.requestMicPermission();
+      if (!granted) {
+        state =
+            state.copyWith(error: 'Microphone permission is required to record.');
+        return;
+      }
     }
+    if (sys) {
+      final ok = await _recorder.requestSystemPermission();
+      if (!ok) {
+        if (!mic) {
+          state = state.copyWith(error: 'System-audio permission was denied.');
+          return;
+        }
+        // Continue mic-only.
+        sys = false;
+        state = state.copyWith(
+          systemEnabled: false,
+          error: 'System-audio permission was denied — continuing with mic only.',
+        );
+      }
+    }
+
     final dir = await getTemporaryDirectory();
     final ts = DateTime.now().millisecondsSinceEpoch;
     final path = '${dir.path}${Platform.pathSeparator}speakr_$ts.m4a';
     try {
       await _recorder.start(
-        const RecordConfig(
-          encoder: AudioEncoder.aacLc,
-          bitRate: 128000,
-          sampleRate: 44100,
-        ),
         path: path,
+        micEnabled: mic,
+        systemEnabled: sys,
       );
       _recordingStartedAt = DateTime.now();
       _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
@@ -165,17 +251,92 @@ class RecordingController extends StateNotifier<RecordingState> {
       }
     } catch (e) {
       state = state.copyWith(error: 'Could not start recording: $e');
+      await _cleanupAfterFailure();
     }
   }
 
   Future<void> togglePause() async {
     if (!state.started) return;
-    if (state.paused) {
-      await _recorder.resume();
-    } else {
-      await _recorder.pause();
+    try {
+      if (state.paused) {
+        await _recorder.resume();
+      } else {
+        await _recorder.pause();
+      }
+      state = state.copyWith(paused: !state.paused);
+    } catch (e) {
+      state = state.copyWith(error: 'Failed to toggle pause: $e');
     }
-    state = state.copyWith(paused: !state.paused);
+  }
+
+  /// Toggle the mic source. Effective immediately on platforms with
+  /// live mic-mute support (Windows, Android); on the fallback path
+  /// (iOS / web) this is mapped to pause/resume and the [state.paused]
+  /// flag tracks the effect.
+  Future<void> setMicEnabled(bool v) async {
+    if (state.micPending) return;
+    if (state.micEnabled == v && state.started) return;
+    if (!state.started) {
+      // Pre-start: just stash the choice for the next [start] call.
+      state = state.copyWith(micEnabled: v);
+      return;
+    }
+    state = state.copyWith(micPending: true);
+    try {
+      await _recorder.setMicEnabled(v);
+      if (_recorder.supportsLiveMicToggle) {
+        state = state.copyWith(micEnabled: v, micPending: false);
+      } else {
+        // Fallback: mic-off implies paused.
+        state = state.copyWith(
+          micEnabled: v,
+          micPending: false,
+          paused: !v,
+        );
+      }
+    } catch (e) {
+      state = state.copyWith(
+        micPending: false,
+        error: 'Failed to toggle mic: $e',
+      );
+    }
+  }
+
+  /// Toggle the system-audio source. Effective immediately on platforms
+  /// with live source-mute support (Windows, Android); throws (via
+  /// surfaced error state) on platforms where it isn't supported.
+  Future<void> setSystemEnabled(bool v) async {
+    if (state.systemPending) return;
+    if (v && !_recorder.supportsSystemAudio) {
+      state = state.copyWith(
+          error: 'System audio capture isn\'t supported on this device.');
+      return;
+    }
+    if (state.systemEnabled == v && state.started) return;
+    if (!state.started) {
+      state = state.copyWith(systemEnabled: v);
+      return;
+    }
+    state = state.copyWith(systemPending: true);
+    try {
+      if (v) {
+        final ok = await _recorder.requestSystemPermission();
+        if (!ok) {
+          state = state.copyWith(
+            systemPending: false,
+            error: 'System-audio permission was denied.',
+          );
+          return;
+        }
+      }
+      await _recorder.setSystemEnabled(v);
+      state = state.copyWith(systemEnabled: v, systemPending: false);
+    } catch (e) {
+      state = state.copyWith(
+        systemPending: false,
+        error: 'Failed to toggle system audio: $e',
+      );
+    }
   }
 
   Future<void> stopAndUpload() async {
@@ -277,6 +438,22 @@ class RecordingController extends StateNotifier<RecordingState> {
     state = state.copyWith(activeTags: List.unmodifiable(names));
   }
 
+  Future<void> _cleanupAfterFailure() async {
+    _ticker?.cancel();
+    _ticker = null;
+    try {
+      if (await _recorder.isRecording()) {
+        final path = await _recorder.stop();
+        if (path != null) {
+          try {
+            await File(path).delete();
+          } catch (_) {}
+        }
+      }
+    } catch (_) {}
+    await _closeMiniWindow();
+  }
+
   // ---------------- Mini window lifecycle ----------------
 
   /// Hide the mini-window without touching the recorder. Recording, ticker
@@ -344,7 +521,11 @@ class RecordingController extends StateNotifier<RecordingState> {
 
   void _resetSession() {
     _recordingStartedAt = null;
-    state = const RecordingState();
+    state = RecordingState(
+      // Preserve capability flag across sessions — it doesn't change at
+      // runtime and re-probing would waste a round trip.
+      systemAudioSupported: state.systemAudioSupported,
+    );
   }
 
   @override

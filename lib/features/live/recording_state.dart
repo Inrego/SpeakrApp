@@ -20,6 +20,11 @@ sealed class RecordingState with _$RecordingState {
     int? folderId,
     @Default(false) bool miniOpen,
     int? miniWindowId,
+    @Default(true) bool micEnabled,
+    @Default(false) bool systemEnabled,
+    @Default(false) bool systemAudioSupported,
+    @Default(false) bool micPending,
+    @Default(false) bool systemPending,
   }) = _RecordingState;
 
   factory RecordingState.fromJson(Map<String, dynamic> json) =>

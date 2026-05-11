@@ -83,6 +83,10 @@ class AutoRecordSettingsController {
     List<int>? tagIds,
     int? folderId,
     bool clearFolder = false,
+    bool? micEnabled,
+    bool clearMic = false,
+    bool? systemEnabled,
+    bool clearSystem = false,
   }) async {
     final s = await _read();
     final next = <AllowlistEntry>[
@@ -92,6 +96,9 @@ class AutoRecordSettingsController {
             speakers: clearSpeakers ? null : (speakers ?? e.speakers),
             tagIds: tagIds ?? e.tagIds,
             folderId: clearFolder ? null : (folderId ?? e.folderId),
+            micEnabled: clearMic ? null : (micEnabled ?? e.micEnabled),
+            systemEnabled:
+                clearSystem ? null : (systemEnabled ?? e.systemEnabled),
           )
         else
           e,
@@ -122,6 +129,16 @@ class AutoRecordSettingsController {
   Future<void> setDefaultFolderId(int? id) async {
     final s = await _read();
     await _write(s.copyWith(defaultFolderId: id));
+  }
+
+  Future<void> setDefaultMicEnabled(bool v) async {
+    final s = await _read();
+    await _write(s.copyWith(defaultMicEnabled: v));
+  }
+
+  Future<void> setDefaultSystemEnabled(bool v) async {
+    final s = await _read();
+    await _write(s.copyWith(defaultSystemEnabled: v));
   }
 
   Future<void> clearRecentlySeen() async {

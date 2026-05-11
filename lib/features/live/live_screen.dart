@@ -14,6 +14,7 @@ import '../../widgets/speakr_icons.dart';
 import '../library/library_controller.dart';
 import 'live_controller.dart';
 import 'widgets/recording_widgets.dart';
+import 'widgets/source_picker.dart';
 
 class LiveScreen extends ConsumerStatefulWidget {
   const LiveScreen({super.key});
@@ -139,6 +140,16 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
                   style: SpeakrText.sans(size: 13, color: SpeakrColors.danger),
                 ),
               ),
+            const SizedBox(height: 12),
+            SourcePicker(
+              micEnabled: state.micEnabled,
+              systemEnabled: state.systemEnabled,
+              systemAudioSupported: state.systemAudioSupported,
+              micPending: state.micPending,
+              systemPending: state.systemPending,
+              onMicChanged: controller.setMicEnabled,
+              onSystemChanged: controller.setSystemEnabled,
+            ),
             const SizedBox(height: 12),
             MetadataCard(
               speakers: state.speakers,

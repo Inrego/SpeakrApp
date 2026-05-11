@@ -7,6 +7,7 @@ import '../../../theme/typography.dart';
 import '../../../widgets/mono_eyebrow.dart';
 import '../../../widgets/speakr_icons.dart';
 import '../widgets/recording_widgets.dart';
+import '../widgets/source_picker.dart';
 import 'recording_mirror.dart';
 
 class MiniRecorderScreen extends ConsumerStatefulWidget {
@@ -89,6 +90,17 @@ class _MiniRecorderScreenState extends ConsumerState<MiniRecorderScreen> {
                   ),
                 ),
               ),
+            const SizedBox(height: 8),
+            SourcePicker(
+              micEnabled: state.micEnabled,
+              systemEnabled: state.systemEnabled,
+              systemAudioSupported: state.systemAudioSupported,
+              micPending: state.micPending,
+              systemPending: state.systemPending,
+              onMicChanged: mirror.setMicEnabled,
+              onSystemChanged: mirror.setSystemEnabled,
+              compact: true,
+            ),
             const SizedBox(height: 8),
             MetadataCard(
               speakers: state.speakers,
