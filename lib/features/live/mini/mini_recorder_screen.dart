@@ -1,15 +1,20 @@
+import 'dart:async';
+
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../theme/colors.dart';
 import '../../../theme/typography.dart';
-import '../../../widgets/mono_eyebrow.dart';
 import '../../../widgets/speakr_icons.dart';
-import '../widgets/recording_widgets.dart';
-import '../widgets/source_picker.dart';
+import '../recording_state.dart';
 import 'recording_mirror.dart';
 
+/// Always-on-top mini pill shown above other apps during a live recording
+/// on Windows. Replaces the older 320×540 panel with a single 36 px tall
+/// dark pill: live dot · timer · discard · pause/resume · stop & save ·
+/// open in main. Source picker and metadata editing move back to the main
+/// `/live` page per the Option A design.
 class MiniRecorderScreen extends ConsumerStatefulWidget {
   const MiniRecorderScreen({super.key});
 
@@ -18,175 +23,358 @@ class MiniRecorderScreen extends ConsumerStatefulWidget {
 }
 
 class _MiniRecorderScreenState extends ConsumerState<MiniRecorderScreen> {
-  bool _tagPickerOpen = false;
-  bool _folderPickerOpen = false;
+  // Tap-to-arm pattern for the discard button. A real AlertDialog can't
+  // be rendered inside the 248×40 pill window (it gets clipped). Instead,
+  // the first tap turns the trash button red for [_discardArmWindow];
+  // a second tap within the window discards. Tapping elsewhere or letting
+  // the timer expire reverts to the ghost state.
+  static const _discardArmWindow = Duration(seconds: 3);
+  bool _discardArmed = false;
+  Timer? _disarmTimer;
 
-  Future<void> _confirmDiscard() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      barrierDismissible: true,
-      builder: (_) => AlertDialog(
-        backgroundColor: SpeakrColors.bg,
-        title: Text('Discard recording?', style: SpeakrText.serif(size: 20)),
-        content: Text(
-          'This will stop the recording and delete the audio. '
-          'This cannot be undone.',
-          style: SpeakrText.sans(size: 14, color: SpeakrColors.ink2),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: Text(
-              'Keep recording',
-              style: SpeakrText.sans(size: 14, color: SpeakrColors.ink),
-            ),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: Text(
-              'Discard',
-              style: SpeakrText.sans(size: 14, color: SpeakrColors.danger),
-            ),
-          ),
-        ],
-      ),
-    );
-    if (confirmed == true && mounted) {
+  @override
+  void dispose() {
+    _disarmTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _handleDiscardTap() async {
+    if (_discardArmed) {
+      _disarmTimer?.cancel();
+      _discardArmed = false;
       await ref.read(recordingMirrorProvider.notifier).cancel();
+      return;
     }
+    setState(() => _discardArmed = true);
+    _disarmTimer?.cancel();
+    _disarmTimer = Timer(_discardArmWindow, () {
+      if (!mounted) return;
+      setState(() => _discardArmed = false);
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(recordingMirrorProvider);
     final mirror = ref.read(recordingMirrorProvider.notifier);
-    final tags = ref.watch(miniTagsProvider);
-    final folders = ref.watch(miniFoldersProvider);
 
     return Scaffold(
-      backgroundColor: SpeakrColors.bg,
-      body: SafeArea(
-        child: Column(
-          children: [
-            _MiniTopBar(
-              onClose: mirror.hideMini,
-              onDiscard: _confirmDiscard,
-              onDragStart: mirror.beginDrag,
-            ),
-            const SizedBox(height: 2),
-            LiveIndicator(paused: state.paused),
-            const SizedBox(height: 6),
-            RecordingTimer(text: state.formattedElapsed, compact: true),
-            const SizedBox(height: 10),
-            if (state.error != null)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                child: Text(
-                  state.error!,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: SpeakrColors.danger,
-                    fontSize: 11,
-                  ),
-                ),
-              ),
-            const SizedBox(height: 8),
-            SourcePicker(
-              micEnabled: state.micEnabled,
-              systemEnabled: state.systemEnabled,
-              systemAudioSupported: state.systemAudioSupported,
-              micPending: state.micPending,
-              systemPending: state.systemPending,
-              onMicChanged: mirror.setMicEnabled,
-              onSystemChanged: mirror.setSystemEnabled,
-              compact: true,
-            ),
-            const SizedBox(height: 8),
-            MetadataCard(
-              speakers: state.speakers,
-              onSpeakersChanged: mirror.setSpeakers,
-              activeTags: state.activeTags,
-              tagPickerOpen: _tagPickerOpen,
-              onToggleTag: mirror.toggleTag,
-              onToggleEdit: () => setState(() {
-                _tagPickerOpen = !_tagPickerOpen;
-                // Keep the compact window from growing too tall by ensuring
-                // only one picker is open at a time.
-                if (_tagPickerOpen) _folderPickerOpen = false;
-              }),
-              tags: tags,
-              folders: folders,
-              folderId: state.folderId,
-              folderPickerOpen: _folderPickerOpen,
-              onToggleFolderEdit: () => setState(() {
-                _folderPickerOpen = !_folderPickerOpen;
-                if (_folderPickerOpen) _tagPickerOpen = false;
-              }),
-              onFolderChanged: mirror.setFolder,
-              compact: true,
-            ),
-            const Spacer(),
-            RecordingControls(
-              paused: state.paused,
-              busy: state.uploading,
-              onTogglePause: state.started ? mirror.togglePause : null,
-              onStop: state.started ? mirror.stop : null,
-              compact: true,
-            ),
-            const SizedBox(height: 14),
-          ],
+      // The Win32 window underneath is a rounded popup clipped via
+      // SetWindowRgn. Painting the entire surface with ink keeps the
+      // corners visually clean during any pre-clip frame.
+      backgroundColor: SpeakrColors.ink,
+      body: Center(
+        child: _Pill(
+          state: state,
+          discardArmed: _discardArmed,
+          onDragStart: mirror.beginDrag,
+          onDiscard: _handleDiscardTap,
+          onTogglePause: state.started ? mirror.togglePause : null,
+          onStop: state.started && !state.uploading ? mirror.stop : null,
+          onOpenMain: mirror.showMain,
         ),
       ),
     );
   }
 }
 
-class _MiniTopBar extends StatelessWidget {
-  const _MiniTopBar({
-    required this.onClose,
-    required this.onDiscard,
+class _Pill extends StatelessWidget {
+  const _Pill({
+    required this.state,
+    required this.discardArmed,
     required this.onDragStart,
+    required this.onDiscard,
+    required this.onTogglePause,
+    required this.onStop,
+    required this.onOpenMain,
   });
-  final VoidCallback onClose;
-  final Future<void> Function() onDiscard;
+
+  final RecordingState state;
+  final bool discardArmed;
   final Future<void> Function() onDragStart;
+  final Future<void> Function() onDiscard;
+  final VoidCallback? onTogglePause;
+  final VoidCallback? onStop;
+  final Future<void> Function() onOpenMain;
 
   @override
   Widget build(BuildContext context) {
+    final paused = state.paused;
+    final uploading = state.uploading;
+    final timerText = state.formattedElapsed;
+
     return Container(
-      color: SpeakrColors.bg,
-      padding: const EdgeInsets.fromLTRB(8, 6, 8, 4),
+      height: 36,
+      padding: const EdgeInsets.fromLTRB(12, 0, 4, 0),
+      decoration: BoxDecoration(
+        color: SpeakrColors.ink,
+        borderRadius: BorderRadius.circular(18),
+      ),
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          GhostIconButton(icon: SpeakrIcon.close, onTap: onClose),
-          Expanded(
-            child: _DragRegion(
-              onDragStart: onDragStart,
-              child: const Center(child: MonoEyebrow('Recording', size: 9)),
+          _PillDrag(
+            onDragStart: onDragStart,
+            child: _LeftCluster(
+              armed: discardArmed,
+              paused: paused,
+              timerText: timerText,
             ),
           ),
-          GhostIconButton(icon: SpeakrIcon.trash, onTap: () => onDiscard()),
+          const SizedBox(width: 9),
+          _PillDrag(onDragStart: onDragStart, child: const _Hairline()),
+          const SizedBox(width: 9),
+          _PillButton(
+            background: discardArmed
+                ? SpeakrColors.recordingDot.withValues(alpha: 0.95)
+                : const Color(0x14FFFFFF), // ~8% white
+            onTap: () => onDiscard(),
+            child: SpeakrIconView(
+              SpeakrIcon.trash,
+              size: 14,
+              color: discardArmed
+                  ? SpeakrColors.bg
+                  : SpeakrColors.bg.withValues(alpha: 0.7),
+            ),
+          ),
+          const SizedBox(width: 9),
+          _PillButton(
+            background: const Color(0x29FFFFFF), // ~16% white — primary
+            onTap: onTogglePause,
+            child: SpeakrIconView(
+              paused ? SpeakrIcon.play : SpeakrIcon.pause,
+              size: 12,
+              color: SpeakrColors.bg,
+            ),
+          ),
+          const SizedBox(width: 9),
+          _PillButton(
+            background: SpeakrColors.recordingDot.withValues(alpha: 0.95),
+            onTap: onStop,
+            child: uploading
+                ? const SizedBox(
+                    width: 12,
+                    height: 12,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 1.6,
+                      color: SpeakrColors.bg,
+                    ),
+                  )
+                : Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: SpeakrColors.bg,
+                      borderRadius: BorderRadius.circular(1.5),
+                    ),
+                  ),
+          ),
+          const SizedBox(width: 9),
+          _PillDrag(onDragStart: onDragStart, child: const _Hairline()),
+          const SizedBox(width: 9),
+          _PillButton(
+            background: const Color(0x14FFFFFF),
+            onTap: () => onOpenMain(),
+            child: SpeakrIconView(
+              SpeakrIcon.expand,
+              size: 13,
+              color: SpeakrColors.bg.withValues(alpha: 0.85),
+            ),
+          ),
         ],
       ),
     );
   }
 }
 
-class _DragRegion extends StatelessWidget {
-  const _DragRegion({required this.onDragStart, required this.child});
+/// Left cluster of the pill: pulsing dot + mono timer in the normal
+/// state, swapped for a single "Discard?" label when the user has armed
+/// the trash button. Both states render in the same fixed-width slot so
+/// the pill's overall length never reflows.
+class _LeftCluster extends StatelessWidget {
+  const _LeftCluster({
+    required this.armed,
+    required this.paused,
+    required this.timerText,
+  });
+
+  final bool armed;
+  final bool paused;
+  final String timerText;
+
+  // 6 (dot) + 9 (gap) + 56 (timer slot) = 71 px
+  static const double _slotWidth = 71;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: _slotWidth,
+      child: armed
+          ? Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'Discard?',
+                style: SpeakrText.sans(
+                  size: 12,
+                  weight: FontWeight.w600,
+                  color: SpeakrColors.recordingDot,
+                ),
+              ),
+            )
+          : Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _PulsingDot(paused: paused),
+                const SizedBox(width: 9),
+                SizedBox(
+                  width: 56,
+                  child: Text(
+                    timerText,
+                    textAlign: TextAlign.left,
+                    style: SpeakrText.mono(
+                      size: 11,
+                      color: paused
+                          ? SpeakrColors.bg.withValues(alpha: 0.55)
+                          : SpeakrColors.bg,
+                      letterSpacing: 0.4,
+                    ).copyWith(
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+    );
+  }
+}
+
+/// 1 × 16 px white-at-14 % vertical hairline used between the timer
+/// cluster and the control cluster.
+class _Hairline extends StatelessWidget {
+  const _Hairline();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 1,
+      height: 16,
+      color: const Color(0x24FFFFFF),
+    );
+  }
+}
+
+/// Pulsing recording dot: 6 px circle, orange while recording (fades
+/// 1.0 ↔ 0.35 every 1.4 s), grey and static while paused.
+class _PulsingDot extends StatefulWidget {
+  const _PulsingDot({required this.paused});
+  final bool paused;
+
+  @override
+  State<_PulsingDot> createState() => _PulsingDotState();
+}
+
+class _PulsingDotState extends State<_PulsingDot>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1400),
+  )..repeat(reverse: true);
+
+  late final Animation<double> _opacity =
+      Tween(begin: 1.0, end: 0.35).animate(_ctrl);
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.paused) {
+      return Container(
+        width: 6,
+        height: 6,
+        decoration: const BoxDecoration(
+          color: SpeakrColors.muted,
+          shape: BoxShape.circle,
+        ),
+      );
+    }
+    return FadeTransition(
+      opacity: _opacity,
+      child: Container(
+        width: 6,
+        height: 6,
+        decoration: const BoxDecoration(
+          color: SpeakrColors.recordingDot,
+          shape: BoxShape.circle,
+        ),
+      ),
+    );
+  }
+}
+
+/// 26 px circular button used on the dark pill. [background] is the
+/// inner fill (e.g. 8 % white for ghost, orange for stop). [onTap] = null
+/// renders the button at half-opacity and disables interaction.
+///
+/// Tooltips are intentionally omitted: the OS window is only 40 px tall,
+/// so Flutter's tooltip layer would always render outside the visible
+/// surface and get clipped.
+class _PillButton extends StatelessWidget {
+  const _PillButton({
+    required this.background,
+    required this.onTap,
+    required this.child,
+  });
+
+  final Color background;
+  final VoidCallback? onTap;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = onTap != null;
+    return Opacity(
+      opacity: enabled ? 1.0 : 0.4,
+      child: Material(
+        color: background,
+        shape: const CircleBorder(),
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: onTap,
+          child: SizedBox(
+            width: 26,
+            height: 26,
+            child: Center(child: child),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Wraps a non-button pill piece (dot, timer, hairline) so pressing it
+/// initiates a Windows window-move on the mini HWND.
+class _PillDrag extends StatelessWidget {
+  const _PillDrag({required this.onDragStart, required this.child});
   final Future<void> Function() onDragStart;
   final Widget child;
 
   @override
   Widget build(BuildContext context) {
-    return Listener(
-      behavior: HitTestBehavior.opaque,
-      onPointerDown: (event) {
-        if (event.buttons == kPrimaryMouseButton) {
-          onDragStart();
-        }
-      },
-      child: child,
+    return MouseRegion(
+      cursor: SystemMouseCursors.move,
+      child: Listener(
+        behavior: HitTestBehavior.opaque,
+        onPointerDown: (event) {
+          if (event.buttons == kPrimaryMouseButton) {
+            onDragStart();
+          }
+        },
+        child: child,
+      ),
     );
   }
 }

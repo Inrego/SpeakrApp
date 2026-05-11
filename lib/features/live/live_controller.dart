@@ -15,6 +15,7 @@ import '../../services/audio/live_audio_recorder.dart';
 import '../../services/audio/live_audio_recorder_factory.dart';
 import '../../services/auto_record/auto_record_providers.dart';
 import '../../services/auto_record/auto_record_settings.dart';
+import '../../routing/router.dart';
 import '../library/library_controller.dart';
 import 'mini/mini_ipc.dart';
 import 'mini/mini_window_native.dart';
@@ -132,6 +133,14 @@ class RecordingController extends StateNotifier<RecordingState> {
         return null;
       case MiniIpc.cmdBeginDrag:
         await MiniWindowNative.beginMiniDrag();
+        return null;
+      case MiniIpc.cmdShowMain:
+        await MiniWindowNative.focusMain();
+        // Route the main app to /live so the user lands on the recording
+        // page, not whatever screen they were on before opening the pill.
+        try {
+          _ref.read(routerProvider).go('/live');
+        } catch (_) {}
         return null;
     }
     return null;

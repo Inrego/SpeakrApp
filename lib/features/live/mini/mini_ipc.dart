@@ -20,6 +20,7 @@ class MiniIpc {
   static const cmdSetMicEnabled = 'cmd.setMicEnabled';
   static const cmdSetSystemEnabled = 'cmd.setSystemEnabled';
   static const cmdBeginDrag = 'cmd.beginDrag';
+  static const cmdShowMain = 'cmd.showMain';
 
   /// desktop_multi_window assigns the host engine the windowId 0. New
   /// child engines get sequential ids (1, 2, …).

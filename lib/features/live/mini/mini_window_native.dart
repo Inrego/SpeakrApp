@@ -14,8 +14,8 @@ class MiniWindowNative {
   /// Apply always-on-top, no-taskbar, fixed size, and place the window in
   /// the top-right of the primary monitor. Safe to call multiple times.
   static Future<void> applyMiniChrome({
-    int width = 320,
-    int height = 540,
+    int width = 248,
+    int height = 40,
   }) async {
     try {
       await _channel.invokeMethod('applyMiniChrome', {
@@ -44,6 +44,16 @@ class MiniWindowNative {
   static Future<void> beginMiniDrag() async {
     try {
       await _channel.invokeMethod('beginMiniDrag');
+    } on MissingPluginException {
+      // ignore
+    } catch (_) {}
+  }
+
+  /// Bring the main app window to the foreground. Used by the mini pill's
+  /// "Open in main window" button.
+  static Future<void> focusMain() async {
+    try {
+      await _channel.invokeMethod('focusMain');
     } on MissingPluginException {
       // ignore
     } catch (_) {}

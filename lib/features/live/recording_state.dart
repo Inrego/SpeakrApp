@@ -33,8 +33,11 @@ sealed class RecordingState with _$RecordingState {
   Duration get elapsed => Duration(seconds: elapsedSeconds);
 
   String get formattedElapsed {
-    final m = elapsed.inMinutes;
+    final h = elapsed.inHours;
+    final m = elapsed.inMinutes % 60;
     final s = elapsed.inSeconds % 60;
-    return '$m:${s.toString().padLeft(2, '0')}';
+    final ss = s.toString().padLeft(2, '0');
+    if (h > 0) return '$h:${m.toString().padLeft(2, '0')}:$ss';
+    return '$m:$ss';
   }
 }

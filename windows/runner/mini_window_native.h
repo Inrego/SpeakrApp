@@ -35,8 +35,8 @@ class MiniWindowNative {
   HWND FindMiniHwnd();
 
   HWND main_hwnd_;
-  int pending_width_ = 320;
-  int pending_height_ = 540;
+  int pending_width_ = 248;
+  int pending_height_ = 40;
   int apply_attempts_ = 0;
   bool apply_in_progress_ = false;
 
