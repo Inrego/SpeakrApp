@@ -22,6 +22,11 @@ _RecordingState _$RecordingStateFromJson(Map<String, dynamic> json) =>
       folderId: (json['folderId'] as num?)?.toInt(),
       miniOpen: json['miniOpen'] as bool? ?? false,
       miniWindowId: (json['miniWindowId'] as num?)?.toInt(),
+      micEnabled: json['micEnabled'] as bool? ?? true,
+      systemEnabled: json['systemEnabled'] as bool? ?? false,
+      systemAudioSupported: json['systemAudioSupported'] as bool? ?? false,
+      micPending: json['micPending'] as bool? ?? false,
+      systemPending: json['systemPending'] as bool? ?? false,
     );
 
 Map<String, dynamic> _$RecordingStateToJson(_RecordingState instance) =>
@@ -36,4 +41,9 @@ Map<String, dynamic> _$RecordingStateToJson(_RecordingState instance) =>
       'folderId': instance.folderId,
       'miniOpen': instance.miniOpen,
       'miniWindowId': instance.miniWindowId,
+      'micEnabled': instance.micEnabled,
+      'systemEnabled': instance.systemEnabled,
+      'systemAudioSupported': instance.systemAudioSupported,
+      'micPending': instance.micPending,
+      'systemPending': instance.systemPending,
     };

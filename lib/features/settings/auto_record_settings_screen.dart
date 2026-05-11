@@ -463,6 +463,27 @@ class _BehaviorGroup extends ConsumerWidget {
       label: 'Behavior',
       children: [
         SettingsRow(
+          label: 'Record microphone by default',
+          subtitle:
+              'New sessions start with the mic source on. Can be toggled '
+              'mid-recording.',
+          toggleValue: settings.defaultMicEnabled,
+          onToggle: controller.setDefaultMicEnabled,
+        ),
+        SettingsRow(
+          label: 'Record system audio by default',
+          subtitle: Platform.isWindows || Platform.isAndroid
+              ? 'New sessions start with system (loopback) audio on. Can '
+                  'be toggled mid-recording. Captures audio from other '
+                  'apps that are playing.'
+              : 'System audio capture is only available on Windows and '
+                  'Android 10+.',
+          toggleValue: settings.defaultSystemEnabled,
+          onToggle: Platform.isWindows || Platform.isAndroid
+              ? controller.setDefaultSystemEnabled
+              : null,
+        ),
+        SettingsRow(
           label: 'Stop-prompt silence threshold',
           trailing: _IntStepper(
             value: settings.silenceSeconds,
@@ -667,6 +688,8 @@ class _PerAppConfigSheet extends ConsumerWidget {
             defaultSpeakers: s.defaultSpeakers,
             defaultTagIds: s.defaultTagIds,
             defaultFolderId: s.defaultFolderId,
+            defaultMicEnabled: s.defaultMicEnabled,
+            defaultSystemEnabled: s.defaultSystemEnabled,
             controller: controller,
           );
         },
@@ -690,12 +713,16 @@ class _PerAppConfigSheetBody extends ConsumerWidget {
     required this.defaultSpeakers,
     required this.defaultTagIds,
     required this.defaultFolderId,
+    required this.defaultMicEnabled,
+    required this.defaultSystemEnabled,
     required this.controller,
   });
   final AllowlistEntry entry;
   final int defaultSpeakers;
   final List<int> defaultTagIds;
   final int? defaultFolderId;
+  final bool defaultMicEnabled;
+  final bool defaultSystemEnabled;
   final AutoRecordSettingsController controller;
 
   @override
@@ -863,6 +890,53 @@ class _PerAppConfigSheetBody extends ConsumerWidget {
                   ),
               ],
             ),
+          ),
+          const SizedBox(height: 16),
+          // ── Microphone source ───────────────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 0, 24, 6),
+            child: MonoEyebrow('Microphone', size: 9),
+          ),
+          _SheetRow(
+            label: 'Use default (${defaultMicEnabled ? 'on' : 'off'})',
+            selected: entry.micEnabled == null,
+            onTap: () => controller.setEntryOverrides(entry, clearMic: true),
+          ),
+          _SheetRow(
+            label: 'Always on',
+            selected: entry.micEnabled == true,
+            onTap: () =>
+                controller.setEntryOverrides(entry, micEnabled: true),
+          ),
+          _SheetRow(
+            label: 'Always off',
+            selected: entry.micEnabled == false,
+            onTap: () =>
+                controller.setEntryOverrides(entry, micEnabled: false),
+          ),
+          const SizedBox(height: 16),
+          // ── System audio source ─────────────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 0, 24, 6),
+            child: MonoEyebrow('System audio', size: 9),
+          ),
+          _SheetRow(
+            label: 'Use default (${defaultSystemEnabled ? 'on' : 'off'})',
+            selected: entry.systemEnabled == null,
+            onTap: () =>
+                controller.setEntryOverrides(entry, clearSystem: true),
+          ),
+          _SheetRow(
+            label: 'Always on',
+            selected: entry.systemEnabled == true,
+            onTap: () =>
+                controller.setEntryOverrides(entry, systemEnabled: true),
+          ),
+          _SheetRow(
+            label: 'Always off',
+            selected: entry.systemEnabled == false,
+            onTap: () =>
+                controller.setEntryOverrides(entry, systemEnabled: false),
           ),
         ],
       ),

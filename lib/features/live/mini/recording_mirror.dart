@@ -101,6 +101,10 @@ class RecordingMirror extends StateNotifier<RecordingState> {
       _send(MiniIpc.cmdToggleTag, {'name': name});
   Future<void> setFolder(int? id) =>
       _send(MiniIpc.cmdSetFolder, {'id': id});
+  Future<void> setMicEnabled(bool enabled) =>
+      _send(MiniIpc.cmdSetMicEnabled, {'enabled': enabled});
+  Future<void> setSystemEnabled(bool enabled) =>
+      _send(MiniIpc.cmdSetSystemEnabled, {'enabled': enabled});
   Future<void> beginDrag() => _send(MiniIpc.cmdBeginDrag);
 }
 

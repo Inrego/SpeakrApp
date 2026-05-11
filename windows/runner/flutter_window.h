@@ -8,6 +8,7 @@
 
 #include <memory>
 
+#include "audio_recorder.h"
 #include "autostart.h"
 #include "mini_window_native.h"
 #include "tray_icon.h"
@@ -45,6 +46,10 @@ class FlutterWindow : public Win32Window {
   // Optional helper that drives the always-on-top mini recorder window
   // on Windows. Constructed after RegisterPlugins() in OnCreate().
   std::unique_ptr<MiniWindowNative> mini_window_native_;
+
+  // Owns the WASAPI + Media Foundation recording pipeline. Constructed
+  // after the engine boots; method channel speakr.audio/recorder.
+  std::unique_ptr<SpeakrAudioRecorder> audio_recorder_;
 
   // Owns the system-tray icon. Constructed after the HWND exists.
   std::unique_ptr<TrayIcon> tray_icon_;

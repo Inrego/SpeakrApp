@@ -47,7 +47,11 @@ class AutoRecordBootstrap {
         micMonitor: monitor,
         outputMeter: meter,
         recording: recording,
-        startRecording: recording.start,
+        startRecording: ({bool? micEnabled, bool? systemEnabled}) =>
+            recording.start(
+          micEnabled: micEnabled,
+          systemEnabled: systemEnabled,
+        ),
         stopAndUpload: recording.stopAndUpload,
         cancelRecording: recording.cancel,
         store: store,

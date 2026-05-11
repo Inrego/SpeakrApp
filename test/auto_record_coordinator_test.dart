@@ -51,11 +51,19 @@ class FakeRecordingController extends StateNotifier<RecordingState> {
   int startCallCount = 0;
   bool stoppedCalled = false;
   bool cancelCalled = false;
+  bool? lastStartMicEnabled;
+  bool? lastStartSystemEnabled;
 
-  Future<void> start() async {
+  Future<void> start({bool? micEnabled, bool? systemEnabled}) async {
     startedCalled = true;
     startCallCount++;
-    state = state.copyWith(started: true);
+    lastStartMicEnabled = micEnabled;
+    lastStartSystemEnabled = systemEnabled;
+    state = state.copyWith(
+      started: true,
+      micEnabled: micEnabled ?? state.micEnabled,
+      systemEnabled: systemEnabled ?? state.systemEnabled,
+    );
   }
 
   Future<void> stopAndUpload() async {
@@ -391,6 +399,50 @@ void main() {
     expect(rec.cancelCalled, isFalse);
   });
 
+  test('passes per-app source-flag overrides to startRecording', () async {
+    await store.write(const AutoRecordSettings(
+      enabled: true,
+      defaultMicEnabled: true,
+      defaultSystemEnabled: false,
+      allowlist: [
+        AllowlistEntry(
+          key: 'Teams.exe',
+          displayName: 'Teams',
+          kind: AllowlistKind.exeBasename,
+          micEnabled: false,
+          systemEnabled: true,
+        ),
+      ],
+    ));
+    mic.emit([
+      _u(key: 'Teams.exe', kind: AllowlistKind.exeBasename, inUse: true),
+    ]);
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+    expect(rec.lastStartMicEnabled, isFalse);
+    expect(rec.lastStartSystemEnabled, isTrue);
+  });
+
+  test('falls back to source defaults when entry has no override', () async {
+    await store.write(const AutoRecordSettings(
+      enabled: true,
+      defaultMicEnabled: false,
+      defaultSystemEnabled: true,
+      allowlist: [
+        AllowlistEntry(
+          key: 'Teams.exe',
+          displayName: 'Teams',
+          kind: AllowlistKind.exeBasename,
+        ),
+      ],
+    ));
+    mic.emit([
+      _u(key: 'Teams.exe', kind: AllowlistKind.exeBasename, inUse: true),
+    ]);
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+    expect(rec.lastStartMicEnabled, isFalse);
+    expect(rec.lastStartSystemEnabled, isTrue);
+  });
+
   test('applies per-app speakers override when entry has one', () async {
     await store.write(const AutoRecordSettings(
       enabled: true,
@@ -524,7 +576,7 @@ void main() {
 class _FailingRecordingController extends StateNotifier<RecordingState> {
   _FailingRecordingController() : super(const RecordingState());
 
-  Future<void> start() async {
+  Future<void> start({bool? micEnabled, bool? systemEnabled}) async {
     // Simulate failure: don't flip `started`.
   }
 

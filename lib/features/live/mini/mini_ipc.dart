@@ -17,6 +17,8 @@ class MiniIpc {
   static const cmdSetSpeakers = 'cmd.setSpeakers';
   static const cmdToggleTag = 'cmd.toggleTag';
   static const cmdSetFolder = 'cmd.setFolder';
+  static const cmdSetMicEnabled = 'cmd.setMicEnabled';
+  static const cmdSetSystemEnabled = 'cmd.setSystemEnabled';
   static const cmdBeginDrag = 'cmd.beginDrag';
 
   /// desktop_multi_window assigns the host engine the windowId 0. New

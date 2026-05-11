@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$RecordingState {
 
- int get elapsedSeconds; bool get paused; bool get started; bool get uploading; String? get error; int get speakers; List<String> get activeTags; int? get folderId; bool get miniOpen; int? get miniWindowId;
+ int get elapsedSeconds; bool get paused; bool get started; bool get uploading; String? get error; int get speakers; List<String> get activeTags; int? get folderId; bool get miniOpen; int? get miniWindowId; bool get micEnabled; bool get systemEnabled; bool get systemAudioSupported; bool get micPending; bool get systemPending;
 /// Create a copy of RecordingState
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,16 +28,16 @@ $RecordingStateCopyWith<RecordingState> get copyWith => _$RecordingStateCopyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is RecordingState&&(identical(other.elapsedSeconds, elapsedSeconds) || other.elapsedSeconds == elapsedSeconds)&&(identical(other.paused, paused) || other.paused == paused)&&(identical(other.started, started) || other.started == started)&&(identical(other.uploading, uploading) || other.uploading == uploading)&&(identical(other.error, error) || other.error == error)&&(identical(other.speakers, speakers) || other.speakers == speakers)&&const DeepCollectionEquality().equals(other.activeTags, activeTags)&&(identical(other.folderId, folderId) || other.folderId == folderId)&&(identical(other.miniOpen, miniOpen) || other.miniOpen == miniOpen)&&(identical(other.miniWindowId, miniWindowId) || other.miniWindowId == miniWindowId));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is RecordingState&&(identical(other.elapsedSeconds, elapsedSeconds) || other.elapsedSeconds == elapsedSeconds)&&(identical(other.paused, paused) || other.paused == paused)&&(identical(other.started, started) || other.started == started)&&(identical(other.uploading, uploading) || other.uploading == uploading)&&(identical(other.error, error) || other.error == error)&&(identical(other.speakers, speakers) || other.speakers == speakers)&&const DeepCollectionEquality().equals(other.activeTags, activeTags)&&(identical(other.folderId, folderId) || other.folderId == folderId)&&(identical(other.miniOpen, miniOpen) || other.miniOpen == miniOpen)&&(identical(other.miniWindowId, miniWindowId) || other.miniWindowId == miniWindowId)&&(identical(other.micEnabled, micEnabled) || other.micEnabled == micEnabled)&&(identical(other.systemEnabled, systemEnabled) || other.systemEnabled == systemEnabled)&&(identical(other.systemAudioSupported, systemAudioSupported) || other.systemAudioSupported == systemAudioSupported)&&(identical(other.micPending, micPending) || other.micPending == micPending)&&(identical(other.systemPending, systemPending) || other.systemPending == systemPending));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,elapsedSeconds,paused,started,uploading,error,speakers,const DeepCollectionEquality().hash(activeTags),folderId,miniOpen,miniWindowId);
+int get hashCode => Object.hash(runtimeType,elapsedSeconds,paused,started,uploading,error,speakers,const DeepCollectionEquality().hash(activeTags),folderId,miniOpen,miniWindowId,micEnabled,systemEnabled,systemAudioSupported,micPending,systemPending);
 
 @override
 String toString() {
-  return 'RecordingState(elapsedSeconds: $elapsedSeconds, paused: $paused, started: $started, uploading: $uploading, error: $error, speakers: $speakers, activeTags: $activeTags, folderId: $folderId, miniOpen: $miniOpen, miniWindowId: $miniWindowId)';
+  return 'RecordingState(elapsedSeconds: $elapsedSeconds, paused: $paused, started: $started, uploading: $uploading, error: $error, speakers: $speakers, activeTags: $activeTags, folderId: $folderId, miniOpen: $miniOpen, miniWindowId: $miniWindowId, micEnabled: $micEnabled, systemEnabled: $systemEnabled, systemAudioSupported: $systemAudioSupported, micPending: $micPending, systemPending: $systemPending)';
 }
 
 
@@ -48,7 +48,7 @@ abstract mixin class $RecordingStateCopyWith<$Res>  {
   factory $RecordingStateCopyWith(RecordingState value, $Res Function(RecordingState) _then) = _$RecordingStateCopyWithImpl;
 @useResult
 $Res call({
- int elapsedSeconds, bool paused, bool started, bool uploading, String? error, int speakers, List<String> activeTags, int? folderId, bool miniOpen, int? miniWindowId
+ int elapsedSeconds, bool paused, bool started, bool uploading, String? error, int speakers, List<String> activeTags, int? folderId, bool miniOpen, int? miniWindowId, bool micEnabled, bool systemEnabled, bool systemAudioSupported, bool micPending, bool systemPending
 });
 
 
@@ -65,7 +65,7 @@ class _$RecordingStateCopyWithImpl<$Res>
 
 /// Create a copy of RecordingState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? elapsedSeconds = null,Object? paused = null,Object? started = null,Object? uploading = null,Object? error = freezed,Object? speakers = null,Object? activeTags = null,Object? folderId = freezed,Object? miniOpen = null,Object? miniWindowId = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? elapsedSeconds = null,Object? paused = null,Object? started = null,Object? uploading = null,Object? error = freezed,Object? speakers = null,Object? activeTags = null,Object? folderId = freezed,Object? miniOpen = null,Object? miniWindowId = freezed,Object? micEnabled = null,Object? systemEnabled = null,Object? systemAudioSupported = null,Object? micPending = null,Object? systemPending = null,}) {
   return _then(_self.copyWith(
 elapsedSeconds: null == elapsedSeconds ? _self.elapsedSeconds : elapsedSeconds // ignore: cast_nullable_to_non_nullable
 as int,paused: null == paused ? _self.paused : paused // ignore: cast_nullable_to_non_nullable
@@ -77,7 +77,12 @@ as int,activeTags: null == activeTags ? _self.activeTags : activeTags // ignore:
 as List<String>,folderId: freezed == folderId ? _self.folderId : folderId // ignore: cast_nullable_to_non_nullable
 as int?,miniOpen: null == miniOpen ? _self.miniOpen : miniOpen // ignore: cast_nullable_to_non_nullable
 as bool,miniWindowId: freezed == miniWindowId ? _self.miniWindowId : miniWindowId // ignore: cast_nullable_to_non_nullable
-as int?,
+as int?,micEnabled: null == micEnabled ? _self.micEnabled : micEnabled // ignore: cast_nullable_to_non_nullable
+as bool,systemEnabled: null == systemEnabled ? _self.systemEnabled : systemEnabled // ignore: cast_nullable_to_non_nullable
+as bool,systemAudioSupported: null == systemAudioSupported ? _self.systemAudioSupported : systemAudioSupported // ignore: cast_nullable_to_non_nullable
+as bool,micPending: null == micPending ? _self.micPending : micPending // ignore: cast_nullable_to_non_nullable
+as bool,systemPending: null == systemPending ? _self.systemPending : systemPending // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 
@@ -159,10 +164,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( int elapsedSeconds,  bool paused,  bool started,  bool uploading,  String? error,  int speakers,  List<String> activeTags,  int? folderId,  bool miniOpen,  int? miniWindowId)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( int elapsedSeconds,  bool paused,  bool started,  bool uploading,  String? error,  int speakers,  List<String> activeTags,  int? folderId,  bool miniOpen,  int? miniWindowId,  bool micEnabled,  bool systemEnabled,  bool systemAudioSupported,  bool micPending,  bool systemPending)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _RecordingState() when $default != null:
-return $default(_that.elapsedSeconds,_that.paused,_that.started,_that.uploading,_that.error,_that.speakers,_that.activeTags,_that.folderId,_that.miniOpen,_that.miniWindowId);case _:
+return $default(_that.elapsedSeconds,_that.paused,_that.started,_that.uploading,_that.error,_that.speakers,_that.activeTags,_that.folderId,_that.miniOpen,_that.miniWindowId,_that.micEnabled,_that.systemEnabled,_that.systemAudioSupported,_that.micPending,_that.systemPending);case _:
   return orElse();
 
 }
@@ -180,10 +185,10 @@ return $default(_that.elapsedSeconds,_that.paused,_that.started,_that.uploading,
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( int elapsedSeconds,  bool paused,  bool started,  bool uploading,  String? error,  int speakers,  List<String> activeTags,  int? folderId,  bool miniOpen,  int? miniWindowId)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( int elapsedSeconds,  bool paused,  bool started,  bool uploading,  String? error,  int speakers,  List<String> activeTags,  int? folderId,  bool miniOpen,  int? miniWindowId,  bool micEnabled,  bool systemEnabled,  bool systemAudioSupported,  bool micPending,  bool systemPending)  $default,) {final _that = this;
 switch (_that) {
 case _RecordingState():
-return $default(_that.elapsedSeconds,_that.paused,_that.started,_that.uploading,_that.error,_that.speakers,_that.activeTags,_that.folderId,_that.miniOpen,_that.miniWindowId);}
+return $default(_that.elapsedSeconds,_that.paused,_that.started,_that.uploading,_that.error,_that.speakers,_that.activeTags,_that.folderId,_that.miniOpen,_that.miniWindowId,_that.micEnabled,_that.systemEnabled,_that.systemAudioSupported,_that.micPending,_that.systemPending);}
 }
 /// A variant of `when` that fallback to returning `null`
 ///
@@ -197,10 +202,10 @@ return $default(_that.elapsedSeconds,_that.paused,_that.started,_that.uploading,
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( int elapsedSeconds,  bool paused,  bool started,  bool uploading,  String? error,  int speakers,  List<String> activeTags,  int? folderId,  bool miniOpen,  int? miniWindowId)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( int elapsedSeconds,  bool paused,  bool started,  bool uploading,  String? error,  int speakers,  List<String> activeTags,  int? folderId,  bool miniOpen,  int? miniWindowId,  bool micEnabled,  bool systemEnabled,  bool systemAudioSupported,  bool micPending,  bool systemPending)?  $default,) {final _that = this;
 switch (_that) {
 case _RecordingState() when $default != null:
-return $default(_that.elapsedSeconds,_that.paused,_that.started,_that.uploading,_that.error,_that.speakers,_that.activeTags,_that.folderId,_that.miniOpen,_that.miniWindowId);case _:
+return $default(_that.elapsedSeconds,_that.paused,_that.started,_that.uploading,_that.error,_that.speakers,_that.activeTags,_that.folderId,_that.miniOpen,_that.miniWindowId,_that.micEnabled,_that.systemEnabled,_that.systemAudioSupported,_that.micPending,_that.systemPending);case _:
   return null;
 
 }
@@ -212,7 +217,7 @@ return $default(_that.elapsedSeconds,_that.paused,_that.started,_that.uploading,
 @JsonSerializable()
 
 class _RecordingState extends RecordingState {
-  const _RecordingState({this.elapsedSeconds = 0, this.paused = false, this.started = false, this.uploading = false, this.error, this.speakers = 2, final  List<String> activeTags = const <String>[], this.folderId, this.miniOpen = false, this.miniWindowId}): _activeTags = activeTags,super._();
+  const _RecordingState({this.elapsedSeconds = 0, this.paused = false, this.started = false, this.uploading = false, this.error, this.speakers = 2, final  List<String> activeTags = const <String>[], this.folderId, this.miniOpen = false, this.miniWindowId, this.micEnabled = true, this.systemEnabled = false, this.systemAudioSupported = false, this.micPending = false, this.systemPending = false}): _activeTags = activeTags,super._();
   factory _RecordingState.fromJson(Map<String, dynamic> json) => _$RecordingStateFromJson(json);
 
 @override@JsonKey() final  int elapsedSeconds;
@@ -231,6 +236,11 @@ class _RecordingState extends RecordingState {
 @override final  int? folderId;
 @override@JsonKey() final  bool miniOpen;
 @override final  int? miniWindowId;
+@override@JsonKey() final  bool micEnabled;
+@override@JsonKey() final  bool systemEnabled;
+@override@JsonKey() final  bool systemAudioSupported;
+@override@JsonKey() final  bool micPending;
+@override@JsonKey() final  bool systemPending;
 
 /// Create a copy of RecordingState
 /// with the given fields replaced by the non-null parameter values.
@@ -245,16 +255,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _RecordingState&&(identical(other.elapsedSeconds, elapsedSeconds) || other.elapsedSeconds == elapsedSeconds)&&(identical(other.paused, paused) || other.paused == paused)&&(identical(other.started, started) || other.started == started)&&(identical(other.uploading, uploading) || other.uploading == uploading)&&(identical(other.error, error) || other.error == error)&&(identical(other.speakers, speakers) || other.speakers == speakers)&&const DeepCollectionEquality().equals(other._activeTags, _activeTags)&&(identical(other.folderId, folderId) || other.folderId == folderId)&&(identical(other.miniOpen, miniOpen) || other.miniOpen == miniOpen)&&(identical(other.miniWindowId, miniWindowId) || other.miniWindowId == miniWindowId));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _RecordingState&&(identical(other.elapsedSeconds, elapsedSeconds) || other.elapsedSeconds == elapsedSeconds)&&(identical(other.paused, paused) || other.paused == paused)&&(identical(other.started, started) || other.started == started)&&(identical(other.uploading, uploading) || other.uploading == uploading)&&(identical(other.error, error) || other.error == error)&&(identical(other.speakers, speakers) || other.speakers == speakers)&&const DeepCollectionEquality().equals(other._activeTags, _activeTags)&&(identical(other.folderId, folderId) || other.folderId == folderId)&&(identical(other.miniOpen, miniOpen) || other.miniOpen == miniOpen)&&(identical(other.miniWindowId, miniWindowId) || other.miniWindowId == miniWindowId)&&(identical(other.micEnabled, micEnabled) || other.micEnabled == micEnabled)&&(identical(other.systemEnabled, systemEnabled) || other.systemEnabled == systemEnabled)&&(identical(other.systemAudioSupported, systemAudioSupported) || other.systemAudioSupported == systemAudioSupported)&&(identical(other.micPending, micPending) || other.micPending == micPending)&&(identical(other.systemPending, systemPending) || other.systemPending == systemPending));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,elapsedSeconds,paused,started,uploading,error,speakers,const DeepCollectionEquality().hash(_activeTags),folderId,miniOpen,miniWindowId);
+int get hashCode => Object.hash(runtimeType,elapsedSeconds,paused,started,uploading,error,speakers,const DeepCollectionEquality().hash(_activeTags),folderId,miniOpen,miniWindowId,micEnabled,systemEnabled,systemAudioSupported,micPending,systemPending);
 
 @override
 String toString() {
-  return 'RecordingState(elapsedSeconds: $elapsedSeconds, paused: $paused, started: $started, uploading: $uploading, error: $error, speakers: $speakers, activeTags: $activeTags, folderId: $folderId, miniOpen: $miniOpen, miniWindowId: $miniWindowId)';
+  return 'RecordingState(elapsedSeconds: $elapsedSeconds, paused: $paused, started: $started, uploading: $uploading, error: $error, speakers: $speakers, activeTags: $activeTags, folderId: $folderId, miniOpen: $miniOpen, miniWindowId: $miniWindowId, micEnabled: $micEnabled, systemEnabled: $systemEnabled, systemAudioSupported: $systemAudioSupported, micPending: $micPending, systemPending: $systemPending)';
 }
 
 
@@ -265,7 +275,7 @@ abstract mixin class _$RecordingStateCopyWith<$Res> implements $RecordingStateCo
   factory _$RecordingStateCopyWith(_RecordingState value, $Res Function(_RecordingState) _then) = __$RecordingStateCopyWithImpl;
 @override @useResult
 $Res call({
- int elapsedSeconds, bool paused, bool started, bool uploading, String? error, int speakers, List<String> activeTags, int? folderId, bool miniOpen, int? miniWindowId
+ int elapsedSeconds, bool paused, bool started, bool uploading, String? error, int speakers, List<String> activeTags, int? folderId, bool miniOpen, int? miniWindowId, bool micEnabled, bool systemEnabled, bool systemAudioSupported, bool micPending, bool systemPending
 });
 
 
@@ -282,7 +292,7 @@ class __$RecordingStateCopyWithImpl<$Res>
 
 /// Create a copy of RecordingState
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? elapsedSeconds = null,Object? paused = null,Object? started = null,Object? uploading = null,Object? error = freezed,Object? speakers = null,Object? activeTags = null,Object? folderId = freezed,Object? miniOpen = null,Object? miniWindowId = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? elapsedSeconds = null,Object? paused = null,Object? started = null,Object? uploading = null,Object? error = freezed,Object? speakers = null,Object? activeTags = null,Object? folderId = freezed,Object? miniOpen = null,Object? miniWindowId = freezed,Object? micEnabled = null,Object? systemEnabled = null,Object? systemAudioSupported = null,Object? micPending = null,Object? systemPending = null,}) {
   return _then(_RecordingState(
 elapsedSeconds: null == elapsedSeconds ? _self.elapsedSeconds : elapsedSeconds // ignore: cast_nullable_to_non_nullable
 as int,paused: null == paused ? _self.paused : paused // ignore: cast_nullable_to_non_nullable
@@ -294,7 +304,12 @@ as int,activeTags: null == activeTags ? _self._activeTags : activeTags // ignore
 as List<String>,folderId: freezed == folderId ? _self.folderId : folderId // ignore: cast_nullable_to_non_nullable
 as int?,miniOpen: null == miniOpen ? _self.miniOpen : miniOpen // ignore: cast_nullable_to_non_nullable
 as bool,miniWindowId: freezed == miniWindowId ? _self.miniWindowId : miniWindowId // ignore: cast_nullable_to_non_nullable
-as int?,
+as int?,micEnabled: null == micEnabled ? _self.micEnabled : micEnabled // ignore: cast_nullable_to_non_nullable
+as bool,systemEnabled: null == systemEnabled ? _self.systemEnabled : systemEnabled // ignore: cast_nullable_to_non_nullable
+as bool,systemAudioSupported: null == systemAudioSupported ? _self.systemAudioSupported : systemAudioSupported // ignore: cast_nullable_to_non_nullable
+as bool,micPending: null == micPending ? _self.micPending : micPending // ignore: cast_nullable_to_non_nullable
+as bool,systemPending: null == systemPending ? _self.systemPending : systemPending // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 

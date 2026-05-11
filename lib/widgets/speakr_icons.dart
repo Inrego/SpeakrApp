@@ -29,6 +29,7 @@ enum SpeakrIcon {
   pip,
   refresh,
   filter,
+  speaker,
 }
 
 class SpeakrIconView extends StatelessWidget {
@@ -282,6 +283,34 @@ class _IconPainter extends CustomPainter {
         canvas.drawLine(Offset(1.5 * k, 3 * k), Offset(11.5 * k, 3 * k), funnel);
         canvas.drawLine(Offset(3 * k, 6.5 * k), Offset(10 * k, 6.5 * k), funnel);
         canvas.drawLine(Offset(5 * k, 10 * k), Offset(8 * k, 10 * k), funnel);
+        break;
+      case SpeakrIcon.speaker:
+        // Speaker box with two sound waves on the right — represents
+        // system / loopback audio capture.
+        final box = Path()
+          ..moveTo(3.5, 8)
+          ..lineTo(6.5, 8)
+          ..lineTo(10, 4.5)
+          ..lineTo(10, 15.5)
+          ..lineTo(6.5, 12)
+          ..lineTo(3.5, 12)
+          ..close();
+        canvas.drawPath(box, stroke);
+        // Two arcs to the right of the box.
+        final wave1 = Path()
+          ..moveTo(12.5, 7.5)
+          ..arcToPoint(const Offset(12.5, 12.5),
+              radius: const Radius.circular(2.8),
+              largeArc: false,
+              clockwise: true);
+        canvas.drawPath(wave1, stroke);
+        final wave2 = Path()
+          ..moveTo(14.6, 5.5)
+          ..arcToPoint(const Offset(14.6, 14.5),
+              radius: const Radius.circular(5.0),
+              largeArc: false,
+              clockwise: true);
+        canvas.drawPath(wave2, stroke);
         break;
       case SpeakrIcon.trash:
         // Lid

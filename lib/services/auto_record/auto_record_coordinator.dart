@@ -53,7 +53,11 @@ class AutoRecordCoordinator {
   /// over a stub controller. Decouples the coordinator from the
   /// concrete plugin-using controller so unit tests don't need
   /// `record` / `permission_handler` / `desktop_multi_window` set up.
-  final Future<void> Function() startRecording;
+  ///
+  /// [startRecording] accepts the pre-resolved source flags so the native
+  /// recorder can pick them up at boot rather than reconfiguring mid-stream.
+  final Future<void> Function({bool? micEnabled, bool? systemEnabled})
+      startRecording;
   final Future<void> Function() stopAndUpload;
   final Future<void> Function() cancelRecording;
 
@@ -327,7 +331,20 @@ class AutoRecordCoordinator {
     _silentSinceUtc = null;
     _micReleasedSinceUtc = null;
 
-    await startRecording();
+    // Resolve source flags *before* start — these are passed to the
+    // recorder at boot so it can negotiate the right capture pipeline
+    // (and run the Android MediaProjection consent flow up front if
+    // system audio is requested). Speakers / tags / folder don't affect
+    // the recorder, so they're applied after start succeeds.
+    final preStartSettings = store.read();
+    final micEnabled = entry.micEnabled ?? preStartSettings.defaultMicEnabled;
+    final systemEnabled =
+        entry.systemEnabled ?? preStartSettings.defaultSystemEnabled;
+
+    await startRecording(
+      micEnabled: micEnabled,
+      systemEnabled: systemEnabled,
+    );
     if (!_recordingState.started) {
       // Permission denied or another error — bail.
       _autoSession = false;
@@ -337,9 +354,9 @@ class AutoRecordCoordinator {
       return;
     }
 
-    // Seed speakers + tags from the entry's per-app overrides, falling
-    // back to the global defaults. Re-read the store here so we pick up
-    // the freshest values (in case the user just edited them).
+    // Seed speakers + tags + folder from the entry's per-app overrides,
+    // falling back to the global defaults. Re-read the store here so we
+    // pick up the freshest values (in case the user just edited them).
     final settings = store.read();
     final speakers = entry.speakers ?? settings.defaultSpeakers;
     final tagIds = entry.tagIds.isNotEmpty

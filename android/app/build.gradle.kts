@@ -48,4 +48,9 @@ dependencies {
     // job when a call ends. The workmanager Flutter plugin pulls this in
     // transitively but does not expose it to consumers.
     implementation("androidx.work:work-runtime:2.9.1")
+    // Coroutines + lifecycle: used by the SpeakrAudioRecorder pipeline
+    // and the MediaProjection consent bridge (ActivityResult API).
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
+    implementation("androidx.activity:activity-ktx:1.9.2")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.6")
 }

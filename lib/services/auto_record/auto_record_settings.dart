@@ -21,6 +21,8 @@ class AllowlistEntry {
     this.speakers,
     this.tagIds = const [],
     this.folderId,
+    this.micEnabled,
+    this.systemEnabled,
   });
 
   /// The match value: an exe basename or an MSIX family prefix. Stored
@@ -44,6 +46,14 @@ class AllowlistEntry {
   /// into. `null` means use [AutoRecordSettings.defaultFolderId].
   final int? folderId;
 
+  /// Per-app override for whether the microphone source is recorded.
+  /// `null` means use [AutoRecordSettings.defaultMicEnabled].
+  final bool? micEnabled;
+
+  /// Per-app override for whether the system-audio source is recorded.
+  /// `null` means use [AutoRecordSettings.defaultSystemEnabled].
+  final bool? systemEnabled;
+
   AllowlistEntry copyWith({
     String? key,
     String? displayName,
@@ -51,6 +61,8 @@ class AllowlistEntry {
     Object? speakers = _sentinel,
     List<int>? tagIds,
     Object? folderId = _sentinel,
+    Object? micEnabled = _sentinel,
+    Object? systemEnabled = _sentinel,
   }) {
     return AllowlistEntry(
       key: key ?? this.key,
@@ -59,6 +71,12 @@ class AllowlistEntry {
       speakers: identical(speakers, _sentinel) ? this.speakers : speakers as int?,
       tagIds: tagIds ?? this.tagIds,
       folderId: identical(folderId, _sentinel) ? this.folderId : folderId as int?,
+      micEnabled: identical(micEnabled, _sentinel)
+          ? this.micEnabled
+          : micEnabled as bool?,
+      systemEnabled: identical(systemEnabled, _sentinel)
+          ? this.systemEnabled
+          : systemEnabled as bool?,
     );
   }
 
@@ -69,6 +87,9 @@ class AllowlistEntry {
         if (speakers != null) 'speakers': speakers,
         if (tagIds.isNotEmpty) 'tagIds': tagIds,
         if (folderId != null) 'folderId': folderId,
+        // Preserve explicit `false` overrides — drop only when `null`.
+        if (micEnabled != null) 'micEnabled': micEnabled,
+        if (systemEnabled != null) 'systemEnabled': systemEnabled,
       };
 
   factory AllowlistEntry.fromJson(Map<String, dynamic> json) {
@@ -87,6 +108,8 @@ class AllowlistEntry {
           .map((n) => n.toInt())
           .toList(growable: false),
       folderId: (json['folderId'] as num?)?.toInt(),
+      micEnabled: json['micEnabled'] as bool?,
+      systemEnabled: json['systemEnabled'] as bool?,
     );
   }
 
@@ -155,6 +178,8 @@ class AutoRecordSettings {
     this.defaultSpeakers = 2,
     this.defaultTagIds = const [],
     this.defaultFolderId,
+    this.defaultMicEnabled = true,
+    this.defaultSystemEnabled = false,
   });
 
   final bool enabled;
@@ -174,6 +199,14 @@ class AutoRecordSettings {
   final List<int> defaultTagIds;
   final int? defaultFolderId;
 
+  /// Default state of the microphone source for new live sessions.
+  final bool defaultMicEnabled;
+
+  /// Default state of the system-audio source for new live sessions.
+  /// Only honored on platforms where `LiveAudioRecorder.supportsSystemAudio`
+  /// is true (Windows, Android API 29+).
+  final bool defaultSystemEnabled;
+
   AutoRecordSettings copyWith({
     bool? enabled,
     List<AllowlistEntry>? allowlist,
@@ -183,6 +216,8 @@ class AutoRecordSettings {
     int? defaultSpeakers,
     List<int>? defaultTagIds,
     Object? defaultFolderId = _sentinel,
+    bool? defaultMicEnabled,
+    bool? defaultSystemEnabled,
   }) {
     return AutoRecordSettings(
       enabled: enabled ?? this.enabled,
@@ -195,6 +230,8 @@ class AutoRecordSettings {
       defaultFolderId: identical(defaultFolderId, _sentinel)
           ? this.defaultFolderId
           : defaultFolderId as int?,
+      defaultMicEnabled: defaultMicEnabled ?? this.defaultMicEnabled,
+      defaultSystemEnabled: defaultSystemEnabled ?? this.defaultSystemEnabled,
     );
   }
 
@@ -207,6 +244,10 @@ class AutoRecordSettings {
         'defaultSpeakers': defaultSpeakers,
         'defaultTagIds': defaultTagIds,
         if (defaultFolderId != null) 'defaultFolderId': defaultFolderId,
+        // Always emit, including explicit `false`, so user-toggled-off
+        // defaults round-trip correctly.
+        'defaultMicEnabled': defaultMicEnabled,
+        'defaultSystemEnabled': defaultSystemEnabled,
       };
 
   factory AutoRecordSettings.fromJson(Map<String, dynamic> json) {
@@ -228,6 +269,8 @@ class AutoRecordSettings {
           .map((n) => n.toInt())
           .toList(growable: false),
       defaultFolderId: (json['defaultFolderId'] as num?)?.toInt(),
+      defaultMicEnabled: json['defaultMicEnabled'] as bool? ?? true,
+      defaultSystemEnabled: json['defaultSystemEnabled'] as bool? ?? false,
     );
   }
 }

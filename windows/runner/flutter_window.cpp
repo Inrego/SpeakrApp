@@ -44,6 +44,8 @@ bool FlutterWindow::OnCreate() {
   RegisterPlugins(flutter_controller_->engine());
   mini_window_native_ = std::make_unique<MiniWindowNative>(
       flutter_controller_->engine(), GetHandle());
+  audio_recorder_ =
+      std::make_unique<SpeakrAudioRecorder>(flutter_controller_->engine());
 
   // Outbound channel for tray-driven actions that need to call into Dart
   // (e.g. starting a recording from the tray menu). The Dart side
@@ -93,6 +95,7 @@ void FlutterWindow::OnDestroy() {
   tray_icon_.reset();
   autostart_channel_.reset();
   tray_channel_.reset();
+  audio_recorder_.reset();
   mini_window_native_.reset();
   if (flutter_controller_) {
     flutter_controller_ = nullptr;
