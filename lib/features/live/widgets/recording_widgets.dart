@@ -419,16 +419,144 @@ class RecordingControls extends StatelessWidget {
     required this.busy,
     required this.onTogglePause,
     required this.onStop,
+    this.onDiscard,
     this.compact = false,
   });
   final bool paused;
   final bool busy;
   final VoidCallback? onTogglePause;
   final VoidCallback? onStop;
+  final VoidCallback? onDiscard;
   final bool compact;
 
   @override
   Widget build(BuildContext context) {
+    if (onDiscard != null) {
+      return _buildThreeButton();
+    }
+    return _buildLegacyTwoButton();
+  }
+
+  Widget _buildThreeButton() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(28, 24, 28, 0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          _outlinedPill(
+            onTap: busy ? null : onDiscard,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SpeakrIconView(
+                  SpeakrIcon.trash,
+                  size: 12,
+                  color: SpeakrColors.muted,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Discard'.toUpperCase(),
+                  style: SpeakrText.mono(
+                    size: 11,
+                    color: SpeakrColors.muted,
+                    letterSpacing: 1.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 18),
+          _pauseCircle(size: 84, iconSize: 28),
+          const SizedBox(width: 18),
+          _outlinedPill(
+            horizontalPadding: 18,
+            onTap: busy ? null : onStop,
+            child: busy
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: SpeakrColors.ink,
+                    ),
+                  )
+                : Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 12,
+                        height: 12,
+                        decoration: BoxDecoration(
+                          color: SpeakrColors.recordingDot,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        'Save'.toUpperCase(),
+                        style: SpeakrText.mono(
+                          size: 11,
+                          color: SpeakrColors.ink,
+                          letterSpacing: 1.5,
+                        ),
+                      ),
+                    ],
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _outlinedPill({
+    required Widget child,
+    required VoidCallback? onTap,
+    double horizontalPadding = 16,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 48,
+        padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+        decoration: BoxDecoration(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(100),
+          border: Border.all(color: SpeakrColors.line),
+        ),
+        child: Center(child: child),
+      ),
+    );
+  }
+
+  Widget _pauseCircle({required double size, required double iconSize}) {
+    return GestureDetector(
+      onTap: onTogglePause,
+      child: Container(
+        width: size,
+        height: size,
+        decoration: const BoxDecoration(
+          color: SpeakrColors.ink,
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: Color(0x40000000),
+              blurRadius: 24,
+              offset: Offset(0, 12),
+            ),
+          ],
+        ),
+        child: Center(
+          child: SpeakrIconView(
+            paused ? SpeakrIcon.play : SpeakrIcon.pause,
+            size: iconSize,
+            color: SpeakrColors.bg,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLegacyTwoButton() {
     final mainSize = compact ? 60.0 : 84.0;
     final iconSize = compact ? 22.0 : 28.0;
     final hPad = compact ? 18.0 : 28.0;
@@ -443,31 +571,7 @@ class RecordingControls extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          GestureDetector(
-            onTap: onTogglePause,
-            child: Container(
-              width: mainSize,
-              height: mainSize,
-              decoration: const BoxDecoration(
-                color: SpeakrColors.ink,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: Color(0x40000000),
-                    blurRadius: 24,
-                    offset: Offset(0, 12),
-                  ),
-                ],
-              ),
-              child: Center(
-                child: SpeakrIconView(
-                  paused ? SpeakrIcon.play : SpeakrIcon.pause,
-                  size: iconSize,
-                  color: SpeakrColors.bg,
-                ),
-              ),
-            ),
-          ),
+          _pauseCircle(size: mainSize, iconSize: iconSize),
           SizedBox(width: gap),
           GestureDetector(
             onTap: busy ? null : onStop,
