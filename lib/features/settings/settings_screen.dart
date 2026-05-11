@@ -239,6 +239,46 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             SettingsGroup(
               label: 'Recording',
               children: [
+                Consumer(
+                  builder: (context, ref, _) {
+                    final s = ref.watch(autoRecordSettingsProvider);
+                    final settings = s.value;
+                    final controller =
+                        ref.read(autoRecordSettingsControllerProvider);
+                    return SettingsRow(
+                      label: 'Record microphone by default',
+                      subtitle: 'New sessions start with the mic source on. '
+                          'Can be toggled mid-recording.',
+                      toggleValue: settings?.defaultMicEnabled ?? true,
+                      onToggle: settings == null
+                          ? null
+                          : controller.setDefaultMicEnabled,
+                    );
+                  },
+                ),
+                Consumer(
+                  builder: (context, ref, _) {
+                    final s = ref.watch(autoRecordSettingsProvider);
+                    final settings = s.value;
+                    final controller =
+                        ref.read(autoRecordSettingsControllerProvider);
+                    final supported =
+                        Platform.isWindows || Platform.isAndroid;
+                    return SettingsRow(
+                      label: 'Record system audio by default',
+                      subtitle: supported
+                          ? 'New sessions start with system (loopback) audio '
+                              'on. Can be toggled mid-recording. Captures '
+                              'audio from other apps that are playing.'
+                          : 'System audio capture is only available on '
+                              'Windows and Android 10+.',
+                      toggleValue: settings?.defaultSystemEnabled ?? false,
+                      onToggle: (supported && settings != null)
+                          ? controller.setDefaultSystemEnabled
+                          : null,
+                    );
+                  },
+                ),
                 SettingsRow(
                   label: 'Auto-summarize',
                   toggleValue: _autoSummarize,

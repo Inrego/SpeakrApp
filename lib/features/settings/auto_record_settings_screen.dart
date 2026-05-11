@@ -463,27 +463,6 @@ class _BehaviorGroup extends ConsumerWidget {
       label: 'Behavior',
       children: [
         SettingsRow(
-          label: 'Record microphone by default',
-          subtitle:
-              'New sessions start with the mic source on. Can be toggled '
-              'mid-recording.',
-          toggleValue: settings.defaultMicEnabled,
-          onToggle: controller.setDefaultMicEnabled,
-        ),
-        SettingsRow(
-          label: 'Record system audio by default',
-          subtitle: Platform.isWindows || Platform.isAndroid
-              ? 'New sessions start with system (loopback) audio on. Can '
-                  'be toggled mid-recording. Captures audio from other '
-                  'apps that are playing.'
-              : 'System audio capture is only available on Windows and '
-                  'Android 10+.',
-          toggleValue: settings.defaultSystemEnabled,
-          onToggle: Platform.isWindows || Platform.isAndroid
-              ? controller.setDefaultSystemEnabled
-              : null,
-        ),
-        SettingsRow(
           label: 'Stop-prompt silence threshold',
           trailing: _IntStepper(
             value: settings.silenceSeconds,
