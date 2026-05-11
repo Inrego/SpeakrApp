@@ -113,6 +113,13 @@ class MetadataCard extends StatelessWidget {
     required this.tagPickerOpen,
     required this.onToggleTag,
     required this.onToggleEdit,
+    required this.micEnabled,
+    required this.systemEnabled,
+    required this.systemAudioSupported,
+    required this.micPending,
+    required this.systemPending,
+    required this.onMicChanged,
+    required this.onSystemChanged,
     this.tags = const <Tag>[],
     this.folders = const <Folder>[],
     this.folderId,
@@ -127,6 +134,13 @@ class MetadataCard extends StatelessWidget {
   final bool tagPickerOpen;
   final ValueChanged<String> onToggleTag;
   final VoidCallback onToggleEdit;
+  final bool micEnabled;
+  final bool systemEnabled;
+  final bool systemAudioSupported;
+  final bool micPending;
+  final bool systemPending;
+  final ValueChanged<bool> onMicChanged;
+  final ValueChanged<bool> onSystemChanged;
   final List<Tag> tags;
   final List<Folder> folders;
   final int? folderId;
@@ -163,6 +177,40 @@ class MetadataCard extends StatelessWidget {
         children: [
           Padding(
             padding: EdgeInsets.fromLTRB(hPad, vPad, hPad, vPad),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const MonoEyebrow('Capture', size: 9),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _SourceChip(
+                      icon: SpeakrIcon.mic,
+                      label: 'Mic',
+                      on: micEnabled,
+                      pending: micPending,
+                      onTap: () => onMicChanged(!micEnabled),
+                    ),
+                    if (systemAudioSupported) ...[
+                      const SizedBox(width: 6),
+                      _SourceChip(
+                        icon: SpeakrIcon.speaker,
+                        label: 'System',
+                        on: systemEnabled,
+                        pending: systemPending,
+                        onTap: () => onSystemChanged(!systemEnabled),
+                      ),
+                    ],
+                  ],
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: EdgeInsets.fromLTRB(hPad, vPad, hPad, vPad),
+            decoration: const BoxDecoration(
+              border: Border(top: BorderSide(color: SpeakrColors.line)),
+            ),
             child: Row(
               children: [
                 Expanded(
@@ -406,6 +454,67 @@ class _StepperButton extends StatelessWidget {
         child: Text(
           child,
           style: SpeakrText.serif(size: 18, weight: FontWeight.w300, height: 1),
+        ),
+      ),
+    );
+  }
+}
+
+class _SourceChip extends StatelessWidget {
+  const _SourceChip({
+    required this.icon,
+    required this.label,
+    required this.on,
+    required this.pending,
+    required this.onTap,
+  });
+  final SpeakrIcon icon;
+  final String label;
+  final bool on;
+  final bool pending;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final fg = on ? SpeakrColors.bg : SpeakrColors.muted;
+    return GestureDetector(
+      onTap: pending ? null : onTap,
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.fromLTRB(8, 5, 10, 5),
+        decoration: BoxDecoration(
+          color: on ? SpeakrColors.ink : Colors.transparent,
+          borderRadius: BorderRadius.circular(100),
+          border: Border.all(color: on ? SpeakrColors.ink : SpeakrColors.line),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (pending)
+              SizedBox(
+                width: 12,
+                height: 12,
+                child: CircularProgressIndicator(
+                  strokeWidth: 1.5,
+                  color: fg,
+                ),
+              )
+            else
+              Opacity(
+                opacity: on ? 1.0 : 0.7,
+                child: SpeakrIconView(icon, size: 16, color: fg),
+              ),
+            const SizedBox(width: 6),
+            Text(
+              label.toUpperCase(),
+              style: SpeakrText.mono(
+                size: 10,
+                color: fg,
+                letterSpacing: 1.2,
+              ),
+            ),
+          ],
         ),
       ),
     );

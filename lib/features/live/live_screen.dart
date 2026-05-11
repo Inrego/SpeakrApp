@@ -14,7 +14,6 @@ import '../../widgets/speakr_icons.dart';
 import '../library/library_controller.dart';
 import 'live_controller.dart';
 import 'widgets/recording_widgets.dart';
-import 'widgets/source_picker.dart';
 
 class LiveScreen extends ConsumerStatefulWidget {
   const LiveScreen({super.key});
@@ -121,16 +120,6 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
                 ),
               ),
             const SizedBox(height: 12),
-            SourcePicker(
-              micEnabled: state.micEnabled,
-              systemEnabled: state.systemEnabled,
-              systemAudioSupported: state.systemAudioSupported,
-              micPending: state.micPending,
-              systemPending: state.systemPending,
-              onMicChanged: controller.setMicEnabled,
-              onSystemChanged: controller.setSystemEnabled,
-            ),
-            const SizedBox(height: 12),
             MetadataCard(
               speakers: state.speakers,
               onSpeakersChanged: controller.setSpeakers,
@@ -139,6 +128,13 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
               onToggleTag: controller.toggleTag,
               onToggleEdit: () =>
                   setState(() => _tagPickerOpen = !_tagPickerOpen),
+              micEnabled: state.micEnabled,
+              systemEnabled: state.systemEnabled,
+              systemAudioSupported: state.systemAudioSupported,
+              micPending: state.micPending,
+              systemPending: state.systemPending,
+              onMicChanged: controller.setMicEnabled,
+              onSystemChanged: controller.setSystemEnabled,
               tags: ref.watch(tagsProvider).value ?? const <Tag>[],
               folders: ref.watch(foldersProvider).value ?? const <Folder>[],
               folderId: state.folderId,
