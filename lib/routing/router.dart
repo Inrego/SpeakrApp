@@ -2,6 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../desktop/detail/detail_desktop_screen.dart';
+import '../desktop/library/library_desktop_screen.dart';
+import '../desktop/live/live_desktop_screen.dart';
+import '../desktop/onboarding/onboarding_desktop_screen.dart';
+import '../desktop/settings/settings_desktop_screen.dart';
+import '../desktop/shell/desktop_shell.dart';
 import '../features/auto_upload/auto_upload_settings_screen.dart';
 import '../features/detail/detail_screen.dart';
 import '../features/library/library_screen.dart';
@@ -9,6 +15,7 @@ import '../features/live/live_screen.dart';
 import '../features/onboarding/onboarding_screen.dart';
 import '../features/settings/auto_record_settings_screen.dart';
 import '../features/settings/settings_screen.dart';
+import '../responsive/breakpoints.dart';
 import '../services/credentials_store.dart';
 import '../theme/colors.dart';
 
@@ -31,32 +38,55 @@ final routerProvider = Provider<GoRouter>((ref) {
     },
     refreshListenable: _CredentialsListenable(ref),
     routes: [
-      GoRoute(
-        path: '/',
-        redirect: (_, __) => '/library',
-      ),
+      GoRoute(path: '/', redirect: (_, __) => '/library'),
       GoRoute(
         path: '/onboarding',
-        builder: (_, __) => const OnboardingScreen(),
+        builder: (_, __) => LayoutBuilder(
+          builder: (_, c) => isDesktopConstraints(c)
+              ? const OnboardingDesktopScreen()
+              : const OnboardingScreen(),
+        ),
       ),
       GoRoute(
         path: '/library',
-        builder: (_, __) => const LibraryScreen(),
+        builder: (_, __) => LayoutBuilder(
+          builder: (_, c) => isDesktopConstraints(c)
+              ? const DesktopShell(
+                  active: DesktopShellRoute.library,
+                  child: LibraryDesktopScreen(),
+                )
+              : const LibraryScreen(),
+        ),
       ),
       GoRoute(
         path: '/recording/:id',
         builder: (_, state) {
           final id = int.tryParse(state.pathParameters['id'] ?? '') ?? 0;
-          return DetailScreen(recordingId: id);
+          return LayoutBuilder(
+            builder: (_, c) => isDesktopConstraints(c)
+                ? DesktopShell(
+                    active: DesktopShellRoute.library,
+                    child: DetailDesktopScreen(recordingId: id),
+                  )
+                : DetailScreen(recordingId: id),
+          );
         },
       ),
       GoRoute(
         path: '/live',
-        builder: (_, __) => const LiveScreen(),
+        builder: (_, __) => LayoutBuilder(
+          builder: (_, c) => isDesktopConstraints(c)
+              ? const LiveDesktopScreen()
+              : const LiveScreen(),
+        ),
       ),
       GoRoute(
         path: '/settings',
-        builder: (_, __) => const SettingsScreen(),
+        builder: (_, __) => LayoutBuilder(
+          builder: (_, c) => isDesktopConstraints(c)
+              ? const SettingsDesktopScreen()
+              : const SettingsScreen(),
+        ),
       ),
       GoRoute(
         path: '/settings/auto-upload',
@@ -69,17 +99,17 @@ final routerProvider = Provider<GoRouter>((ref) {
     ],
     errorBuilder: (_, state) => Scaffold(
       backgroundColor: SpeakrColors.bg,
-      body: Center(
-        child: Text('Route not found: ${state.uri.path}'),
-      ),
+      body: Center(child: Text('Route not found: ${state.uri.path}')),
     ),
   );
 });
 
 class _CredentialsListenable extends ChangeNotifier {
   _CredentialsListenable(this._ref) {
-    _ref.listen<AsyncValue<SpeakrCredentials?>>(currentCredentialsProvider,
-        (_, __) => notifyListeners());
+    _ref.listen<AsyncValue<SpeakrCredentials?>>(
+      currentCredentialsProvider,
+      (_, __) => notifyListeners(),
+    );
   }
   final Ref _ref;
 }

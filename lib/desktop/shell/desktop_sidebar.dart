@@ -1,0 +1,521 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../api/models.dart';
+import '../../features/library/library_controller.dart';
+import '../../services/credentials_store.dart';
+import '../../theme/colors.dart';
+import '../../theme/typography.dart';
+import '../../widgets/speakr_icons.dart';
+import 'desktop_shell.dart';
+
+/// 240 px persistent sidebar: record CTA, search, nav items, folders, tags,
+/// user chip. Reads the same Library providers the main list uses and writes
+/// folder/tag/status selections back through [libraryFilterProvider].
+class DesktopSidebar extends ConsumerWidget {
+  const DesktopSidebar({super.key, required this.active});
+
+  final DesktopShellRoute active;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final filter = ref.watch(libraryFilterProvider);
+    final asyncItems = ref.watch(libraryItemsProvider);
+    final folders = ref.watch(foldersProvider).value ?? const <Folder>[];
+    final tags = ref.watch(tagsProvider).value ?? const <Tag>[];
+    final items = asyncItems.value ?? const <LibraryItem>[];
+
+    final recs = <Recording>[
+      for (final it in items)
+        if (it is RemoteLibraryItem) it.recording,
+    ];
+    final totalCount = items.length;
+    final highlightedCount = recs.where((r) => r.isHighlighted).length;
+    final processingCount = recs.where((r) => r.status.isInProgress).length;
+
+    int countForFolder(int id) => recs.where((r) => r.folderId == id).length;
+
+    final onLibrary = active == DesktopShellRoute.library;
+    final noFilters =
+        filter.statusKey == 'all' &&
+        filter.folderId == null &&
+        filter.tagId == null;
+
+    return SizedBox(
+      width: 240,
+      child: Material(
+        color: SpeakrColors.bg,
+        child: Column(
+          children: [
+            // Record CTA
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 16, 14, 12),
+              child: _RecordButton(onTap: () => context.push('/live')),
+            ),
+            // Search field — pushes back to the library filter provider
+            const Padding(
+              padding: EdgeInsets.fromLTRB(14, 0, 14, 12),
+              child: _SidebarSearch(),
+            ),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _NavItem(
+                      label: 'All recordings',
+                      count: totalCount,
+                      active: onLibrary && noFilters,
+                      onTap: () => _selectAll(ref, context),
+                    ),
+                    _NavItem(
+                      label: 'Highlighted',
+                      count: highlightedCount,
+                      active: onLibrary && filter.statusKey == 'highlighted',
+                      onTap: () => _selectStatus(ref, context, 'highlighted'),
+                    ),
+                    if (processingCount > 0)
+                      _NavItem(
+                        label: 'Processing',
+                        count: processingCount,
+                        dot: SpeakrColors.recordingDot,
+                        active: onLibrary && filter.statusKey == 'processing',
+                        onTap: () => _selectStatus(ref, context, 'processing'),
+                      ),
+                    if (folders.isNotEmpty) ...[
+                      const SizedBox(height: 14),
+                      const _SectionLabel('Folders'),
+                      for (final f in folders)
+                        _NavItem(
+                          label: f.name,
+                          count: countForFolder(f.id),
+                          dot: parseHexColor(f.color),
+                          active: onLibrary && filter.folderId == f.id,
+                          onTap: () => _selectFolder(ref, context, f.id),
+                        ),
+                    ],
+                    if (tags.isNotEmpty) ...[
+                      const SizedBox(height: 14),
+                      const _SectionLabel('Tags'),
+                      const SizedBox(height: 4),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                        child: Wrap(
+                          spacing: 4,
+                          runSpacing: 4,
+                          children: [
+                            for (final t in tags)
+                              _TagPill(
+                                tag: t,
+                                active: filter.tagId == t.id,
+                                onTap: () => _selectTag(ref, context, t.id),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+            const _UserChip(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _selectAll(WidgetRef ref, BuildContext context) {
+    final n = ref.read(libraryFilterProvider.notifier);
+    n.setStatus('all');
+    n.setFolder(null);
+    n.setTag(null);
+    _goLibrary(context);
+  }
+
+  void _selectStatus(WidgetRef ref, BuildContext context, String key) {
+    final n = ref.read(libraryFilterProvider.notifier);
+    n.setStatus(key);
+    _goLibrary(context);
+  }
+
+  void _selectFolder(WidgetRef ref, BuildContext context, int id) {
+    final n = ref.read(libraryFilterProvider.notifier);
+    final cur = ref.read(libraryFilterProvider).folderId;
+    n.setFolder(cur == id ? null : id);
+    _goLibrary(context);
+  }
+
+  void _selectTag(WidgetRef ref, BuildContext context, int id) {
+    final n = ref.read(libraryFilterProvider.notifier);
+    final cur = ref.read(libraryFilterProvider).tagId;
+    n.setTag(cur == id ? null : id);
+    _goLibrary(context);
+  }
+
+  void _goLibrary(BuildContext context) {
+    final loc = GoRouterState.of(context).uri.path;
+    if (loc != '/library') context.go('/library');
+  }
+}
+
+class _RecordButton extends StatelessWidget {
+  const _RecordButton({required this.onTap});
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(6),
+      onTap: onTap,
+      child: Container(
+        height: 40,
+        decoration: BoxDecoration(
+          color: SpeakrColors.ink,
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 8,
+              height: 8,
+              decoration: const BoxDecoration(
+                color: SpeakrColors.recordingDot,
+                shape: BoxShape.circle,
+              ),
+            ),
+            const SizedBox(width: 9),
+            Text(
+              'New recording',
+              style: SpeakrText.sans(
+                size: 13,
+                weight: FontWeight.w500,
+                color: SpeakrColors.bg,
+                letterSpacing: 0.2,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              '⌘R',
+              style: SpeakrText.mono(
+                size: 10,
+                color: SpeakrColors.bg,
+                letterSpacing: 0.5,
+              ).copyWith(color: SpeakrColors.bg.withValues(alpha: 0.6)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SidebarSearch extends ConsumerStatefulWidget {
+  const _SidebarSearch();
+
+  @override
+  ConsumerState<_SidebarSearch> createState() => _SidebarSearchState();
+}
+
+class _SidebarSearchState extends ConsumerState<_SidebarSearch> {
+  final _ctrl = TextEditingController();
+  final _focus = FocusNode();
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    _focus.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 32,
+      decoration: BoxDecoration(
+        color: SpeakrColors.bgAlt,
+        border: Border.all(color: SpeakrColors.line),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      child: Row(
+        children: [
+          const SpeakrIconView(
+            SpeakrIcon.search,
+            size: 14,
+            color: SpeakrColors.muted,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: TextField(
+              controller: _ctrl,
+              focusNode: _focus,
+              style: SpeakrText.sans(size: 12, color: SpeakrColors.ink),
+              decoration: InputDecoration(
+                isCollapsed: true,
+                isDense: true,
+                filled: false,
+                border: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
+                hintText: 'Search…',
+                hintStyle: SpeakrText.sans(size: 12, color: SpeakrColors.muted),
+              ),
+              onChanged: (v) {
+                ref
+                    .read(libraryFilterProvider.notifier)
+                    .setQuery(v.trim().isEmpty ? null : v.trim());
+              },
+              onSubmitted: (v) {
+                final loc = GoRouterState.of(context).uri.path;
+                if (loc != '/library') context.go('/library');
+                ref
+                    .read(libraryFilterProvider.notifier)
+                    .setQuery(v.trim().isEmpty ? null : v.trim());
+              },
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+            decoration: BoxDecoration(
+              border: Border.all(color: SpeakrColors.line),
+              borderRadius: BorderRadius.circular(3),
+            ),
+            child: Text(
+              '⌘K',
+              style: SpeakrText.mono(
+                size: 9,
+                color: SpeakrColors.muted,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _NavItem extends StatelessWidget {
+  const _NavItem({
+    required this.label,
+    this.count,
+    this.dot,
+    required this.active,
+    required this.onTap,
+  });
+
+  final String label;
+  final int? count;
+  final Color? dot;
+  final bool active;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(14, 7, 14, 7),
+        decoration: BoxDecoration(
+          color: active ? SpeakrColors.bgAlt : Colors.transparent,
+          border: Border(
+            left: BorderSide(
+              color: active ? SpeakrColors.ink : Colors.transparent,
+              width: 2,
+            ),
+          ),
+        ),
+        child: Row(
+          children: [
+            if (dot != null) ...[
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: dot,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(width: 10),
+            ],
+            Expanded(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: SpeakrText.sans(
+                  size: 13,
+                  weight: active ? FontWeight.w500 : FontWeight.w400,
+                  color: active ? SpeakrColors.ink : SpeakrColors.ink2,
+                ),
+              ),
+            ),
+            if (count != null)
+              Text(
+                '$count',
+                style: SpeakrText.mono(
+                  size: 10,
+                  color: SpeakrColors.muted,
+                  letterSpacing: 0,
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SectionLabel extends StatelessWidget {
+  const _SectionLabel(this.text);
+  final String text;
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(14, 0, 14, 4),
+      child: Text(
+        text.toUpperCase(),
+        style: SpeakrText.mono(
+          size: 9.5,
+          color: SpeakrColors.muted,
+          letterSpacing: 1.5,
+        ),
+      ),
+    );
+  }
+}
+
+class _TagPill extends StatelessWidget {
+  const _TagPill({
+    required this.tag,
+    required this.active,
+    required this.onTap,
+  });
+
+  final Tag tag;
+  final bool active;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = parseHexColor(tag.color);
+    return InkWell(
+      borderRadius: BorderRadius.circular(3),
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+        decoration: BoxDecoration(
+          color: active ? c : Colors.transparent,
+          border: Border.all(color: active ? c : c.withValues(alpha: 0.2)),
+          borderRadius: BorderRadius.circular(3),
+        ),
+        child: Text(
+          tag.name.toUpperCase(),
+          style: SpeakrText.mono(
+            size: 10,
+            color: active ? SpeakrColors.bg : c,
+            letterSpacing: 1,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _UserChip extends ConsumerWidget {
+  const _UserChip();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final asyncCreds = ref.watch(currentCredentialsProvider);
+    final baseUrl = asyncCreds.value?.baseUrl ?? '';
+    final host = _hostOf(baseUrl);
+    return Container(
+      decoration: const BoxDecoration(
+        color: Color(0xFFF3F1EC),
+        border: Border(top: BorderSide(color: SpeakrColors.line)),
+      ),
+      padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
+      child: Row(
+        children: [
+          Container(
+            width: 30,
+            height: 30,
+            decoration: const BoxDecoration(
+              color: SpeakrColors.ink,
+              shape: BoxShape.circle,
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              'ME',
+              style: SpeakrText.serif(
+                size: 11,
+                color: SpeakrColors.bg,
+                weight: FontWeight.w500,
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Speakr',
+                  style: SpeakrText.sans(
+                    size: 12.5,
+                    weight: FontWeight.w500,
+                    color: SpeakrColors.ink,
+                    height: 1.2,
+                  ),
+                ),
+                if (host.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text(
+                      host,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: SpeakrText.mono(
+                        size: 10,
+                        color: SpeakrColors.muted,
+                        letterSpacing: 0,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          IconButton(
+            iconSize: 18,
+            visualDensity: VisualDensity.compact,
+            padding: EdgeInsets.zero,
+            color: SpeakrColors.ink2,
+            onPressed: () => context.push('/settings'),
+            icon: const SpeakrIconView(
+              SpeakrIcon.settings,
+              size: 16,
+              color: SpeakrColors.ink2,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static String _hostOf(String url) {
+    if (url.isEmpty) return '';
+    try {
+      final u = Uri.parse(url);
+      if (u.host.isEmpty) return url;
+      final port = u.hasPort ? ':${u.port}' : '';
+      return '${u.host}$port';
+    } catch (_) {
+      return url;
+    }
+  }
+}
