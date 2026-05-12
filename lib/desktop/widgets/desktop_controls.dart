@@ -124,38 +124,40 @@ class _DesktopDropdownState<T> extends State<DesktopDropdown<T>> {
                 ),
                 padding: const EdgeInsets.all(4),
                 constraints: BoxConstraints(minWidth: widget.minWidth + 20),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    for (final o in widget.options)
-                      InkWell(
-                        borderRadius: BorderRadius.circular(4),
-                        onTap: () {
-                          widget.onChanged(o.value);
-                          _close();
-                        },
-                        child: Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 7,
-                          ),
-                          decoration: BoxDecoration(
-                            color: o.value == widget.value
-                                ? SpeakrColors.bgAlt
-                                : Colors.transparent,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            o.label,
-                            style: SpeakrText.sans(
-                              size: 12,
-                              color: SpeakrColors.ink,
+                child: IntrinsicWidth(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      for (final o in widget.options)
+                        InkWell(
+                          borderRadius: BorderRadius.circular(4),
+                          onTap: () {
+                            widget.onChanged(o.value);
+                            _close();
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 7,
+                            ),
+                            decoration: BoxDecoration(
+                              color: o.value == widget.value
+                                  ? SpeakrColors.bgAlt
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              o.label,
+                              style: SpeakrText.sans(
+                                size: 12,
+                                color: SpeakrColors.ink,
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),

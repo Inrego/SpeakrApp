@@ -817,7 +817,7 @@ class _GridCardState extends State<_GridCard> {
         onTap: enterable ? () => context.push('/recording/${r.id}') : null,
         child: Container(
           padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
-          constraints: const BoxConstraints(minHeight: 180),
+          constraints: const BoxConstraints.tightFor(height: 180),
           decoration: BoxDecoration(
             color: Colors.white,
             border: Border.all(
@@ -926,7 +926,7 @@ class _PendingGridCard extends StatelessWidget {
     final name = pending.file.path.split(RegExp(r'[\\/]')).last;
     return Container(
       padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
-      constraints: const BoxConstraints(minHeight: 180),
+      constraints: const BoxConstraints.tightFor(height: 180),
       decoration: BoxDecoration(
         color: Colors.white,
         border: Border.all(color: SpeakrColors.line),
