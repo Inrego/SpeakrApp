@@ -6,15 +6,13 @@ import 'package:go_router/go_router.dart';
 import 'package:just_audio/just_audio.dart';
 
 import '../../api/models.dart';
-import '../../api/providers.dart';
-import '../../api/speakr_api.dart';
 import '../../services/credentials_store.dart';
 import '../../theme/colors.dart';
 import '../../theme/typography.dart';
 import '../../utils/formatters.dart';
 import '../../widgets/mono_eyebrow.dart';
 import '../../widgets/speakr_icons.dart';
-import '../library/library_controller.dart';
+import 'detail_actions.dart';
 import 'detail_controller.dart';
 import 'speaker_review_screen.dart';
 import 'tabs/chat_tab.dart';
@@ -243,14 +241,18 @@ class _MoreSheet extends ConsumerWidget {
                 highlighted ? 'Remove highlight' : 'Highlight recording',
                 style: SpeakrText.sans(size: 14),
               ),
-              onTap: () => _toggleField(
-                context,
-                ref,
-                patch: {'is_highlighted': !highlighted},
-                successMessage: highlighted
-                    ? 'Highlight removed'
-                    : 'Highlighted',
-              ),
+              onTap: () {
+                Navigator.of(context).pop();
+                toggleRecordingField(
+                  context,
+                  ref,
+                  recordingId: recording.id,
+                  patch: {'is_highlighted': !highlighted},
+                  successMessage: highlighted
+                      ? 'Highlight removed'
+                      : 'Highlighted',
+                );
+              },
             ),
             ListTile(
               leading: const SpeakrIconView(SpeakrIcon.flag),
@@ -258,14 +260,18 @@ class _MoreSheet extends ConsumerWidget {
                 inInbox ? 'Remove from inbox' : 'Move to inbox',
                 style: SpeakrText.sans(size: 14),
               ),
-              onTap: () => _toggleField(
-                context,
-                ref,
-                patch: {'is_inbox': !inInbox},
-                successMessage: inInbox
-                    ? 'Removed from inbox'
-                    : 'Moved to inbox',
-              ),
+              onTap: () {
+                Navigator.of(context).pop();
+                toggleRecordingField(
+                  context,
+                  ref,
+                  recordingId: recording.id,
+                  patch: {'is_inbox': !inInbox},
+                  successMessage: inInbox
+                      ? 'Removed from inbox'
+                      : 'Moved to inbox',
+                );
+              },
             ),
             const Divider(color: SpeakrColors.line, height: 1),
             ListTile(
@@ -296,8 +302,15 @@ class _MoreSheet extends ConsumerWidget {
                 'Replaces the current transcript',
                 style: SpeakrText.sans(size: 12, color: SpeakrColors.muted),
               ),
-              onTap: () =>
-                  _reprocess(context, ref, kind: _ReprocessKind.transcription),
+              onTap: () {
+                Navigator.of(context).pop();
+                reprocessRecording(
+                  context,
+                  ref,
+                  recordingId: recording.id,
+                  kind: ReprocessKind.transcription,
+                );
+              },
             ),
             ListTile(
               leading: const SpeakrIconView(SpeakrIcon.flagBookmark),
@@ -309,8 +322,15 @@ class _MoreSheet extends ConsumerWidget {
                 'Regenerates the summary from the transcript',
                 style: SpeakrText.sans(size: 12, color: SpeakrColors.muted),
               ),
-              onTap: () =>
-                  _reprocess(context, ref, kind: _ReprocessKind.summary),
+              onTap: () {
+                Navigator.of(context).pop();
+                reprocessRecording(
+                  context,
+                  ref,
+                  recordingId: recording.id,
+                  kind: ReprocessKind.summary,
+                );
+              },
             ),
             const Divider(color: SpeakrColors.line, height: 1),
             ListTile(
@@ -323,165 +343,17 @@ class _MoreSheet extends ConsumerWidget {
                 'Removes the recording, transcript, and audio',
                 style: SpeakrText.sans(size: 12, color: SpeakrColors.muted),
               ),
-              onTap: () => _delete(context, ref),
+              onTap: () {
+                Navigator.of(context).pop();
+                deleteRecording(context, ref, recordingId: recording.id);
+              },
             ),
           ],
         ),
       ),
     );
   }
-
-  Future<void> _toggleField(
-    BuildContext context,
-    WidgetRef ref, {
-    required Map<String, dynamic> patch,
-    required String successMessage,
-  }) async {
-    // Capture before popping the sheet — otherwise ref/context become stale.
-    final messenger = ScaffoldMessenger.of(context);
-    final container = ProviderScope.containerOf(context, listen: false);
-    final api = container.read(speakrApiProvider);
-    Navigator.of(context).pop();
-    try {
-      await api.updateRecording(recording.id, patch);
-      container.invalidate(recordingDetailProvider(recording.id));
-      messenger.showSnackBar(SnackBar(content: Text(successMessage)));
-    } on SpeakrApiException catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text(e.message)));
-    } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text(e.toString())));
-    }
-  }
-
-  Future<void> _reprocess(
-    BuildContext context,
-    WidgetRef ref, {
-    required _ReprocessKind kind,
-  }) async {
-    final navigator = Navigator.of(context);
-    final messenger = ScaffoldMessenger.of(context);
-    final container = ProviderScope.containerOf(context, listen: false);
-    final api = container.read(speakrApiProvider);
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: SpeakrColors.bg,
-        title: Text(
-          kind == _ReprocessKind.transcription
-              ? 'Reprocess transcription?'
-              : 'Reprocess summary?',
-          style: SpeakrText.serif(size: 20),
-        ),
-        content: Text(
-          kind == _ReprocessKind.transcription
-              ? 'The current transcript and any speaker labels will be replaced. Processing happens on the server and may take a few minutes.'
-              : 'The current summary will be replaced. Processing happens on the server and may take a few minutes.',
-          style: SpeakrText.sans(size: 14, height: 1.4),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text(
-              'Cancel',
-              style: SpeakrText.sans(size: 13, color: SpeakrColors.muted),
-            ),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: Text(
-              'Reprocess',
-              style: SpeakrText.sans(
-                size: 13,
-                weight: FontWeight.w600,
-                color: SpeakrColors.ink,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true) return;
-    navigator.pop(); // close the bottom sheet
-    try {
-      if (kind == _ReprocessKind.transcription) {
-        await api.reprocessTranscription(recording.id);
-      } else {
-        await api.reprocessSummary(recording.id);
-      }
-      container.invalidate(recordingDetailProvider(recording.id));
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(
-            kind == _ReprocessKind.transcription
-                ? 'Transcription queued — refresh in a moment'
-                : 'Summary queued — refresh in a moment',
-          ),
-        ),
-      );
-    } on SpeakrApiException catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text(e.message)));
-    } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text(e.toString())));
-    }
-  }
-
-  Future<void> _delete(BuildContext context, WidgetRef ref) async {
-    final navigator = Navigator.of(context);
-    final goRouter = GoRouter.of(context);
-    final messenger = ScaffoldMessenger.of(context);
-    final container = ProviderScope.containerOf(context, listen: false);
-    final api = container.read(speakrApiProvider);
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: SpeakrColors.bg,
-        title: Text('Delete recording?', style: SpeakrText.serif(size: 20)),
-        content: Text(
-          'This permanently deletes the recording, its transcript, and its audio. This cannot be undone.',
-          style: SpeakrText.sans(size: 14, height: 1.4),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text(
-              'Cancel',
-              style: SpeakrText.sans(size: 13, color: SpeakrColors.muted),
-            ),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            style: TextButton.styleFrom(foregroundColor: SpeakrColors.danger),
-            child: Text(
-              'Delete',
-              style: SpeakrText.sans(
-                size: 13,
-                weight: FontWeight.w600,
-                color: SpeakrColors.danger,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true) return;
-    navigator.pop(); // close the bottom sheet
-    try {
-      await api.deleteRecording(recording.id);
-      container.read(uploadKickProvider.notifier).state++;
-      container.invalidate(recordingDetailProvider(recording.id));
-      if (goRouter.canPop()) goRouter.pop();
-      messenger.showSnackBar(
-        const SnackBar(content: Text('Recording deleted')),
-      );
-    } on SpeakrApiException catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text(e.message)));
-    } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text(e.toString())));
-    }
-  }
 }
-
-enum _ReprocessKind { transcription, summary }
 
 class _AudioPlayerBar extends StatefulWidget {
   const _AudioPlayerBar({

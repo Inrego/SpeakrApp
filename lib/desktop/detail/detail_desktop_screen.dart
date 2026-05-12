@@ -7,7 +7,9 @@ import 'package:go_router/go_router.dart';
 import 'package:just_audio/just_audio.dart';
 
 import '../../api/models.dart';
+import '../../features/detail/detail_actions.dart';
 import '../../features/detail/detail_controller.dart';
+import '../../features/detail/speaker_review_screen.dart';
 import '../../features/detail/tabs/chat_tab.dart';
 import '../../features/detail/tabs/summary_tab.dart';
 import '../../services/credentials_store.dart';
@@ -224,12 +226,12 @@ class _Body extends StatelessWidget {
   }
 }
 
-class _BreadcrumbBar extends StatelessWidget {
+class _BreadcrumbBar extends ConsumerWidget {
   const _BreadcrumbBar({required this.recording});
   final Recording recording;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final date = recording.meetingDate ?? recording.createdAt;
     final dayLabel = date == null ? '—' : formatRelativeDay(date).toUpperCase();
     final time = date == null
@@ -243,6 +245,9 @@ class _BreadcrumbBar extends StatelessWidget {
       if (duration.isNotEmpty) duration,
       time,
     ].where((p) => p.isNotEmpty).join(' · ');
+
+    final highlighted = recording.isHighlighted;
+    final inInbox = recording.isInbox;
 
     return Container(
       decoration: const BoxDecoration(
@@ -265,14 +270,97 @@ class _BreadcrumbBar extends StatelessWidget {
           const Spacer(),
           DesktopToolButton(
             icon: SpeakrIcon.star,
-            tooltip: recording.isHighlighted ? 'Highlighted' : 'Highlight',
-            onTap: () {},
+            tooltip: highlighted ? 'Highlighted' : 'Highlight',
+            selected: highlighted,
+            onTap: () => toggleRecordingField(
+              context,
+              ref,
+              recordingId: recording.id,
+              patch: {'is_highlighted': !highlighted},
+              successMessage: highlighted ? 'Highlight removed' : 'Highlighted',
+            ),
           ),
           const SizedBox(width: 6),
-          DesktopToolButton(
-            icon: SpeakrIcon.more,
-            tooltip: 'More',
-            onTap: () {},
+          DesktopActionMenu(
+            items: [
+              DesktopActionItem(
+                icon: SpeakrIcon.star,
+                label: highlighted ? 'Remove highlight' : 'Highlight recording',
+                onTap: () => toggleRecordingField(
+                  context,
+                  ref,
+                  recordingId: recording.id,
+                  patch: {'is_highlighted': !highlighted},
+                  successMessage: highlighted
+                      ? 'Highlight removed'
+                      : 'Highlighted',
+                ),
+              ),
+              DesktopActionItem(
+                icon: SpeakrIcon.flag,
+                label: inInbox ? 'Remove from inbox' : 'Move to inbox',
+                onTap: () => toggleRecordingField(
+                  context,
+                  ref,
+                  recordingId: recording.id,
+                  patch: {'is_inbox': !inInbox},
+                  successMessage: inInbox
+                      ? 'Removed from inbox'
+                      : 'Moved to inbox',
+                ),
+              ),
+              DesktopActionItem(
+                dividerAbove: true,
+                icon: SpeakrIcon.search,
+                label: 'Edit speakers',
+                subtitle: 'Rename detected speakers',
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        SpeakerReviewScreen(recordingId: recording.id),
+                  ),
+                ),
+              ),
+              DesktopActionItem(
+                icon: SpeakrIcon.mic,
+                label: 'Reprocess transcription',
+                subtitle: 'Replaces the current transcript',
+                onTap: () => reprocessRecording(
+                  context,
+                  ref,
+                  recordingId: recording.id,
+                  kind: ReprocessKind.transcription,
+                ),
+              ),
+              DesktopActionItem(
+                icon: SpeakrIcon.flagBookmark,
+                label: 'Reprocess summary',
+                subtitle: 'Regenerates the summary from the transcript',
+                onTap: () => reprocessRecording(
+                  context,
+                  ref,
+                  recordingId: recording.id,
+                  kind: ReprocessKind.summary,
+                ),
+              ),
+              DesktopActionItem(
+                dividerAbove: true,
+                icon: SpeakrIcon.trash,
+                label: 'Delete recording',
+                subtitle: 'Removes the recording, transcript, and audio',
+                danger: true,
+                onTap: () => deleteRecording(
+                  context,
+                  ref,
+                  recordingId: recording.id,
+                ),
+              ),
+            ],
+            builder: (context, toggle) => DesktopToolButton(
+              icon: SpeakrIcon.more,
+              tooltip: 'More',
+              onTap: toggle,
+            ),
           ),
         ],
       ),
