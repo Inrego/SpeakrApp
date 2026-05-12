@@ -7,6 +7,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../api/models.dart';
 import '../../features/auto_upload/auto_upload_controller.dart';
+import '../../features/auto_upload/auto_upload_settings_store.dart';
+import '../../features/auto_upload/auto_upload_worker.dart';
 import '../../features/library/library_controller.dart';
 import '../../theme/colors.dart';
 import '../../theme/typography.dart';
@@ -14,6 +16,7 @@ import '../../utils/formatters.dart';
 import '../../widgets/folder_chip.dart';
 import '../../widgets/speakr_icons.dart';
 import '../../widgets/tag_chip.dart';
+import '../shell/desktop_shortcuts.dart';
 import '../widgets/desktop_controls.dart';
 
 enum _SortMode { newest, oldest, longest, title }
@@ -587,67 +590,306 @@ class _ListRowState extends State<_ListRow> {
   }
 }
 
-class _PendingListRow extends StatelessWidget {
+enum _PendingErrorAction { delete, forceUpload }
+
+/// Shared upload/retry/delete behavior for the desktop pending row and card.
+/// Mirrors `_PendingTileState` in `lib/features/library/library_screen.dart`.
+mixin _PendingActionsMixin<T extends ConsumerStatefulWidget>
+    on ConsumerState<T> {
+  bool _uploading = false;
+
+  PendingFile get pendingFile;
+
+  Future<void> _confirmAndUpload({bool forceFromError = false}) async {
+    if (!forceFromError) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (_) => AlertDialog(
+          backgroundColor: SpeakrColors.bg,
+          title: Text(
+            'Upload this recording?',
+            style: SpeakrText.serif(size: 20),
+          ),
+          content: Text(
+            '${pendingFile.file.path.split(RegExp(r"[\\/]")).last}\n\n'
+            'The file will be uploaded to your Speakr server and removed '
+            'from this device.',
+            style: SpeakrText.sans(size: 13, color: SpeakrColors.ink2),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Upload'),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true) return;
+    }
+    setState(() => _uploading = true);
+    try {
+      await uploadOneFile(pendingFile.file, pendingFile.config);
+      final store = await AutoUploadSettingsStore.open();
+      final fileStillExists = await pendingFile.file.exists();
+      if (!fileStillExists) {
+        await store.clearFileError(pendingFile.file.path);
+        await store.clearUploadedFile(pendingFile.file.path);
+      }
+      ref.invalidate(pendingFilesProvider);
+      ref.invalidate(pendingFileErrorsProvider);
+      ref.read(uploadKickProvider.notifier).state++;
+      if (mounted && fileStillExists) {
+        setState(() => _uploading = false);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _uploading = false);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.toString())));
+    }
+  }
+
+  Future<void> _showScanError(String errorMessage) async {
+    final action = await showDialog<_PendingErrorAction>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        backgroundColor: SpeakrColors.bg,
+        title: Text(
+          "Couldn't process recording",
+          style: SpeakrText.serif(size: 20),
+        ),
+        content: Text(
+          errorMessage,
+          style: SpeakrText.sans(
+            size: 13,
+            color: SpeakrColors.ink2,
+            height: 1.4,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () =>
+                Navigator.pop(dialogCtx, _PendingErrorAction.delete),
+            style: TextButton.styleFrom(foregroundColor: SpeakrColors.danger),
+            child: const Text('Delete file'),
+          ),
+          TextButton(
+            onPressed: () =>
+                Navigator.pop(dialogCtx, _PendingErrorAction.forceUpload),
+            child: const Text('Force upload'),
+          ),
+        ],
+      ),
+    );
+    if (action == null) return;
+    switch (action) {
+      case _PendingErrorAction.delete:
+        await _deleteLocalFile();
+        break;
+      case _PendingErrorAction.forceUpload:
+        await _confirmAndUpload(forceFromError: true);
+        break;
+    }
+  }
+
+  Future<void> _deleteLocalFile() async {
+    final deleteError = await deleteLocalAutoUploadFile(pendingFile.file);
+    if (deleteError != null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not delete file: $deleteError')),
+      );
+      return;
+    }
+    final store = await AutoUploadSettingsStore.open();
+    await store.clearFileError(pendingFile.file.path);
+    await store.clearUploadedFile(pendingFile.file.path);
+    if (!mounted) return;
+    ref.invalidate(pendingFilesProvider);
+    ref.invalidate(pendingFileErrorsProvider);
+  }
+
+  VoidCallback? _tapHandler({required String? scanError}) {
+    if (_uploading) return null;
+    if (scanError != null) return () => _showScanError(scanError);
+    return () => _confirmAndUpload();
+  }
+}
+
+class _PendingListRow extends ConsumerStatefulWidget {
   const _PendingListRow({required this.pending});
   final PendingFile pending;
+
+  @override
+  ConsumerState<_PendingListRow> createState() => _PendingListRowState();
+}
+
+class _PendingListRowState extends ConsumerState<_PendingListRow>
+    with _PendingActionsMixin<_PendingListRow> {
+  bool _hovered = false;
+
+  @override
+  PendingFile get pendingFile => widget.pending;
+
   @override
   Widget build(BuildContext context) {
-    final name = pending.file.path.split(RegExp(r'[\\/]')).last;
-    return Container(
-      decoration: const BoxDecoration(
-        border: Border(top: BorderSide(color: SpeakrColors.line)),
+    final name = widget.pending.file.path.split(RegExp(r'[\\/]')).last;
+    final errors =
+        ref.watch(pendingFileErrorsProvider).asData?.value ??
+        const <String, String>{};
+    final scanError = errors[widget.pending.file.path];
+    final onTap = _tapHandler(scanError: scanError);
+    final tappable = onTap != null;
+
+    return MouseRegion(
+      cursor: tappable ? SystemMouseCursors.click : SystemMouseCursors.basic,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          decoration: BoxDecoration(
+            color: _hovered && tappable
+                ? SpeakrColors.bgAlt
+                : Colors.transparent,
+            border: const Border(top: BorderSide(color: SpeakrColors.line)),
+          ),
+          padding: const EdgeInsets.fromLTRB(40, 14, 40, 14),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              const SizedBox(width: 32),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Text(
+                  name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: SpeakrText.serif(
+                    size: 17,
+                    height: 1.2,
+                    color: SpeakrColors.ink2,
+                    style: FontStyle.italic,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              SizedBox(
+                width: 160,
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: _PendingStatusBadge(
+                    uploading: _uploading,
+                    hasError: scanError != null,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              const SizedBox(width: 220),
+              const SizedBox(width: 16),
+              SizedBox(
+                width: 90,
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: Text(
+                    formatBytes(widget.pending.size),
+                    style: SpeakrText.mono(
+                      size: 11,
+                      color: SpeakrColors.muted,
+                      letterSpacing: 0,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              SizedBox(
+                width: 90,
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: Text(
+                    _shortDate(widget.pending.dateTime),
+                    style: SpeakrText.mono(
+                      size: 11,
+                      color: SpeakrColors.muted,
+                      letterSpacing: 0,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
-      padding: const EdgeInsets.fromLTRB(40, 14, 40, 14),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
+    );
+  }
+}
+
+class _PendingStatusBadge extends StatelessWidget {
+  const _PendingStatusBadge({
+    required this.uploading,
+    required this.hasError,
+  });
+
+  final bool uploading;
+  final bool hasError;
+
+  @override
+  Widget build(BuildContext context) {
+    if (uploading) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          const SizedBox(width: 32),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Text(
-              name,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: SpeakrText.serif(
-                size: 17,
-                height: 1.2,
-                color: SpeakrColors.ink2,
-                style: FontStyle.italic,
-              ),
+          const SizedBox(
+            width: 12,
+            height: 12,
+            child: CircularProgressIndicator(
+              strokeWidth: 1.5,
+              color: SpeakrColors.ink,
             ),
           ),
-          const SizedBox(width: 16),
-          const SizedBox(width: 160),
-          const SizedBox(width: 16),
-          const SizedBox(width: 220),
-          const SizedBox(width: 16),
-          SizedBox(
-            width: 90,
-            child: Align(
-              alignment: Alignment.centerRight,
-              child: Text(
-                formatBytes(pending.size),
-                style: SpeakrText.mono(
-                  size: 11,
-                  color: SpeakrColors.muted,
-                  letterSpacing: 0,
-                ),
-              ),
+          const SizedBox(width: 8),
+          Text(
+            'UPLOADING',
+            style: SpeakrText.mono(
+              size: 9,
+              color: SpeakrColors.ink2,
+              letterSpacing: 1,
             ),
           ),
-          const SizedBox(width: 16),
-          SizedBox(
-            width: 90,
-            child: Align(
-              alignment: Alignment.centerRight,
-              child: Text(
-                _shortDate(pending.dateTime),
-                style: SpeakrText.mono(
-                  size: 11,
-                  color: SpeakrColors.muted,
-                  letterSpacing: 0,
-                ),
-              ),
+        ],
+      );
+    }
+    final color = hasError ? SpeakrColors.danger : SpeakrColors.muted;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        border: Border.all(color: color),
+        borderRadius: BorderRadius.circular(100),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 6,
+            height: 6,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            hasError ? 'ERROR' : 'NOT UPLOADED',
+            style: SpeakrText.mono(
+              size: 9,
+              letterSpacing: 1,
+              color: color,
             ),
           ),
         ],
@@ -918,53 +1160,109 @@ class _GridCardState extends State<_GridCard> {
   }
 }
 
-class _PendingGridCard extends StatelessWidget {
+class _PendingGridCard extends ConsumerStatefulWidget {
   const _PendingGridCard({required this.pending});
   final PendingFile pending;
+
+  @override
+  ConsumerState<_PendingGridCard> createState() => _PendingGridCardState();
+}
+
+class _PendingGridCardState extends ConsumerState<_PendingGridCard>
+    with _PendingActionsMixin<_PendingGridCard> {
+  bool _hovered = false;
+
+  @override
+  PendingFile get pendingFile => widget.pending;
+
   @override
   Widget build(BuildContext context) {
-    final name = pending.file.path.split(RegExp(r'[\\/]')).last;
-    return Container(
-      padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
-      constraints: const BoxConstraints.tightFor(height: 180),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: SpeakrColors.line),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'NOT UPLOADED',
-            style: SpeakrText.mono(
-              size: 9,
-              color: SpeakrColors.muted,
-              letterSpacing: 1.3,
+    final name = widget.pending.file.path.split(RegExp(r'[\\/]')).last;
+    final errors =
+        ref.watch(pendingFileErrorsProvider).asData?.value ??
+        const <String, String>{};
+    final scanError = errors[widget.pending.file.path];
+    final hasError = scanError != null;
+    final onTap = _tapHandler(scanError: scanError);
+    final tappable = onTap != null;
+    final eyebrowColor = hasError ? SpeakrColors.danger : SpeakrColors.muted;
+    final eyebrow = _uploading
+        ? 'UPLOADING'
+        : hasError
+        ? 'ERROR'
+        : 'NOT UPLOADED';
+
+    return MouseRegion(
+      cursor: tappable ? SystemMouseCursors.click : SystemMouseCursors.basic,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
+          constraints: const BoxConstraints.tightFor(height: 180),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            border: Border.all(
+              color: _hovered && tappable
+                  ? SpeakrColors.ink
+                  : hasError
+                  ? SpeakrColors.danger
+                  : SpeakrColors.line,
             ),
+            borderRadius: BorderRadius.circular(6),
           ),
-          const SizedBox(height: 10),
-          Text(
-            name,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: SpeakrText.serif(
-              size: 17,
-              height: 1.25,
-              color: SpeakrColors.ink2,
-              style: FontStyle.italic,
-            ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  if (_uploading)
+                    const Padding(
+                      padding: EdgeInsets.only(right: 6),
+                      child: SizedBox(
+                        width: 10,
+                        height: 10,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 1.5,
+                          color: SpeakrColors.ink,
+                        ),
+                      ),
+                    ),
+                  Text(
+                    eyebrow,
+                    style: SpeakrText.mono(
+                      size: 9,
+                      color: eyebrowColor,
+                      letterSpacing: 1.3,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Text(
+                name,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: SpeakrText.serif(
+                  size: 17,
+                  height: 1.25,
+                  color: SpeakrColors.ink2,
+                  style: FontStyle.italic,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                formatBytes(widget.pending.size),
+                style: SpeakrText.mono(
+                  size: 11,
+                  color: SpeakrColors.muted,
+                  letterSpacing: 0,
+                ),
+              ),
+            ],
           ),
-          const Spacer(),
-          Text(
-            formatBytes(pending.size),
-            style: SpeakrText.mono(
-              size: 11,
-              color: SpeakrColors.muted,
-              letterSpacing: 0,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -1008,7 +1306,7 @@ class _Empty extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           Text(
-            'Use ⌘R or the New recording button in the sidebar to make your first recording.',
+            'Use ${modLabel}R or the New recording button in the sidebar to make your first recording.',
             style: SpeakrText.sans(
               size: 15,
               height: 1.5,

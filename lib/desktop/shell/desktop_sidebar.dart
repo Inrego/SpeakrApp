@@ -9,6 +9,15 @@ import '../../theme/colors.dart';
 import '../../theme/typography.dart';
 import '../../widgets/speakr_icons.dart';
 import 'desktop_shell.dart';
+import 'desktop_shortcuts.dart';
+
+/// FocusNode for the sidebar search field. Hoisted to a provider so the
+/// desktop shell can request focus from a global Ctrl/⌘+K shortcut.
+final sidebarSearchFocusProvider = Provider<FocusNode>((ref) {
+  final node = FocusNode(debugLabel: 'sidebarSearch');
+  ref.onDispose(node.dispose);
+  return node;
+});
 
 /// 240 px persistent sidebar: record CTA, search, nav items, folders, tags,
 /// user chip. Reads the same Library providers the main list uses and writes
@@ -199,7 +208,7 @@ class _RecordButton extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             Text(
-              '⌘R',
+              '${modLabel}R',
               style: SpeakrText.mono(
                 size: 10,
                 color: SpeakrColors.bg,
@@ -222,17 +231,16 @@ class _SidebarSearch extends ConsumerStatefulWidget {
 
 class _SidebarSearchState extends ConsumerState<_SidebarSearch> {
   final _ctrl = TextEditingController();
-  final _focus = FocusNode();
 
   @override
   void dispose() {
     _ctrl.dispose();
-    _focus.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final focus = ref.watch(sidebarSearchFocusProvider);
     return Container(
       height: 32,
       decoration: BoxDecoration(
@@ -252,7 +260,7 @@ class _SidebarSearchState extends ConsumerState<_SidebarSearch> {
           Expanded(
             child: TextField(
               controller: _ctrl,
-              focusNode: _focus,
+              focusNode: focus,
               style: SpeakrText.sans(size: 12, color: SpeakrColors.ink),
               decoration: InputDecoration(
                 isCollapsed: true,
@@ -285,7 +293,7 @@ class _SidebarSearchState extends ConsumerState<_SidebarSearch> {
               borderRadius: BorderRadius.circular(3),
             ),
             child: Text(
-              '⌘K',
+              '${modLabel}K',
               style: SpeakrText.mono(
                 size: 9,
                 color: SpeakrColors.muted,
@@ -434,75 +442,73 @@ class _UserChip extends ConsumerWidget {
     final asyncCreds = ref.watch(currentCredentialsProvider);
     final baseUrl = asyncCreds.value?.baseUrl ?? '';
     final host = _hostOf(baseUrl);
-    return Container(
-      decoration: const BoxDecoration(
-        color: Color(0xFFF3F1EC),
-        border: Border(top: BorderSide(color: SpeakrColors.line)),
-      ),
-      padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
-      child: Row(
-        children: [
-          Container(
-            width: 30,
-            height: 30,
-            decoration: const BoxDecoration(
-              color: SpeakrColors.ink,
-              shape: BoxShape.circle,
-            ),
-            alignment: Alignment.center,
-            child: Text(
-              'ME',
-              style: SpeakrText.serif(
-                size: 11,
-                color: SpeakrColors.bg,
-                weight: FontWeight.w500,
-              ),
-            ),
+    return Material(
+      color: const Color(0xFFF3F1EC),
+      child: InkWell(
+        onTap: () => context.push('/settings'),
+        child: Container(
+          decoration: const BoxDecoration(
+            border: Border(top: BorderSide(color: SpeakrColors.line)),
           ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Speakr',
-                  style: SpeakrText.sans(
-                    size: 12.5,
+          padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+          child: Row(
+            children: [
+              Container(
+                width: 30,
+                height: 30,
+                decoration: const BoxDecoration(
+                  color: SpeakrColors.ink,
+                  shape: BoxShape.circle,
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  'ME',
+                  style: SpeakrText.serif(
+                    size: 11,
+                    color: SpeakrColors.bg,
                     weight: FontWeight.w500,
-                    color: SpeakrColors.ink,
-                    height: 1.2,
                   ),
                 ),
-                if (host.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 2),
-                    child: Text(
-                      host,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: SpeakrText.mono(
-                        size: 10,
-                        color: SpeakrColors.muted,
-                        letterSpacing: 0,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Speakr',
+                      style: SpeakrText.sans(
+                        size: 12.5,
+                        weight: FontWeight.w500,
+                        color: SpeakrColors.ink,
+                        height: 1.2,
                       ),
                     ),
-                  ),
-              ],
-            ),
+                    if (host.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Text(
+                          host,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: SpeakrText.mono(
+                            size: 10,
+                            color: SpeakrColors.muted,
+                            letterSpacing: 0,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              const SpeakrIconView(
+                SpeakrIcon.settings,
+                size: 16,
+                color: SpeakrColors.ink2,
+              ),
+            ],
           ),
-          IconButton(
-            iconSize: 18,
-            visualDensity: VisualDensity.compact,
-            padding: EdgeInsets.zero,
-            color: SpeakrColors.ink2,
-            onPressed: () => context.push('/settings'),
-            icon: const SpeakrIconView(
-              SpeakrIcon.settings,
-              size: 16,
-              color: SpeakrColors.ink2,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
