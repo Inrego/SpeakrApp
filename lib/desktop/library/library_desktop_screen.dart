@@ -245,14 +245,20 @@ class _Header extends StatelessWidget {
             onTap: onRefresh,
           ),
           const DesktopDivider(),
-          Padding(
-            padding: const EdgeInsets.only(right: 6),
-            child: Text(
-              'SORT',
-              style: SpeakrText.mono(
-                size: 10,
-                color: SpeakrColors.muted,
-                letterSpacing: 1.4,
+          SizedBox(
+            height: 30,
+            child: Padding(
+              padding: const EdgeInsets.only(right: 6),
+              child: Align(
+                alignment: Alignment.center,
+                child: Text(
+                  'SORT',
+                  style: SpeakrText.mono(
+                    size: 10,
+                    color: SpeakrColors.muted,
+                    letterSpacing: 1.4,
+                  ),
+                ),
               ),
             ),
           ),
