@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../api/models.dart';
 import '../../api/providers.dart';
 import '../../api/speakr_api.dart';
 import '../../theme/colors.dart';
 import '../../theme/typography.dart';
 import '../library/library_controller.dart';
 import 'detail_controller.dart';
+import 'reprocess_transcription_dialog.dart';
 
 enum ReprocessKind { transcription, summary }
 
@@ -41,48 +43,68 @@ Future<void> reprocessRecording(
   final messenger = ScaffoldMessenger.of(context);
   final container = ProviderScope.containerOf(context, listen: false);
   final api = container.read(speakrApiProvider);
-  final confirmed = await showDialog<bool>(
-    context: context,
-    builder: (ctx) => AlertDialog(
-      backgroundColor: SpeakrColors.bg,
-      title: Text(
-        kind == ReprocessKind.transcription
-            ? 'Reprocess transcription?'
-            : 'Reprocess summary?',
-        style: SpeakrText.serif(size: 20),
+
+  ReprocessTranscriptionParams? transcriptionParams;
+  if (kind == ReprocessKind.transcription) {
+    // Pre-fill from the already-loaded recording when available; fall back to
+    // an empty Recording shell so the dialog still opens if detail hasn't
+    // been fetched yet.
+    final cached = container
+        .read(recordingDetailProvider(recordingId))
+        .value;
+    transcriptionParams = await showDialog<ReprocessTranscriptionParams>(
+      context: context,
+      builder: (ctx) => ReprocessTranscriptionDialog(
+        recording: cached ?? Recording(id: recordingId),
       ),
-      content: Text(
-        kind == ReprocessKind.transcription
-            ? 'The current transcript and any speaker labels will be replaced. Processing happens on the server and may take a few minutes.'
-            : 'The current summary will be replaced. Processing happens on the server and may take a few minutes.',
-        style: SpeakrText.sans(size: 14, height: 1.4),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(ctx).pop(false),
-          child: Text(
-            'Cancel',
-            style: SpeakrText.sans(size: 13, color: SpeakrColors.muted),
-          ),
+    );
+    if (transcriptionParams == null) return;
+  } else {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: SpeakrColors.bg,
+        title: Text('Reprocess summary?', style: SpeakrText.serif(size: 20)),
+        content: Text(
+          'The current summary will be replaced. Processing happens on the server and may take a few minutes.',
+          style: SpeakrText.sans(size: 14, height: 1.4),
         ),
-        TextButton(
-          onPressed: () => Navigator.of(ctx).pop(true),
-          child: Text(
-            'Reprocess',
-            style: SpeakrText.sans(
-              size: 13,
-              weight: FontWeight.w600,
-              color: SpeakrColors.ink,
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(
+              'Cancel',
+              style: SpeakrText.sans(size: 13, color: SpeakrColors.muted),
             ),
           ),
-        ),
-      ],
-    ),
-  );
-  if (confirmed != true) return;
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(
+              'Reprocess',
+              style: SpeakrText.sans(
+                size: 13,
+                weight: FontWeight.w600,
+                color: SpeakrColors.ink,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+  }
+
   try {
     if (kind == ReprocessKind.transcription) {
-      await api.reprocessTranscription(recordingId);
+      final p = transcriptionParams!;
+      await api.reprocessTranscription(
+        recordingId,
+        transcriptionModel: p.transcriptionModel,
+        minSpeakers: p.minSpeakers,
+        maxSpeakers: p.maxSpeakers,
+        hotwords: p.hotwords,
+        initialPrompt: p.initialPrompt,
+      );
     } else {
       await api.reprocessSummary(recordingId);
     }

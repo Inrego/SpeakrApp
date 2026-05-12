@@ -104,6 +104,12 @@ _Recording _$RecordingFromJson(Map<String, dynamic> json) => _Recording(
   notes: json['notes'] as String?,
   transcription: json['transcription'] as String?,
   audioDuration: (json['audio_duration'] as num?)?.toDouble(),
+  transcriptionModel: json['transcription_model'] as String?,
+  language: json['language'] as String?,
+  minSpeakers: (json['min_speakers'] as num?)?.toInt(),
+  maxSpeakers: (json['max_speakers'] as num?)?.toInt(),
+  hotwords: json['hotwords'] as String?,
+  initialPrompt: json['initial_prompt'] as String?,
 );
 
 Map<String, dynamic> _$RecordingToJson(_Recording instance) =>
@@ -129,6 +135,12 @@ Map<String, dynamic> _$RecordingToJson(_Recording instance) =>
       'notes': instance.notes,
       'transcription': instance.transcription,
       'audio_duration': instance.audioDuration,
+      'transcription_model': instance.transcriptionModel,
+      'language': instance.language,
+      'min_speakers': instance.minSpeakers,
+      'max_speakers': instance.maxSpeakers,
+      'hotwords': instance.hotwords,
+      'initial_prompt': instance.initialPrompt,
     };
 
 const _$RecordingStatusEnumMap = {
@@ -138,6 +150,43 @@ const _$RecordingStatusEnumMap = {
   RecordingStatus.summarizing: 'SUMMARIZING',
   RecordingStatus.completed: 'COMPLETED',
   RecordingStatus.failed: 'FAILED',
+};
+
+_TranscriptionModelOption _$TranscriptionModelOptionFromJson(
+  Map<String, dynamic> json,
+) => _TranscriptionModelOption(
+  label: json['label'] as String,
+  value: json['value'] as String,
+);
+
+Map<String, dynamic> _$TranscriptionModelOptionToJson(
+  _TranscriptionModelOption instance,
+) => <String, dynamic>{'label': instance.label, 'value': instance.value};
+
+_Config _$ConfigFromJson(Map<String, dynamic> json) => _Config(
+  transcriptionModelOptions:
+      (json['transcription_model_options'] as List<dynamic>?)
+          ?.map(
+            (e) => TranscriptionModelOption.fromJson(e as Map<String, dynamic>),
+          )
+          .toList() ??
+      const <TranscriptionModelOption>[],
+  connectorSupportsDiarization:
+      json['connector_supports_diarization'] as bool? ?? false,
+  connectorSupportsSpeakerCount:
+      json['connector_supports_speaker_count'] as bool? ?? false,
+  connectorSupportsHotwords:
+      json['connector_supports_hotwords'] as bool? ?? false,
+  connectorSupportsInitialPrompt:
+      json['connector_supports_initial_prompt'] as bool? ?? false,
+);
+
+Map<String, dynamic> _$ConfigToJson(_Config instance) => <String, dynamic>{
+  'transcription_model_options': instance.transcriptionModelOptions,
+  'connector_supports_diarization': instance.connectorSupportsDiarization,
+  'connector_supports_speaker_count': instance.connectorSupportsSpeakerCount,
+  'connector_supports_hotwords': instance.connectorSupportsHotwords,
+  'connector_supports_initial_prompt': instance.connectorSupportsInitialPrompt,
 };
 
 _RecordingPage _$RecordingPageFromJson(Map<String, dynamic> json) =>
