@@ -12,18 +12,22 @@ class DesktopToolButton extends StatelessWidget {
     required this.icon,
     this.tooltip,
     required this.onTap,
+    this.selected = false,
   });
 
   final SpeakrIcon icon;
   final String? tooltip;
   final VoidCallback? onTap;
+  final bool selected;
 
   @override
   Widget build(BuildContext context) {
     final btn = Material(
-      color: Colors.white,
+      color: selected ? SpeakrColors.ink : Colors.white,
       shape: RoundedRectangleBorder(
-        side: const BorderSide(color: SpeakrColors.line),
+        side: BorderSide(
+          color: selected ? SpeakrColors.ink : SpeakrColors.line,
+        ),
         borderRadius: BorderRadius.circular(5),
       ),
       child: InkWell(
@@ -33,7 +37,11 @@ class DesktopToolButton extends StatelessWidget {
           width: 30,
           height: 30,
           child: Center(
-            child: SpeakrIconView(icon, size: 14, color: SpeakrColors.ink2),
+            child: SpeakrIconView(
+              icon,
+              size: 14,
+              color: selected ? SpeakrColors.bg : SpeakrColors.ink2,
+            ),
           ),
         ),
       ),
@@ -368,6 +376,184 @@ class DesktopPillButton extends StatelessWidget {
               Text(label, style: SpeakrText.sans(size: 12, color: fg)),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class DesktopActionItem {
+  const DesktopActionItem({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.subtitle,
+    this.dividerAbove = false,
+    this.danger = false,
+  });
+
+  final SpeakrIcon icon;
+  final String label;
+  final String? subtitle;
+  final VoidCallback onTap;
+  final bool dividerAbove;
+  final bool danger;
+}
+
+/// Anchored action menu used by the desktop detail header (and any other
+/// surface that wants a right-aligned popover of recording-level actions).
+/// Pass a [builder] that wires the trigger child's onTap to [toggle].
+class DesktopActionMenu extends StatefulWidget {
+  const DesktopActionMenu({
+    super.key,
+    required this.items,
+    required this.builder,
+    this.minWidth = 240,
+  });
+
+  final List<DesktopActionItem> items;
+  final Widget Function(BuildContext context, VoidCallback toggle) builder;
+  final double minWidth;
+
+  @override
+  State<DesktopActionMenu> createState() => _DesktopActionMenuState();
+}
+
+class _DesktopActionMenuState extends State<DesktopActionMenu> {
+  final GlobalKey _key = GlobalKey();
+  OverlayEntry? _overlay;
+
+  void _toggle() {
+    if (_overlay != null) {
+      _close();
+      return;
+    }
+    final box = _key.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null) return;
+    final offset = box.localToGlobal(Offset.zero);
+    final size = box.size;
+    final screenWidth = MediaQuery.of(context).size.width;
+    _overlay = OverlayEntry(
+      builder: (_) => Stack(
+        children: [
+          Positioned.fill(
+            child: GestureDetector(
+              behavior: HitTestBehavior.translucent,
+              onTap: _close,
+            ),
+          ),
+          Positioned(
+            right: screenWidth - (offset.dx + size.width),
+            top: offset.dy + size.height + 4,
+            child: Material(
+              elevation: 0,
+              color: Colors.transparent,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  border: Border.all(color: SpeakrColors.line),
+                  borderRadius: BorderRadius.circular(6),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x14000000),
+                      offset: Offset(0, 8),
+                      blurRadius: 20,
+                    ),
+                  ],
+                ),
+                padding: const EdgeInsets.all(4),
+                constraints: BoxConstraints(minWidth: widget.minWidth),
+                child: IntrinsicWidth(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      for (final item in widget.items) ...[
+                        if (item.dividerAbove)
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 4),
+                            child: Divider(
+                              height: 1,
+                              color: SpeakrColors.line,
+                            ),
+                          ),
+                        _ActionRow(
+                          item: item,
+                          onTap: () {
+                            _close();
+                            item.onTap();
+                          },
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+    Overlay.of(context).insert(_overlay!);
+  }
+
+  void _close() {
+    _overlay?.remove();
+    _overlay = null;
+  }
+
+  @override
+  void dispose() {
+    _close();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return KeyedSubtree(key: _key, child: widget.builder(context, _toggle));
+  }
+}
+
+class _ActionRow extends StatelessWidget {
+  const _ActionRow({required this.item, required this.onTap});
+  final DesktopActionItem item;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = item.danger ? SpeakrColors.danger : SpeakrColors.ink;
+    return InkWell(
+      borderRadius: BorderRadius.circular(4),
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        child: Row(
+          children: [
+            SpeakrIconView(item.icon, size: 14, color: color),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    item.label,
+                    style: SpeakrText.sans(size: 13, color: color),
+                  ),
+                  if (item.subtitle != null) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      item.subtitle!,
+                      style: SpeakrText.sans(
+                        size: 11,
+                        color: SpeakrColors.muted,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
