@@ -1,0 +1,1051 @@
+import 'dart:async';
+
+import 'package:collection/collection.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../api/models.dart';
+import '../../features/auto_upload/auto_upload_controller.dart';
+import '../../features/library/library_controller.dart';
+import '../../theme/colors.dart';
+import '../../theme/typography.dart';
+import '../../utils/formatters.dart';
+import '../../widgets/folder_chip.dart';
+import '../../widgets/speakr_icons.dart';
+import '../../widgets/tag_chip.dart';
+import '../widgets/desktop_controls.dart';
+
+enum _SortMode { newest, oldest, longest, title }
+
+enum _ViewMode { list, grid }
+
+class LibraryDesktopScreen extends ConsumerStatefulWidget {
+  const LibraryDesktopScreen({super.key});
+
+  @override
+  ConsumerState<LibraryDesktopScreen> createState() =>
+      _LibraryDesktopScreenState();
+}
+
+class _LibraryDesktopScreenState extends ConsumerState<LibraryDesktopScreen> {
+  _SortMode _sort = _SortMode.newest;
+  _ViewMode _view = _ViewMode.list;
+  Timer? _pollTimer;
+  static const _pollInterval = Duration(seconds: 5);
+
+  @override
+  void dispose() {
+    _pollTimer?.cancel();
+    super.dispose();
+  }
+
+  void _evaluatePolling(List<LibraryItem>? items) {
+    final inFlight =
+        items != null &&
+        items.any(
+          (it) =>
+              it is PendingLibraryItem ||
+              (it is RemoteLibraryItem && it.recording.status.isInProgress),
+        );
+    if (inFlight && _pollTimer == null) {
+      _pollTimer = Timer.periodic(_pollInterval, (_) {
+        ref.invalidate(pendingFilesProvider);
+        ref.invalidate(pendingFileErrorsProvider);
+        ref.read(uploadKickProvider.notifier).state++;
+      });
+    } else if (!inFlight && _pollTimer != null) {
+      _pollTimer!.cancel();
+      _pollTimer = null;
+    }
+  }
+
+  Future<void> _refresh() async {
+    ref.invalidate(pendingFilesProvider);
+    ref.invalidate(pendingFileErrorsProvider);
+    ref.read(uploadKickProvider.notifier).state++;
+    await ref.read(libraryItemsProvider.future);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final filter = ref.watch(libraryFilterProvider);
+    final folders = ref.watch(foldersProvider).value ?? const <Folder>[];
+    final asyncItems = ref.watch(libraryItemsProvider);
+    _evaluatePolling(asyncItems.value);
+
+    final activeFolder = filter.folderId == null
+        ? null
+        : folders.firstWhereOrNull((f) => f.id == filter.folderId);
+
+    return Container(
+      color: SpeakrColors.bg,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _Header(
+            activeFolder: activeFolder,
+            items: asyncItems.value ?? const [],
+            sort: _sort,
+            view: _view,
+            onSort: (m) => setState(() => _sort = m),
+            onView: (m) => setState(() => _view = m),
+            onRefresh: _refresh,
+          ),
+          Expanded(
+            child: asyncItems.when(
+              skipLoadingOnReload: true,
+              loading: () => const _Loading(),
+              error: (e, _) => _ErrorView(
+                message: e.toString(),
+                onRetry: () => ref.invalidate(libraryRecordingsProvider),
+              ),
+              data: (items) {
+                if (items.isEmpty) return const _Empty();
+                final sorted = _applySort(items, _sort);
+                return _view == _ViewMode.list
+                    ? _ListView(items: sorted, folders: folders)
+                    : _GridView(items: sorted, folders: folders);
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+List<LibraryItem> _applySort(List<LibraryItem> items, _SortMode mode) {
+  final sorted = [...items];
+  switch (mode) {
+    case _SortMode.newest:
+      sorted.sort((a, b) => b.when.compareTo(a.when));
+      break;
+    case _SortMode.oldest:
+      sorted.sort((a, b) => a.when.compareTo(b.when));
+      break;
+    case _SortMode.longest:
+      double d(LibraryItem i) =>
+          i is RemoteLibraryItem ? (i.recording.audioDuration ?? 0) : 0;
+      sorted.sort((a, b) => d(b).compareTo(d(a)));
+      break;
+    case _SortMode.title:
+      String t(LibraryItem i) {
+        if (i is RemoteLibraryItem) {
+          return (i.recording.title ?? '').toLowerCase();
+        }
+        return (i is PendingLibraryItem
+                ? i.pending.file.path.split(RegExp(r'[\\/]')).last
+                : '')
+            .toLowerCase();
+      }
+      sorted.sort((a, b) => t(a).compareTo(t(b)));
+      break;
+  }
+  return sorted;
+}
+
+// ─────────────────────────────────────────────────────────
+// Header
+// ─────────────────────────────────────────────────────────
+
+class _Header extends StatelessWidget {
+  const _Header({
+    required this.activeFolder,
+    required this.items,
+    required this.sort,
+    required this.view,
+    required this.onSort,
+    required this.onView,
+    required this.onRefresh,
+  });
+
+  final Folder? activeFolder;
+  final List<LibraryItem> items;
+  final _SortMode sort;
+  final _ViewMode view;
+  final ValueChanged<_SortMode> onSort;
+  final ValueChanged<_ViewMode> onView;
+  final Future<void> Function() onRefresh;
+
+  @override
+  Widget build(BuildContext context) {
+    final totalSecs = items.fold<double>(0, (acc, it) {
+      if (it is RemoteLibraryItem) {
+        return acc + (it.recording.audioDuration ?? 0);
+      }
+      return acc;
+    });
+    final hrs = totalSecs ~/ 3600;
+    final mins = (totalSecs % 3600) ~/ 60;
+    final folder = activeFolder;
+    final folderColor = folder == null ? null : parseHexColor(folder.color);
+
+    return Container(
+      decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: SpeakrColors.line)),
+      ),
+      padding: const EdgeInsets.fromLTRB(40, 28, 40, 18),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (folder != null && folderColor != null) ...[
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 9,
+                        height: 9,
+                        decoration: BoxDecoration(
+                          color: folderColor,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        folder.name.toUpperCase(),
+                        style: SpeakrText.mono(
+                          size: 10,
+                          color: folderColor,
+                          letterSpacing: 1.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                ],
+                Text(
+                  folder?.name ?? 'Recordings',
+                  style: SpeakrText.serif(
+                    size: 44,
+                    height: 1,
+                    weight: FontWeight.w400,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  items.isEmpty
+                      ? 'No recordings yet'
+                      : '${items.length} ${items.length == 1 ? "recording" : "recordings"} · ${hrs}h ${mins}m of audio',
+                  style: SpeakrText.sans(size: 13, color: SpeakrColors.muted),
+                ),
+              ],
+            ),
+          ),
+          DesktopToolButton(
+            icon: SpeakrIcon.refresh,
+            tooltip: 'Refresh',
+            onTap: onRefresh,
+          ),
+          const DesktopDivider(),
+          Padding(
+            padding: const EdgeInsets.only(right: 6),
+            child: Text(
+              'SORT',
+              style: SpeakrText.mono(
+                size: 10,
+                color: SpeakrColors.muted,
+                letterSpacing: 1.4,
+              ),
+            ),
+          ),
+          DesktopDropdown<_SortMode>(
+            value: sort,
+            onChanged: onSort,
+            options: const [
+              DropdownOption(value: _SortMode.newest, label: 'Newest'),
+              DropdownOption(value: _SortMode.oldest, label: 'Oldest'),
+              DropdownOption(value: _SortMode.longest, label: 'Longest'),
+              DropdownOption(value: _SortMode.title, label: 'Title'),
+            ],
+          ),
+          const DesktopDivider(),
+          DesktopSegment<_ViewMode>(
+            value: view,
+            onChanged: onView,
+            options: [
+              SegmentOption(value: _ViewMode.list, icon: const _ListIcon()),
+              SegmentOption(value: _ViewMode.grid, icon: const _GridIcon()),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ListIcon extends StatelessWidget {
+  const _ListIcon();
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      size: const Size(14, 14),
+      painter: _StrokeIconPainter((c) {
+        c.drawLine(
+          const Offset(2, 3.5),
+          const Offset(12, 3.5),
+          _stroke(SpeakrColors.ink2),
+        );
+        c.drawLine(
+          const Offset(2, 7),
+          const Offset(12, 7),
+          _stroke(SpeakrColors.ink2),
+        );
+        c.drawLine(
+          const Offset(2, 10.5),
+          const Offset(12, 10.5),
+          _stroke(SpeakrColors.ink2),
+        );
+      }),
+    );
+  }
+}
+
+class _GridIcon extends StatelessWidget {
+  const _GridIcon();
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      size: const Size(14, 14),
+      painter: _StrokeIconPainter((c) {
+        final p = _stroke(SpeakrColors.ink2);
+        for (final r in const [
+          Rect.fromLTWH(2, 2, 4, 4),
+          Rect.fromLTWH(8, 2, 4, 4),
+          Rect.fromLTWH(2, 8, 4, 4),
+          Rect.fromLTWH(8, 8, 4, 4),
+        ]) {
+          c.drawRRect(
+            RRect.fromRectAndRadius(r, const Radius.circular(0.5)),
+            p,
+          );
+        }
+      }),
+    );
+  }
+}
+
+Paint _stroke(Color c) => Paint()
+  ..color = c
+  ..style = PaintingStyle.stroke
+  ..strokeWidth = 1.3
+  ..strokeCap = StrokeCap.round;
+
+class _StrokeIconPainter extends CustomPainter {
+  _StrokeIconPainter(this.draw);
+  final void Function(Canvas) draw;
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.scale(size.width / 14.0);
+    draw(canvas);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+// ─────────────────────────────────────────────────────────
+// List view
+// ─────────────────────────────────────────────────────────
+
+class _ListView extends StatelessWidget {
+  const _ListView({required this.items, required this.folders});
+  final List<LibraryItem> items;
+  final List<Folder> folders;
+
+  @override
+  Widget build(BuildContext context) {
+    final groups = groupBy<LibraryItem, String>(
+      items,
+      (i) => formatRelativeDay(i.when),
+    );
+    final entries = groups.entries.toList();
+
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _ColumnHeader(),
+          for (final entry in entries) ...[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(40, 18, 40, 8),
+              child: Text(
+                entry.key.toUpperCase(),
+                style: SpeakrText.mono(
+                  size: 10,
+                  color: SpeakrColors.muted,
+                  letterSpacing: 1.5,
+                ),
+              ),
+            ),
+            for (final it in entry.value)
+              switch (it) {
+                RemoteLibraryItem(:final recording) => _ListRow(
+                  recording: recording,
+                  folders: folders,
+                ),
+                PendingLibraryItem(:final pending) => _PendingListRow(
+                  pending: pending,
+                ),
+              },
+          ],
+          const SizedBox(height: 40),
+        ],
+      ),
+    );
+  }
+}
+
+class _ColumnHeader extends StatelessWidget {
+  const _ColumnHeader();
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: SpeakrColors.bg,
+        border: Border(bottom: BorderSide(color: SpeakrColors.line)),
+      ),
+      padding: const EdgeInsets.fromLTRB(40, 12, 40, 12),
+      child: Row(
+        children: [
+          const SizedBox(width: 32),
+          const SizedBox(width: 16),
+          Expanded(child: _ColH('Title')),
+          const SizedBox(width: 16),
+          SizedBox(width: 160, child: _ColH('Folder')),
+          const SizedBox(width: 16),
+          SizedBox(width: 220, child: _ColH('Tags')),
+          const SizedBox(width: 16),
+          SizedBox(width: 90, child: _ColH('Duration', alignRight: true)),
+          const SizedBox(width: 16),
+          SizedBox(width: 90, child: _ColH('Date', alignRight: true)),
+        ],
+      ),
+    );
+  }
+}
+
+class _ColH extends StatelessWidget {
+  const _ColH(this.text, {this.alignRight = false});
+  final String text;
+  final bool alignRight;
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: alignRight ? Alignment.centerRight : Alignment.centerLeft,
+      child: Text(
+        text.toUpperCase(),
+        style: SpeakrText.mono(
+          size: 9.5,
+          color: SpeakrColors.muted,
+          letterSpacing: 1.5,
+        ),
+      ),
+    );
+  }
+}
+
+class _ListRow extends StatefulWidget {
+  const _ListRow({required this.recording, required this.folders});
+  final Recording recording;
+  final List<Folder> folders;
+
+  @override
+  State<_ListRow> createState() => _ListRowState();
+}
+
+class _ListRowState extends State<_ListRow> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final r = widget.recording;
+    final completed = r.status == RecordingStatus.completed;
+    final enterable = completed || r.status == RecordingStatus.failed;
+    final folder = widget.folders.firstWhereOrNull((f) => f.id == r.folderId);
+    final folderColor = folder == null ? null : parseHexColor(folder.color);
+    final date = r.meetingDate ?? r.createdAt ?? DateTime.now();
+
+    return MouseRegion(
+      cursor: enterable ? SystemMouseCursors.click : SystemMouseCursors.basic,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: enterable ? () => context.push('/recording/${r.id}') : null,
+        child: Container(
+          decoration: BoxDecoration(
+            color: _hovered ? SpeakrColors.bgAlt : Colors.transparent,
+            border: const Border(top: BorderSide(color: SpeakrColors.line)),
+          ),
+          padding: const EdgeInsets.fromLTRB(40, 14, 40, 14),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              SizedBox(
+                width: 32,
+                child: Center(
+                  child: r.isHighlighted
+                      ? const SpeakrIconView(
+                          SpeakrIcon.star,
+                          size: 14,
+                          color: SpeakrColors.ink,
+                        )
+                      : const SizedBox(width: 14, height: 14),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      r.title?.isNotEmpty == true
+                          ? r.title!
+                          : 'Untitled recording',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: SpeakrText.serif(size: 17, height: 1.2),
+                    ),
+                    if ((r.participants ?? '').isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        r.participants!,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: SpeakrText.sans(
+                          size: 12,
+                          color: SpeakrColors.muted,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(width: 16),
+              SizedBox(
+                width: 160,
+                child: folder == null || folderColor == null
+                    ? const SizedBox.shrink()
+                    : Align(
+                        alignment: Alignment.centerLeft,
+                        child: FolderChip(
+                          label: folder.name,
+                          color: folderColor,
+                        ),
+                      ),
+              ),
+              const SizedBox(width: 16),
+              SizedBox(
+                width: 220,
+                child: Wrap(
+                  spacing: 4,
+                  runSpacing: 4,
+                  children: [for (final t in r.tags) TagChip(tag: t)],
+                ),
+              ),
+              const SizedBox(width: 16),
+              SizedBox(
+                width: 90,
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: completed
+                      ? Text(
+                          formatDuration(r.audioDuration ?? 0),
+                          style: SpeakrText.mono(
+                            size: 12,
+                            color: SpeakrColors.ink2,
+                            letterSpacing: 0,
+                          ),
+                        )
+                      : const _ProcessingChip(),
+                ),
+              ),
+              const SizedBox(width: 16),
+              SizedBox(
+                width: 90,
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: Text(
+                    _shortDate(date),
+                    style: SpeakrText.mono(
+                      size: 11,
+                      color: SpeakrColors.muted,
+                      letterSpacing: 0,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PendingListRow extends StatelessWidget {
+  const _PendingListRow({required this.pending});
+  final PendingFile pending;
+  @override
+  Widget build(BuildContext context) {
+    final name = pending.file.path.split(RegExp(r'[\\/]')).last;
+    return Container(
+      decoration: const BoxDecoration(
+        border: Border(top: BorderSide(color: SpeakrColors.line)),
+      ),
+      padding: const EdgeInsets.fromLTRB(40, 14, 40, 14),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          const SizedBox(width: 32),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Text(
+              name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: SpeakrText.serif(
+                size: 17,
+                height: 1.2,
+                color: SpeakrColors.ink2,
+                style: FontStyle.italic,
+              ),
+            ),
+          ),
+          const SizedBox(width: 16),
+          const SizedBox(width: 160),
+          const SizedBox(width: 16),
+          const SizedBox(width: 220),
+          const SizedBox(width: 16),
+          SizedBox(
+            width: 90,
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: Text(
+                formatBytes(pending.size),
+                style: SpeakrText.mono(
+                  size: 11,
+                  color: SpeakrColors.muted,
+                  letterSpacing: 0,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 16),
+          SizedBox(
+            width: 90,
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: Text(
+                _shortDate(pending.dateTime),
+                style: SpeakrText.mono(
+                  size: 11,
+                  color: SpeakrColors.muted,
+                  letterSpacing: 0,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProcessingChip extends StatelessWidget {
+  const _ProcessingChip();
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const _PulsingDot(color: SpeakrColors.recordingDot, size: 6),
+        const SizedBox(width: 5),
+        Text(
+          'PROCESSING',
+          style: SpeakrText.mono(
+            size: 9,
+            color: SpeakrColors.recordingDot,
+            letterSpacing: 1,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _PulsingDot extends StatefulWidget {
+  const _PulsingDot({required this.color, required this.size});
+  final Color color;
+  final double size;
+  @override
+  State<_PulsingDot> createState() => _PulsingDotState();
+}
+
+class _PulsingDotState extends State<_PulsingDot>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c;
+  @override
+  void initState() {
+    super.initState();
+    _c = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _c,
+      builder: (_, __) => Opacity(
+        opacity: 0.3 + 0.7 * (1 - _c.value),
+        child: Container(
+          width: widget.size,
+          height: widget.size,
+          decoration: BoxDecoration(
+            color: widget.color,
+            shape: BoxShape.circle,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+String _shortDate(DateTime when) {
+  final w = when.toLocal();
+  const months = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
+  return '${months[w.month - 1]} ${w.day}';
+}
+
+// ─────────────────────────────────────────────────────────
+// Grid view
+// ─────────────────────────────────────────────────────────
+
+class _GridView extends StatelessWidget {
+  const _GridView({required this.items, required this.folders});
+  final List<LibraryItem> items;
+  final List<Folder> folders;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const minTile = 280.0;
+        const gap = 14.0;
+        const hPad = 40.0;
+        final w = constraints.maxWidth - hPad * 2;
+        var cols = (w / (minTile + gap)).floor();
+        if (cols < 1) cols = 1;
+        final tileW = (w - gap * (cols - 1)) / cols;
+
+        return SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(hPad, 28, hPad, 40),
+          child: Wrap(
+            spacing: gap,
+            runSpacing: gap,
+            children: [
+              for (final it in items)
+                SizedBox(
+                  width: tileW,
+                  child: switch (it) {
+                    RemoteLibraryItem(:final recording) => _GridCard(
+                      recording: recording,
+                      folders: folders,
+                    ),
+                    PendingLibraryItem(:final pending) => _PendingGridCard(
+                      pending: pending,
+                    ),
+                  },
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _GridCard extends StatefulWidget {
+  const _GridCard({required this.recording, required this.folders});
+  final Recording recording;
+  final List<Folder> folders;
+  @override
+  State<_GridCard> createState() => _GridCardState();
+}
+
+class _GridCardState extends State<_GridCard> {
+  bool _hovered = false;
+  @override
+  Widget build(BuildContext context) {
+    final r = widget.recording;
+    final completed = r.status == RecordingStatus.completed;
+    final enterable = completed || r.status == RecordingStatus.failed;
+    final folder = widget.folders.firstWhereOrNull((f) => f.id == r.folderId);
+    final folderColor = folder == null ? null : parseHexColor(folder.color);
+
+    return MouseRegion(
+      cursor: enterable ? SystemMouseCursors.click : SystemMouseCursors.basic,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: enterable ? () => context.push('/recording/${r.id}') : null,
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
+          constraints: const BoxConstraints.tightFor(height: 180),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            border: Border.all(
+              color: _hovered ? SpeakrColors.ink : SpeakrColors.line,
+            ),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  if (folder != null && folderColor != null)
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 6,
+                          height: 6,
+                          decoration: BoxDecoration(
+                            color: folderColor,
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          folder.name.toUpperCase(),
+                          style: SpeakrText.mono(
+                            size: 9,
+                            color: folderColor,
+                            letterSpacing: 1.3,
+                          ),
+                        ),
+                      ],
+                    ),
+                  const Spacer(),
+                  Text(
+                    formatRelativeDay(
+                      r.meetingDate ?? r.createdAt ?? DateTime.now(),
+                    ),
+                    style: SpeakrText.mono(
+                      size: 10,
+                      color: SpeakrColors.muted,
+                      letterSpacing: 0,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Text(
+                r.title?.isNotEmpty == true ? r.title! : 'Untitled recording',
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: SpeakrText.serif(size: 17, height: 1.25),
+              ),
+              const SizedBox(height: 10),
+              Expanded(
+                child: Text(
+                  (r.summary?.isNotEmpty ?? false) ? r.summary! : '—',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: SpeakrText.sans(
+                    size: 12,
+                    color: SpeakrColors.muted,
+                    height: 1.5,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: Wrap(
+                      spacing: 4,
+                      runSpacing: 4,
+                      children: [
+                        for (final t in r.tags.take(2)) TagChip(tag: t),
+                      ],
+                    ),
+                  ),
+                  Text(
+                    completed
+                        ? formatDuration(r.audioDuration ?? 0)
+                        : r.status.displayLabel,
+                    style: SpeakrText.mono(
+                      size: 11,
+                      color: SpeakrColors.muted,
+                      letterSpacing: 0,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PendingGridCard extends StatelessWidget {
+  const _PendingGridCard({required this.pending});
+  final PendingFile pending;
+  @override
+  Widget build(BuildContext context) {
+    final name = pending.file.path.split(RegExp(r'[\\/]')).last;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
+      constraints: const BoxConstraints.tightFor(height: 180),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: SpeakrColors.line),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'NOT UPLOADED',
+            style: SpeakrText.mono(
+              size: 9,
+              color: SpeakrColors.muted,
+              letterSpacing: 1.3,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            name,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: SpeakrText.serif(
+              size: 17,
+              height: 1.25,
+              color: SpeakrColors.ink2,
+              style: FontStyle.italic,
+            ),
+          ),
+          const Spacer(),
+          Text(
+            formatBytes(pending.size),
+            style: SpeakrText.mono(
+              size: 11,
+              color: SpeakrColors.muted,
+              letterSpacing: 0,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────
+// Empty / Loading / Error
+// ─────────────────────────────────────────────────────────
+
+class _Loading extends StatelessWidget {
+  const _Loading();
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      child: CircularProgressIndicator(color: SpeakrColors.ink, strokeWidth: 2),
+    );
+  }
+}
+
+class _Empty extends StatelessWidget {
+  const _Empty();
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(40),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'EMPTY',
+            style: SpeakrText.mono(
+              size: 10,
+              color: SpeakrColors.muted,
+              letterSpacing: 1.5,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Nothing to show yet.',
+            style: SpeakrText.serif(size: 26, height: 1.15),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            'Use ⌘R or the New recording button in the sidebar to make your first recording.',
+            style: SpeakrText.sans(
+              size: 15,
+              height: 1.5,
+              color: SpeakrColors.ink2,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ErrorView extends StatelessWidget {
+  const _ErrorView({required this.message, required this.onRetry});
+  final String message;
+  final VoidCallback onRetry;
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(40),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'COULDN\'T LOAD',
+            style: SpeakrText.mono(
+              size: 10,
+              color: SpeakrColors.danger,
+              letterSpacing: 1.5,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(message, style: SpeakrText.sans(size: 14)),
+          const SizedBox(height: 16),
+          OutlinedButton(onPressed: onRetry, child: const Text('Retry')),
+        ],
+      ),
+    );
+  }
+}

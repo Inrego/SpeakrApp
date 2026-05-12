@@ -1,0 +1,1145 @@
+import 'dart:io' show Platform, SocketException;
+
+import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../api/models.dart';
+import '../../api/providers.dart';
+import '../../api/speakr_api.dart';
+import '../../services/auto_record/auto_record_providers.dart';
+import '../../services/auto_start/auto_start_providers.dart';
+import '../../services/credentials_store.dart';
+import '../../services/preferences/time_format_preference.dart';
+import '../../services/preferences/time_format_providers.dart';
+import '../../theme/colors.dart';
+import '../../theme/typography.dart';
+import '../../utils/formatters.dart';
+import '../../widgets/speakr_icons.dart';
+
+enum _SettingsSection {
+  profile,
+  server,
+  recording,
+  transcription,
+  appearance,
+  shortcuts,
+  about,
+}
+
+class SettingsDesktopScreen extends ConsumerStatefulWidget {
+  const SettingsDesktopScreen({super.key});
+  @override
+  ConsumerState<SettingsDesktopScreen> createState() =>
+      _SettingsDesktopScreenState();
+}
+
+class _SettingsDesktopScreenState extends ConsumerState<SettingsDesktopScreen> {
+  _SettingsSection _section = _SettingsSection.server;
+  bool _serverChecking = false;
+  bool _serverOk = false;
+  int? _storageBytes;
+  int? _recordingsCount;
+  bool _autoSummarize = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _probeServer();
+  }
+
+  Future<void> _probeServer() async {
+    setState(() => _serverChecking = true);
+    bool ok = false;
+    StatsResponse? stats;
+    try {
+      stats = await ref.read(speakrApiProvider).getStats();
+      ok = true;
+    } on SpeakrApiException catch (e) {
+      ok = e.statusCode != null || !_isNetworkFailure(e.cause);
+    } catch (_) {
+      ok = true;
+    }
+    if (!mounted) return;
+    setState(() {
+      _serverChecking = false;
+      _serverOk = ok;
+      _storageBytes = stats?.storage?.usedBytes;
+      _recordingsCount = stats?.recordings?.total;
+    });
+  }
+
+  bool _isNetworkFailure(Object? cause) {
+    if (cause is DioException) {
+      switch (cause.type) {
+        case DioExceptionType.connectionTimeout:
+        case DioExceptionType.sendTimeout:
+        case DioExceptionType.receiveTimeout:
+        case DioExceptionType.connectionError:
+        case DioExceptionType.badCertificate:
+          return true;
+        case DioExceptionType.cancel:
+        case DioExceptionType.badResponse:
+        case DioExceptionType.unknown:
+          return cause.error is SocketException;
+      }
+    }
+    return cause is SocketException;
+  }
+
+  Future<void> _signOut() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: SpeakrColors.bg,
+        title: Text('Sign out?', style: SpeakrText.serif(size: 20)),
+        content: Text(
+          'Disconnects from the server and clears stored credentials.',
+          style: SpeakrText.sans(size: 14, color: SpeakrColors.ink2),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text(
+              'Sign out',
+              style: SpeakrText.sans(size: 14, color: SpeakrColors.danger),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    await ref.read(credentialsStoreProvider).clear();
+    ref.invalidate(currentCredentialsProvider);
+    if (!mounted) return;
+    context.go('/onboarding');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: SpeakrColors.bg,
+      body: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _SubSidebar(
+            current: _section,
+            onChange: (s) => setState(() => _section = s),
+            onBack: () => context.go('/library'),
+          ),
+          const VerticalDivider(width: 1, color: SpeakrColors.line),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(60, 40, 60, 60),
+              child: _content(),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _content() {
+    switch (_section) {
+      case _SettingsSection.profile:
+        return _ProfileSection();
+      case _SettingsSection.server:
+        return _ServerSection(
+          checking: _serverChecking,
+          serverOk: _serverOk,
+          onRefresh: _probeServer,
+        );
+      case _SettingsSection.recording:
+        return _RecordingSection(
+          autoSummarize: _autoSummarize,
+          onAutoSummarize: (v) async {
+            final prev = _autoSummarize;
+            setState(() => _autoSummarize = v);
+            try {
+              await ref.read(speakrApiProvider).setAutoSummarization(v);
+            } catch (e) {
+              if (!mounted) return;
+              setState(() => _autoSummarize = prev);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Could not update setting: $e')),
+              );
+            }
+          },
+        );
+      case _SettingsSection.transcription:
+        return const _TranscriptionSection();
+      case _SettingsSection.appearance:
+        return const _AppearanceSection();
+      case _SettingsSection.shortcuts:
+        return const _ShortcutsSection();
+      case _SettingsSection.about:
+        return _AboutSection(
+          storageBytes: _storageBytes,
+          recordingsCount: _recordingsCount,
+          onSignOut: _signOut,
+        );
+    }
+  }
+}
+
+// ─────────────────────────────────────────────────────────
+// Sidebar
+// ─────────────────────────────────────────────────────────
+
+class _SubSidebar extends StatelessWidget {
+  const _SubSidebar({
+    required this.current,
+    required this.onChange,
+    required this.onBack,
+  });
+  final _SettingsSection current;
+  final ValueChanged<_SettingsSection> onChange;
+  final VoidCallback onBack;
+
+  static const _items = <(_SettingsSection, String)>[
+    (_SettingsSection.profile, 'Profile'),
+    (_SettingsSection.server, 'Server'),
+    (_SettingsSection.recording, 'Recording'),
+    (_SettingsSection.transcription, 'Transcription'),
+    (_SettingsSection.appearance, 'Appearance'),
+    (_SettingsSection.shortcuts, 'Shortcuts'),
+    (_SettingsSection.about, 'About'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 220,
+      child: Material(
+        color: SpeakrColors.bg,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 20, 14, 16),
+              child: _BackChip(onTap: onBack),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(22, 4, 22, 14),
+              child: Text('Settings', style: SpeakrText.serif(size: 26)),
+            ),
+            for (final (sec, label) in _items)
+              InkWell(
+                onTap: () => onChange(sec),
+                child: Container(
+                  padding: const EdgeInsets.fromLTRB(22, 8, 22, 8),
+                  decoration: BoxDecoration(
+                    border: Border(
+                      left: BorderSide(
+                        color: sec == current
+                            ? SpeakrColors.ink
+                            : Colors.transparent,
+                        width: 2,
+                      ),
+                    ),
+                  ),
+                  child: Text(
+                    label,
+                    style: SpeakrText.sans(
+                      size: 13,
+                      weight: sec == current
+                          ? FontWeight.w500
+                          : FontWeight.w400,
+                      color: sec == current
+                          ? SpeakrColors.ink
+                          : SpeakrColors.ink2,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _BackChip extends StatelessWidget {
+  const _BackChip({required this.onTap});
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        side: const BorderSide(color: SpeakrColors.line),
+        borderRadius: BorderRadius.circular(5),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(5),
+        onTap: onTap,
+        child: Container(
+          height: 28,
+          padding: const EdgeInsets.fromLTRB(6, 0, 10, 0),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SpeakrIconView(
+                SpeakrIcon.back,
+                size: 16,
+                color: SpeakrColors.ink2,
+              ),
+              const SizedBox(width: 2),
+              Text(
+                'Back',
+                style: SpeakrText.sans(size: 12, color: SpeakrColors.ink2),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────
+// Section shared bits
+// ─────────────────────────────────────────────────────────
+
+class _SectionHead extends StatelessWidget {
+  const _SectionHead({required this.title, this.sub});
+  final String title;
+  final String? sub;
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 28),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(bottom: 18),
+            child: Container(
+              decoration: const BoxDecoration(
+                border: Border(bottom: BorderSide(color: SpeakrColors.line)),
+              ),
+              padding: const EdgeInsets.only(bottom: 18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: SpeakrText.serif(size: 32)),
+                  if (sub != null) ...[
+                    const SizedBox(height: 8),
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 520),
+                      child: Text(
+                        sub!,
+                        style: SpeakrText.sans(
+                          size: 13,
+                          color: SpeakrColors.muted,
+                          height: 1.5,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Field extends StatelessWidget {
+  const _Field({required this.label, this.hint, required this.child});
+  final String label;
+  final String? hint;
+  final Widget child;
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: SpeakrColors.line)),
+      ),
+      padding: const EdgeInsets.symmetric(vertical: 14),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 180,
+            child: Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: SpeakrText.sans(
+                      size: 13,
+                      weight: FontWeight.w500,
+                      color: SpeakrColors.ink,
+                    ),
+                  ),
+                  if (hint != null) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      hint!,
+                      style: SpeakrText.sans(
+                        size: 11.5,
+                        color: SpeakrColors.muted,
+                        height: 1.4,
+                      ).copyWith(fontStyle: FontStyle.italic),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(width: 30),
+          Expanded(child: child),
+        ],
+      ),
+    );
+  }
+}
+
+class _TextValue extends StatelessWidget {
+  const _TextValue({required this.text, this.mono = false});
+  final String text;
+  final bool mono;
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: const BoxConstraints(maxWidth: 360),
+      height: 34,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      alignment: Alignment.centerLeft,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: SpeakrColors.line),
+        borderRadius: BorderRadius.circular(5),
+      ),
+      child: Text(
+        text,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: mono
+            ? SpeakrText.mono(
+                size: 12,
+                color: SpeakrColors.ink,
+                letterSpacing: 0,
+              )
+            : SpeakrText.sans(size: 13, color: SpeakrColors.ink),
+      ),
+    );
+  }
+}
+
+class _Toggle extends StatelessWidget {
+  const _Toggle({required this.on, this.onTap});
+  final bool on;
+  final VoidCallback? onTap;
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(100),
+      onTap: onTap,
+      child: Container(
+        width: 36,
+        height: 20,
+        decoration: BoxDecoration(
+          color: on ? SpeakrColors.ink : SpeakrColors.line,
+          borderRadius: BorderRadius.circular(100),
+        ),
+        child: AnimatedAlign(
+          duration: const Duration(milliseconds: 180),
+          alignment: on ? Alignment.centerRight : Alignment.centerLeft,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 2),
+            child: Container(
+              width: 16,
+              height: 16,
+              decoration: const BoxDecoration(
+                color: SpeakrColors.bg,
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DropdownStub extends StatelessWidget {
+  const _DropdownStub({required this.value});
+  final String value;
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 34,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: SpeakrColors.line),
+        borderRadius: BorderRadius.circular(5),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            value,
+            style: SpeakrText.sans(size: 13, color: SpeakrColors.ink),
+          ),
+          const SizedBox(width: 10),
+          CustomPaint(
+            size: const Size(10, 10),
+            painter: _ChevPainter(SpeakrColors.ink2),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ChevPainter extends CustomPainter {
+  _ChevPainter(this.color);
+  final Color color;
+  @override
+  void paint(Canvas canvas, Size size) {
+    final p = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.3
+      ..strokeCap = StrokeCap.round;
+    final path = Path()
+      ..moveTo(size.width * 0.25, size.height * 0.4)
+      ..lineTo(size.width * 0.5, size.height * 0.65)
+      ..lineTo(size.width * 0.75, size.height * 0.4);
+    canvas.drawPath(path, p);
+  }
+
+  @override
+  bool shouldRepaint(covariant _ChevPainter old) => old.color != color;
+}
+
+// ─────────────────────────────────────────────────────────
+// Sections
+// ─────────────────────────────────────────────────────────
+
+class _ProfileSection extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const _SectionHead(
+          title: 'Profile',
+          sub: 'How you appear in shared recordings and team views.',
+        ),
+        Container(
+          decoration: const BoxDecoration(
+            border: Border(bottom: BorderSide(color: SpeakrColors.line)),
+          ),
+          padding: const EdgeInsets.only(bottom: 14),
+          child: Row(
+            children: [
+              Container(
+                width: 72,
+                height: 72,
+                alignment: Alignment.center,
+                decoration: const BoxDecoration(
+                  color: SpeakrColors.ink,
+                  shape: BoxShape.circle,
+                ),
+                child: Text(
+                  'ME',
+                  style: SpeakrText.serif(size: 28, color: SpeakrColors.bg),
+                ),
+              ),
+              const SizedBox(width: 18),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Connected user', style: SpeakrText.serif(size: 22)),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Speakr account · self-hosted',
+                    style: SpeakrText.mono(
+                      size: 11,
+                      color: SpeakrColors.muted,
+                      letterSpacing: 0,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        _Field(
+          label: 'Display name',
+          child: const _TextValue(text: 'Speakr user'),
+        ),
+        _Field(
+          label: 'Default speaker label',
+          hint: "What 'me' is named in transcripts.",
+          child: const _TextValue(text: 'Speakr user'),
+        ),
+      ],
+    );
+  }
+}
+
+class _ServerSection extends ConsumerWidget {
+  const _ServerSection({
+    required this.checking,
+    required this.serverOk,
+    required this.onRefresh,
+  });
+  final bool checking;
+  final bool serverOk;
+  final Future<void> Function() onRefresh;
+
+  String _maskToken(String t) {
+    if (t.length <= 4) return '•••• $t';
+    return '••••••••${t.substring(t.length - 4)}';
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final asyncCreds = ref.watch(currentCredentialsProvider);
+    final creds = asyncCreds.value;
+    final url = creds?.baseUrl ?? '—';
+    final token = creds?.token == null ? '—' : _maskToken(creds!.token);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const _SectionHead(
+          title: 'Server',
+          sub:
+              'Speakr is self-hosted. Audio and transcripts stay on the machine you point this app at.',
+        ),
+        _Field(
+          label: 'Server URL',
+          child: _TextValue(text: url, mono: true),
+        ),
+        _Field(
+          label: 'API token',
+          hint: 'Generated in Settings → API Tokens on your server.',
+          child: _TextValue(text: token, mono: true),
+        ),
+        _Field(
+          label: 'Connection',
+          hint: 'Last verified just now.',
+          child: Row(
+            children: [
+              if (checking)
+                const SizedBox(
+                  width: 12,
+                  height: 12,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 1.5,
+                    color: SpeakrColors.ink,
+                  ),
+                )
+              else
+                Container(
+                  width: 7,
+                  height: 7,
+                  decoration: BoxDecoration(
+                    color: serverOk ? SpeakrColors.ok : SpeakrColors.danger,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              const SizedBox(width: 7),
+              Text(
+                checking
+                    ? 'CHECKING…'
+                    : (serverOk ? 'CONNECTED' : 'UNREACHABLE'),
+                style: SpeakrText.mono(
+                  size: 11,
+                  color: serverOk ? SpeakrColors.ok : SpeakrColors.danger,
+                  letterSpacing: 1.5,
+                ),
+              ),
+              const Spacer(),
+              Material(
+                color: Colors.white,
+                shape: RoundedRectangleBorder(
+                  side: const BorderSide(color: SpeakrColors.line),
+                  borderRadius: BorderRadius.circular(5),
+                ),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(5),
+                  onTap: checking ? null : onRefresh,
+                  child: Container(
+                    height: 30,
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    alignment: Alignment.center,
+                    child: Text(
+                      'Test connection',
+                      style: SpeakrText.sans(
+                        size: 12,
+                        color: SpeakrColors.ink2,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _RecordingSection extends ConsumerWidget {
+  const _RecordingSection({
+    required this.autoSummarize,
+    required this.onAutoSummarize,
+  });
+  final bool autoSummarize;
+  final ValueChanged<bool> onAutoSummarize;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final settingsAsync = ref.watch(autoRecordSettingsProvider);
+    final controller = ref.read(autoRecordSettingsControllerProvider);
+    final settings = settingsAsync.value;
+    final supportsSystem =
+        !kIsWeb && (Platform.isWindows || Platform.isAndroid);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const _SectionHead(
+          title: 'Recording',
+          sub: 'What happens when you hit ⌘R.',
+        ),
+        _Field(
+          label: 'Record microphone by default',
+          hint: 'New sessions start with the mic source on.',
+          child: _Toggle(
+            on: settings?.defaultMicEnabled ?? true,
+            onTap: settings == null
+                ? null
+                : () => controller.setDefaultMicEnabled(
+                    !settings.defaultMicEnabled,
+                  ),
+          ),
+        ),
+        _Field(
+          label: 'Record system audio by default',
+          hint: supportsSystem
+              ? 'Captures audio from other apps that are playing.'
+              : 'Available on Windows and Android 10+ only.',
+          child: _Toggle(
+            on: settings?.defaultSystemEnabled ?? false,
+            onTap: (settings != null && supportsSystem)
+                ? () => controller.setDefaultSystemEnabled(
+                    !settings.defaultSystemEnabled,
+                  )
+                : null,
+          ),
+        ),
+        _Field(
+          label: 'Auto-summarize',
+          hint: 'Generate a TL;DR after each recording completes.',
+          child: _Toggle(
+            on: autoSummarize,
+            onTap: () => onAutoSummarize(!autoSummarize),
+          ),
+        ),
+        if (!kIsWeb && Platform.isWindows)
+          _Field(
+            label: 'Auto-record on mic activity',
+            hint:
+                'Start recording automatically when a listed app uses the mic.',
+            child: Material(
+              color: Colors.white,
+              shape: RoundedRectangleBorder(
+                side: const BorderSide(color: SpeakrColors.line),
+                borderRadius: BorderRadius.circular(5),
+              ),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(5),
+                onTap: () => context.push('/settings/auto-record'),
+                child: Container(
+                  height: 34,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  alignment: Alignment.center,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Configure…',
+                        style: SpeakrText.sans(
+                          size: 12,
+                          color: SpeakrColors.ink2,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      const SpeakrIconView(
+                        SpeakrIcon.chev,
+                        size: 14,
+                        color: SpeakrColors.ink2,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        if (!kIsWeb && Platform.isWindows) const _AutoStartField(),
+        const _AutoUploadField(),
+      ],
+    );
+  }
+}
+
+class _AutoStartField extends ConsumerWidget {
+  const _AutoStartField();
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final asyncEnabled = ref.watch(autoStartEnabledProvider);
+    final service = ref.read(autoStartServiceProvider);
+    return _Field(
+      label: 'Start with Windows',
+      hint: 'Launches Speakr minimized to the tray when you sign in.',
+      child: _Toggle(
+        on: asyncEnabled.maybeWhen(data: (v) => v, orElse: () => false),
+        onTap: asyncEnabled.hasValue
+            ? () async {
+                final current = asyncEnabled.value ?? false;
+                try {
+                  await service.setEnabled(!current);
+                } catch (e) {
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Could not update auto-start: $e')),
+                  );
+                } finally {
+                  ref.invalidate(autoStartEnabledProvider);
+                }
+              }
+            : null,
+      ),
+    );
+  }
+}
+
+class _AutoUploadField extends StatelessWidget {
+  const _AutoUploadField();
+  @override
+  Widget build(BuildContext context) {
+    return _Field(
+      label: 'Auto-upload from folders',
+      hint: 'Watch device folders and upload new recordings as they appear.',
+      child: Material(
+        color: Colors.white,
+        shape: RoundedRectangleBorder(
+          side: const BorderSide(color: SpeakrColors.line),
+          borderRadius: BorderRadius.circular(5),
+        ),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(5),
+          onTap: () => context.push('/settings/auto-upload'),
+          child: Container(
+            height: 34,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            alignment: Alignment.center,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Configure…',
+                  style: SpeakrText.sans(size: 12, color: SpeakrColors.ink2),
+                ),
+                const SizedBox(width: 8),
+                const SpeakrIconView(
+                  SpeakrIcon.chev,
+                  size: 14,
+                  color: SpeakrColors.ink2,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TranscriptionSection extends StatelessWidget {
+  const _TranscriptionSection();
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const _SectionHead(
+          title: 'Transcription',
+          sub:
+              'How Speakr turns audio into words. These settings live on the '
+              'server — change them in the Speakr web admin.',
+        ),
+        _Field(
+          label: 'Model',
+          child: const _DropdownStub(value: 'Server default'),
+        ),
+        _Field(
+          label: 'Language',
+          child: const _DropdownStub(value: 'Auto-detect'),
+        ),
+        _Field(
+          label: 'Speaker diarization',
+          hint: 'Separate voices into labeled speakers.',
+          child: const _Toggle(on: true),
+        ),
+        _Field(
+          label: 'Filter filler words',
+          hint: "Remove 'um', 'uh', 'like' from the readable transcript.",
+          child: const _Toggle(on: false),
+        ),
+      ],
+    );
+  }
+}
+
+class _AppearanceSection extends ConsumerWidget {
+  const _AppearanceSection();
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final pref =
+        ref.watch(timeFormatPreferenceProvider).asData?.value ??
+        TimeFormatPreference.system;
+    final controller = ref.read(timeFormatControllerProvider);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const _SectionHead(title: 'Appearance'),
+        _Field(
+          label: 'Theme',
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _ThemeChip(label: 'Light', selected: true),
+              const SizedBox(width: 8),
+              _ThemeChip(label: 'Dark', selected: false, disabled: true),
+              const SizedBox(width: 8),
+              _ThemeChip(label: 'System', selected: false, disabled: true),
+            ],
+          ),
+        ),
+        _Field(
+          label: 'Time format',
+          hint: 'Affects timestamps, list dates and transcript markers.',
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _TimeChip(
+                label: 'Auto',
+                selected: pref == TimeFormatPreference.system,
+                onTap: () => controller.set(TimeFormatPreference.system),
+              ),
+              const SizedBox(width: 6),
+              _TimeChip(
+                label: '12h',
+                selected: pref == TimeFormatPreference.twelveHour,
+                onTap: () => controller.set(TimeFormatPreference.twelveHour),
+              ),
+              const SizedBox(width: 6),
+              _TimeChip(
+                label: '24h',
+                selected: pref == TimeFormatPreference.twentyFourHour,
+                onTap: () =>
+                    controller.set(TimeFormatPreference.twentyFourHour),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ThemeChip extends StatelessWidget {
+  const _ThemeChip({
+    required this.label,
+    required this.selected,
+    this.disabled = false,
+  });
+  final String label;
+  final bool selected;
+  final bool disabled;
+  @override
+  Widget build(BuildContext context) {
+    return Opacity(
+      opacity: disabled ? 0.5 : 1,
+      child: Container(
+        height: 34,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: selected ? SpeakrColors.bgAlt : Colors.white,
+          border: Border.all(
+            color: selected ? SpeakrColors.ink : SpeakrColors.line,
+          ),
+          borderRadius: BorderRadius.circular(5),
+        ),
+        child: Text(
+          label,
+          style: SpeakrText.sans(size: 13, color: SpeakrColors.ink),
+        ),
+      ),
+    );
+  }
+}
+
+class _TimeChip extends StatelessWidget {
+  const _TimeChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(100),
+      onTap: selected ? null : onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 140),
+        height: 30,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          color: selected ? SpeakrColors.ink : Colors.transparent,
+          border: Border.all(color: SpeakrColors.line),
+          borderRadius: BorderRadius.circular(100),
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          label,
+          style: SpeakrText.mono(
+            size: 11,
+            color: selected ? SpeakrColors.bg : SpeakrColors.muted,
+            letterSpacing: 0,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ShortcutsSection extends StatelessWidget {
+  const _ShortcutsSection();
+  static const _rows = <(String, String)>[
+    ('New recording', '⌘ R'),
+    ('Pause / resume', '⌘ .'),
+    ('Stop & save', '⌘ ↩'),
+    ('Mark moment', '⌘ M'),
+    ('Open mini window', '⌘ ⇧ M'),
+    ('Search library', '⌘ K'),
+    ('Open settings', '⌘ ,'),
+  ];
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const _SectionHead(
+          title: 'Shortcuts',
+          sub:
+              "System-wide hotkeys live on the roadmap. Today's shortcuts "
+              "are active only while Speakr is focused.",
+        ),
+        for (final (label, key) in _rows)
+          Container(
+            decoration: const BoxDecoration(
+              border: Border(bottom: BorderSide(color: SpeakrColors.line)),
+            ),
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    label,
+                    style: SpeakrText.sans(size: 13, color: SpeakrColors.ink),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 9,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    border: Border.all(color: SpeakrColors.line),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    key,
+                    style: SpeakrText.mono(
+                      size: 11,
+                      color: SpeakrColors.ink2,
+                      letterSpacing: 0,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _AboutSection extends StatelessWidget {
+  const _AboutSection({
+    required this.storageBytes,
+    required this.recordingsCount,
+    required this.onSignOut,
+  });
+  final int? storageBytes;
+  final int? recordingsCount;
+  final VoidCallback onSignOut;
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const _SectionHead(title: 'About'),
+        _Field(
+          label: 'App version',
+          child: const _TextValue(text: '0.1.0', mono: true),
+        ),
+        _Field(
+          label: 'Storage used',
+          child: _TextValue(
+            text:
+                '${formatBytes(storageBytes)} · ${recordingsCount ?? '—'} recordings',
+          ),
+        ),
+        const SizedBox(height: 30),
+        TextButton(
+          onPressed: onSignOut,
+          style: TextButton.styleFrom(
+            foregroundColor: SpeakrColors.danger,
+            padding: EdgeInsets.zero,
+          ),
+          child: Text(
+            'Sign out',
+            style: SpeakrText.sans(size: 13, color: SpeakrColors.danger),
+          ),
+        ),
+      ],
+    );
+  }
+}
