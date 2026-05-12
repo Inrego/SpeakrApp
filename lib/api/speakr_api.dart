@@ -185,14 +185,20 @@ class SpeakrApi {
   // ── Processing ────────────────────────────────────────────────────────────
   Future<void> reprocessTranscription(
     int id, {
+    String? transcriptionModel,
     String? language,
     int? minSpeakers,
     int? maxSpeakers,
+    String? hotwords,
+    String? initialPrompt,
   }) async {
     await _post<Map<String, dynamic>>('/recordings/$id/transcribe', {
+      if (transcriptionModel != null) 'transcription_model': transcriptionModel,
       if (language != null) 'language': language,
       if (minSpeakers != null) 'min_speakers': minSpeakers,
       if (maxSpeakers != null) 'max_speakers': maxSpeakers,
+      if (hotwords != null) 'hotwords': hotwords,
+      if (initialPrompt != null) 'initial_prompt': initialPrompt,
     });
   }
 
@@ -266,6 +272,19 @@ class SpeakrApi {
           .toList(growable: false);
     });
     return out;
+  }
+
+  // ── Config ────────────────────────────────────────────────────────────────
+  // Unofficial /api/config — exposes the admin-curated transcription model
+  // list and connector capability flags. Lives at /api (not /api/v1).
+  Future<Config> getConfig() async {
+    final res = await _request<Map<String, dynamic>>(
+      () => _dio.get<Map<String, dynamic>>(
+        '/config',
+        options: Options(extra: {'useRootApi': true}),
+      ),
+    );
+    return Config.fromJson(res);
   }
 
   // ── Settings ──────────────────────────────────────────────────────────────

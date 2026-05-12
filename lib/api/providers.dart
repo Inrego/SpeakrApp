@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../services/credentials_store.dart';
 import 'auth_interceptor.dart';
+import 'models.dart';
 import 'speakr_api.dart';
 
 final dioProvider = Provider<Dio>((ref) {
@@ -20,4 +21,10 @@ final dioProvider = Provider<Dio>((ref) {
 
 final speakrApiProvider = Provider<SpeakrApi>((ref) {
   return SpeakrApi(ref.watch(dioProvider));
+});
+
+// Server config (model list, connector capability flags). Cached for the
+// session so the reprocess dialog opens instantly after first fetch.
+final configProvider = FutureProvider<Config>((ref) async {
+  return ref.watch(speakrApiProvider).getConfig();
 });

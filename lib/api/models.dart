@@ -174,10 +174,56 @@ sealed class Recording with _$Recording {
     String? notes,
     String? transcription,
     @JsonKey(name: 'audio_duration') double? audioDuration,
+
+    // Optional transcription parameters — present on the unofficial detail
+    // endpoint when set; absent otherwise. Used to pre-fill the reprocess
+    // transcription dialog.
+    @JsonKey(name: 'transcription_model') String? transcriptionModel,
+    String? language,
+    @JsonKey(name: 'min_speakers') int? minSpeakers,
+    @JsonKey(name: 'max_speakers') int? maxSpeakers,
+    String? hotwords,
+    @JsonKey(name: 'initial_prompt') String? initialPrompt,
   }) = _Recording;
 
   factory Recording.fromJson(Map<String, dynamic> json) =>
       _$RecordingFromJson(json);
+}
+
+// Response from the unofficial GET /api/config. Only the fields the client
+// uses are typed; everything else is ignored by json_serializable.
+@freezed
+sealed class TranscriptionModelOption with _$TranscriptionModelOption {
+  const factory TranscriptionModelOption({
+    required String label,
+    required String value,
+  }) = _TranscriptionModelOption;
+
+  factory TranscriptionModelOption.fromJson(Map<String, dynamic> json) =>
+      _$TranscriptionModelOptionFromJson(json);
+}
+
+@freezed
+sealed class Config with _$Config {
+  const factory Config({
+    @JsonKey(name: 'transcription_model_options')
+    @Default(<TranscriptionModelOption>[])
+    List<TranscriptionModelOption> transcriptionModelOptions,
+    @JsonKey(name: 'connector_supports_diarization')
+    @Default(false)
+    bool connectorSupportsDiarization,
+    @JsonKey(name: 'connector_supports_speaker_count')
+    @Default(false)
+    bool connectorSupportsSpeakerCount,
+    @JsonKey(name: 'connector_supports_hotwords')
+    @Default(false)
+    bool connectorSupportsHotwords,
+    @JsonKey(name: 'connector_supports_initial_prompt')
+    @Default(false)
+    bool connectorSupportsInitialPrompt,
+  }) = _Config;
+
+  factory Config.fromJson(Map<String, dynamic> json) => _$ConfigFromJson(json);
 }
 
 @freezed

@@ -1096,7 +1096,10 @@ mixin _$Recording {
 
  int get id; String? get title;@JsonKey(name: 'meeting_date', fromJson: _parseFlexibleDate) DateTime? get meetingDate;@JsonKey(name: 'created_at', fromJson: _parseFlexibleDate) DateTime? get createdAt; String? get participants;@JsonKey(name: 'file_size') int? get fileSize;@JsonKey(name: 'is_highlighted') bool get isHighlighted;@JsonKey(name: 'is_inbox') bool get isInbox;@JsonKey(fromJson: _parseRecordingStatus) RecordingStatus get status; List<Tag> get tags;@JsonKey(name: 'folder_id') int? get folderId; Folder? get folder;// Returned by the v1 list endpoint.
 @JsonKey(name: 'audio_available') bool? get audioAvailable;@JsonKey(name: 'error_message') String? get errorMessage;@JsonKey(name: 'has_summary') bool? get hasSummary;@JsonKey(name: 'has_transcription') bool? get hasTranscription;@JsonKey(name: 'original_filename') String? get originalFilename;// Optional rich fields returned by the unofficial /api/recordings/{id}.
- String? get summary; String? get notes; String? get transcription;@JsonKey(name: 'audio_duration') double? get audioDuration;
+ String? get summary; String? get notes; String? get transcription;@JsonKey(name: 'audio_duration') double? get audioDuration;// Optional transcription parameters — present on the unofficial detail
+// endpoint when set; absent otherwise. Used to pre-fill the reprocess
+// transcription dialog.
+@JsonKey(name: 'transcription_model') String? get transcriptionModel; String? get language;@JsonKey(name: 'min_speakers') int? get minSpeakers;@JsonKey(name: 'max_speakers') int? get maxSpeakers; String? get hotwords;@JsonKey(name: 'initial_prompt') String? get initialPrompt;
 /// Create a copy of Recording
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -1109,16 +1112,16 @@ $RecordingCopyWith<Recording> get copyWith => _$RecordingCopyWithImpl<Recording>
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is Recording&&(identical(other.id, id) || other.id == id)&&(identical(other.title, title) || other.title == title)&&(identical(other.meetingDate, meetingDate) || other.meetingDate == meetingDate)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.participants, participants) || other.participants == participants)&&(identical(other.fileSize, fileSize) || other.fileSize == fileSize)&&(identical(other.isHighlighted, isHighlighted) || other.isHighlighted == isHighlighted)&&(identical(other.isInbox, isInbox) || other.isInbox == isInbox)&&(identical(other.status, status) || other.status == status)&&const DeepCollectionEquality().equals(other.tags, tags)&&(identical(other.folderId, folderId) || other.folderId == folderId)&&(identical(other.folder, folder) || other.folder == folder)&&(identical(other.audioAvailable, audioAvailable) || other.audioAvailable == audioAvailable)&&(identical(other.errorMessage, errorMessage) || other.errorMessage == errorMessage)&&(identical(other.hasSummary, hasSummary) || other.hasSummary == hasSummary)&&(identical(other.hasTranscription, hasTranscription) || other.hasTranscription == hasTranscription)&&(identical(other.originalFilename, originalFilename) || other.originalFilename == originalFilename)&&(identical(other.summary, summary) || other.summary == summary)&&(identical(other.notes, notes) || other.notes == notes)&&(identical(other.transcription, transcription) || other.transcription == transcription)&&(identical(other.audioDuration, audioDuration) || other.audioDuration == audioDuration));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Recording&&(identical(other.id, id) || other.id == id)&&(identical(other.title, title) || other.title == title)&&(identical(other.meetingDate, meetingDate) || other.meetingDate == meetingDate)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.participants, participants) || other.participants == participants)&&(identical(other.fileSize, fileSize) || other.fileSize == fileSize)&&(identical(other.isHighlighted, isHighlighted) || other.isHighlighted == isHighlighted)&&(identical(other.isInbox, isInbox) || other.isInbox == isInbox)&&(identical(other.status, status) || other.status == status)&&const DeepCollectionEquality().equals(other.tags, tags)&&(identical(other.folderId, folderId) || other.folderId == folderId)&&(identical(other.folder, folder) || other.folder == folder)&&(identical(other.audioAvailable, audioAvailable) || other.audioAvailable == audioAvailable)&&(identical(other.errorMessage, errorMessage) || other.errorMessage == errorMessage)&&(identical(other.hasSummary, hasSummary) || other.hasSummary == hasSummary)&&(identical(other.hasTranscription, hasTranscription) || other.hasTranscription == hasTranscription)&&(identical(other.originalFilename, originalFilename) || other.originalFilename == originalFilename)&&(identical(other.summary, summary) || other.summary == summary)&&(identical(other.notes, notes) || other.notes == notes)&&(identical(other.transcription, transcription) || other.transcription == transcription)&&(identical(other.audioDuration, audioDuration) || other.audioDuration == audioDuration)&&(identical(other.transcriptionModel, transcriptionModel) || other.transcriptionModel == transcriptionModel)&&(identical(other.language, language) || other.language == language)&&(identical(other.minSpeakers, minSpeakers) || other.minSpeakers == minSpeakers)&&(identical(other.maxSpeakers, maxSpeakers) || other.maxSpeakers == maxSpeakers)&&(identical(other.hotwords, hotwords) || other.hotwords == hotwords)&&(identical(other.initialPrompt, initialPrompt) || other.initialPrompt == initialPrompt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hashAll([runtimeType,id,title,meetingDate,createdAt,participants,fileSize,isHighlighted,isInbox,status,const DeepCollectionEquality().hash(tags),folderId,folder,audioAvailable,errorMessage,hasSummary,hasTranscription,originalFilename,summary,notes,transcription,audioDuration]);
+int get hashCode => Object.hashAll([runtimeType,id,title,meetingDate,createdAt,participants,fileSize,isHighlighted,isInbox,status,const DeepCollectionEquality().hash(tags),folderId,folder,audioAvailable,errorMessage,hasSummary,hasTranscription,originalFilename,summary,notes,transcription,audioDuration,transcriptionModel,language,minSpeakers,maxSpeakers,hotwords,initialPrompt]);
 
 @override
 String toString() {
-  return 'Recording(id: $id, title: $title, meetingDate: $meetingDate, createdAt: $createdAt, participants: $participants, fileSize: $fileSize, isHighlighted: $isHighlighted, isInbox: $isInbox, status: $status, tags: $tags, folderId: $folderId, folder: $folder, audioAvailable: $audioAvailable, errorMessage: $errorMessage, hasSummary: $hasSummary, hasTranscription: $hasTranscription, originalFilename: $originalFilename, summary: $summary, notes: $notes, transcription: $transcription, audioDuration: $audioDuration)';
+  return 'Recording(id: $id, title: $title, meetingDate: $meetingDate, createdAt: $createdAt, participants: $participants, fileSize: $fileSize, isHighlighted: $isHighlighted, isInbox: $isInbox, status: $status, tags: $tags, folderId: $folderId, folder: $folder, audioAvailable: $audioAvailable, errorMessage: $errorMessage, hasSummary: $hasSummary, hasTranscription: $hasTranscription, originalFilename: $originalFilename, summary: $summary, notes: $notes, transcription: $transcription, audioDuration: $audioDuration, transcriptionModel: $transcriptionModel, language: $language, minSpeakers: $minSpeakers, maxSpeakers: $maxSpeakers, hotwords: $hotwords, initialPrompt: $initialPrompt)';
 }
 
 
@@ -1129,7 +1132,7 @@ abstract mixin class $RecordingCopyWith<$Res>  {
   factory $RecordingCopyWith(Recording value, $Res Function(Recording) _then) = _$RecordingCopyWithImpl;
 @useResult
 $Res call({
- int id, String? title,@JsonKey(name: 'meeting_date', fromJson: _parseFlexibleDate) DateTime? meetingDate,@JsonKey(name: 'created_at', fromJson: _parseFlexibleDate) DateTime? createdAt, String? participants,@JsonKey(name: 'file_size') int? fileSize,@JsonKey(name: 'is_highlighted') bool isHighlighted,@JsonKey(name: 'is_inbox') bool isInbox,@JsonKey(fromJson: _parseRecordingStatus) RecordingStatus status, List<Tag> tags,@JsonKey(name: 'folder_id') int? folderId, Folder? folder,@JsonKey(name: 'audio_available') bool? audioAvailable,@JsonKey(name: 'error_message') String? errorMessage,@JsonKey(name: 'has_summary') bool? hasSummary,@JsonKey(name: 'has_transcription') bool? hasTranscription,@JsonKey(name: 'original_filename') String? originalFilename, String? summary, String? notes, String? transcription,@JsonKey(name: 'audio_duration') double? audioDuration
+ int id, String? title,@JsonKey(name: 'meeting_date', fromJson: _parseFlexibleDate) DateTime? meetingDate,@JsonKey(name: 'created_at', fromJson: _parseFlexibleDate) DateTime? createdAt, String? participants,@JsonKey(name: 'file_size') int? fileSize,@JsonKey(name: 'is_highlighted') bool isHighlighted,@JsonKey(name: 'is_inbox') bool isInbox,@JsonKey(fromJson: _parseRecordingStatus) RecordingStatus status, List<Tag> tags,@JsonKey(name: 'folder_id') int? folderId, Folder? folder,@JsonKey(name: 'audio_available') bool? audioAvailable,@JsonKey(name: 'error_message') String? errorMessage,@JsonKey(name: 'has_summary') bool? hasSummary,@JsonKey(name: 'has_transcription') bool? hasTranscription,@JsonKey(name: 'original_filename') String? originalFilename, String? summary, String? notes, String? transcription,@JsonKey(name: 'audio_duration') double? audioDuration,@JsonKey(name: 'transcription_model') String? transcriptionModel, String? language,@JsonKey(name: 'min_speakers') int? minSpeakers,@JsonKey(name: 'max_speakers') int? maxSpeakers, String? hotwords,@JsonKey(name: 'initial_prompt') String? initialPrompt
 });
 
 
@@ -1146,7 +1149,7 @@ class _$RecordingCopyWithImpl<$Res>
 
 /// Create a copy of Recording
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? title = freezed,Object? meetingDate = freezed,Object? createdAt = freezed,Object? participants = freezed,Object? fileSize = freezed,Object? isHighlighted = null,Object? isInbox = null,Object? status = null,Object? tags = null,Object? folderId = freezed,Object? folder = freezed,Object? audioAvailable = freezed,Object? errorMessage = freezed,Object? hasSummary = freezed,Object? hasTranscription = freezed,Object? originalFilename = freezed,Object? summary = freezed,Object? notes = freezed,Object? transcription = freezed,Object? audioDuration = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? title = freezed,Object? meetingDate = freezed,Object? createdAt = freezed,Object? participants = freezed,Object? fileSize = freezed,Object? isHighlighted = null,Object? isInbox = null,Object? status = null,Object? tags = null,Object? folderId = freezed,Object? folder = freezed,Object? audioAvailable = freezed,Object? errorMessage = freezed,Object? hasSummary = freezed,Object? hasTranscription = freezed,Object? originalFilename = freezed,Object? summary = freezed,Object? notes = freezed,Object? transcription = freezed,Object? audioDuration = freezed,Object? transcriptionModel = freezed,Object? language = freezed,Object? minSpeakers = freezed,Object? maxSpeakers = freezed,Object? hotwords = freezed,Object? initialPrompt = freezed,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as int,title: freezed == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
@@ -1169,7 +1172,13 @@ as String?,summary: freezed == summary ? _self.summary : summary // ignore: cast
 as String?,notes: freezed == notes ? _self.notes : notes // ignore: cast_nullable_to_non_nullable
 as String?,transcription: freezed == transcription ? _self.transcription : transcription // ignore: cast_nullable_to_non_nullable
 as String?,audioDuration: freezed == audioDuration ? _self.audioDuration : audioDuration // ignore: cast_nullable_to_non_nullable
-as double?,
+as double?,transcriptionModel: freezed == transcriptionModel ? _self.transcriptionModel : transcriptionModel // ignore: cast_nullable_to_non_nullable
+as String?,language: freezed == language ? _self.language : language // ignore: cast_nullable_to_non_nullable
+as String?,minSpeakers: freezed == minSpeakers ? _self.minSpeakers : minSpeakers // ignore: cast_nullable_to_non_nullable
+as int?,maxSpeakers: freezed == maxSpeakers ? _self.maxSpeakers : maxSpeakers // ignore: cast_nullable_to_non_nullable
+as int?,hotwords: freezed == hotwords ? _self.hotwords : hotwords // ignore: cast_nullable_to_non_nullable
+as String?,initialPrompt: freezed == initialPrompt ? _self.initialPrompt : initialPrompt // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 /// Create a copy of Recording
@@ -1263,10 +1272,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( int id,  String? title, @JsonKey(name: 'meeting_date', fromJson: _parseFlexibleDate)  DateTime? meetingDate, @JsonKey(name: 'created_at', fromJson: _parseFlexibleDate)  DateTime? createdAt,  String? participants, @JsonKey(name: 'file_size')  int? fileSize, @JsonKey(name: 'is_highlighted')  bool isHighlighted, @JsonKey(name: 'is_inbox')  bool isInbox, @JsonKey(fromJson: _parseRecordingStatus)  RecordingStatus status,  List<Tag> tags, @JsonKey(name: 'folder_id')  int? folderId,  Folder? folder, @JsonKey(name: 'audio_available')  bool? audioAvailable, @JsonKey(name: 'error_message')  String? errorMessage, @JsonKey(name: 'has_summary')  bool? hasSummary, @JsonKey(name: 'has_transcription')  bool? hasTranscription, @JsonKey(name: 'original_filename')  String? originalFilename,  String? summary,  String? notes,  String? transcription, @JsonKey(name: 'audio_duration')  double? audioDuration)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( int id,  String? title, @JsonKey(name: 'meeting_date', fromJson: _parseFlexibleDate)  DateTime? meetingDate, @JsonKey(name: 'created_at', fromJson: _parseFlexibleDate)  DateTime? createdAt,  String? participants, @JsonKey(name: 'file_size')  int? fileSize, @JsonKey(name: 'is_highlighted')  bool isHighlighted, @JsonKey(name: 'is_inbox')  bool isInbox, @JsonKey(fromJson: _parseRecordingStatus)  RecordingStatus status,  List<Tag> tags, @JsonKey(name: 'folder_id')  int? folderId,  Folder? folder, @JsonKey(name: 'audio_available')  bool? audioAvailable, @JsonKey(name: 'error_message')  String? errorMessage, @JsonKey(name: 'has_summary')  bool? hasSummary, @JsonKey(name: 'has_transcription')  bool? hasTranscription, @JsonKey(name: 'original_filename')  String? originalFilename,  String? summary,  String? notes,  String? transcription, @JsonKey(name: 'audio_duration')  double? audioDuration, @JsonKey(name: 'transcription_model')  String? transcriptionModel,  String? language, @JsonKey(name: 'min_speakers')  int? minSpeakers, @JsonKey(name: 'max_speakers')  int? maxSpeakers,  String? hotwords, @JsonKey(name: 'initial_prompt')  String? initialPrompt)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _Recording() when $default != null:
-return $default(_that.id,_that.title,_that.meetingDate,_that.createdAt,_that.participants,_that.fileSize,_that.isHighlighted,_that.isInbox,_that.status,_that.tags,_that.folderId,_that.folder,_that.audioAvailable,_that.errorMessage,_that.hasSummary,_that.hasTranscription,_that.originalFilename,_that.summary,_that.notes,_that.transcription,_that.audioDuration);case _:
+return $default(_that.id,_that.title,_that.meetingDate,_that.createdAt,_that.participants,_that.fileSize,_that.isHighlighted,_that.isInbox,_that.status,_that.tags,_that.folderId,_that.folder,_that.audioAvailable,_that.errorMessage,_that.hasSummary,_that.hasTranscription,_that.originalFilename,_that.summary,_that.notes,_that.transcription,_that.audioDuration,_that.transcriptionModel,_that.language,_that.minSpeakers,_that.maxSpeakers,_that.hotwords,_that.initialPrompt);case _:
   return orElse();
 
 }
@@ -1284,10 +1293,10 @@ return $default(_that.id,_that.title,_that.meetingDate,_that.createdAt,_that.par
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( int id,  String? title, @JsonKey(name: 'meeting_date', fromJson: _parseFlexibleDate)  DateTime? meetingDate, @JsonKey(name: 'created_at', fromJson: _parseFlexibleDate)  DateTime? createdAt,  String? participants, @JsonKey(name: 'file_size')  int? fileSize, @JsonKey(name: 'is_highlighted')  bool isHighlighted, @JsonKey(name: 'is_inbox')  bool isInbox, @JsonKey(fromJson: _parseRecordingStatus)  RecordingStatus status,  List<Tag> tags, @JsonKey(name: 'folder_id')  int? folderId,  Folder? folder, @JsonKey(name: 'audio_available')  bool? audioAvailable, @JsonKey(name: 'error_message')  String? errorMessage, @JsonKey(name: 'has_summary')  bool? hasSummary, @JsonKey(name: 'has_transcription')  bool? hasTranscription, @JsonKey(name: 'original_filename')  String? originalFilename,  String? summary,  String? notes,  String? transcription, @JsonKey(name: 'audio_duration')  double? audioDuration)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( int id,  String? title, @JsonKey(name: 'meeting_date', fromJson: _parseFlexibleDate)  DateTime? meetingDate, @JsonKey(name: 'created_at', fromJson: _parseFlexibleDate)  DateTime? createdAt,  String? participants, @JsonKey(name: 'file_size')  int? fileSize, @JsonKey(name: 'is_highlighted')  bool isHighlighted, @JsonKey(name: 'is_inbox')  bool isInbox, @JsonKey(fromJson: _parseRecordingStatus)  RecordingStatus status,  List<Tag> tags, @JsonKey(name: 'folder_id')  int? folderId,  Folder? folder, @JsonKey(name: 'audio_available')  bool? audioAvailable, @JsonKey(name: 'error_message')  String? errorMessage, @JsonKey(name: 'has_summary')  bool? hasSummary, @JsonKey(name: 'has_transcription')  bool? hasTranscription, @JsonKey(name: 'original_filename')  String? originalFilename,  String? summary,  String? notes,  String? transcription, @JsonKey(name: 'audio_duration')  double? audioDuration, @JsonKey(name: 'transcription_model')  String? transcriptionModel,  String? language, @JsonKey(name: 'min_speakers')  int? minSpeakers, @JsonKey(name: 'max_speakers')  int? maxSpeakers,  String? hotwords, @JsonKey(name: 'initial_prompt')  String? initialPrompt)  $default,) {final _that = this;
 switch (_that) {
 case _Recording():
-return $default(_that.id,_that.title,_that.meetingDate,_that.createdAt,_that.participants,_that.fileSize,_that.isHighlighted,_that.isInbox,_that.status,_that.tags,_that.folderId,_that.folder,_that.audioAvailable,_that.errorMessage,_that.hasSummary,_that.hasTranscription,_that.originalFilename,_that.summary,_that.notes,_that.transcription,_that.audioDuration);}
+return $default(_that.id,_that.title,_that.meetingDate,_that.createdAt,_that.participants,_that.fileSize,_that.isHighlighted,_that.isInbox,_that.status,_that.tags,_that.folderId,_that.folder,_that.audioAvailable,_that.errorMessage,_that.hasSummary,_that.hasTranscription,_that.originalFilename,_that.summary,_that.notes,_that.transcription,_that.audioDuration,_that.transcriptionModel,_that.language,_that.minSpeakers,_that.maxSpeakers,_that.hotwords,_that.initialPrompt);}
 }
 /// A variant of `when` that fallback to returning `null`
 ///
@@ -1301,10 +1310,10 @@ return $default(_that.id,_that.title,_that.meetingDate,_that.createdAt,_that.par
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( int id,  String? title, @JsonKey(name: 'meeting_date', fromJson: _parseFlexibleDate)  DateTime? meetingDate, @JsonKey(name: 'created_at', fromJson: _parseFlexibleDate)  DateTime? createdAt,  String? participants, @JsonKey(name: 'file_size')  int? fileSize, @JsonKey(name: 'is_highlighted')  bool isHighlighted, @JsonKey(name: 'is_inbox')  bool isInbox, @JsonKey(fromJson: _parseRecordingStatus)  RecordingStatus status,  List<Tag> tags, @JsonKey(name: 'folder_id')  int? folderId,  Folder? folder, @JsonKey(name: 'audio_available')  bool? audioAvailable, @JsonKey(name: 'error_message')  String? errorMessage, @JsonKey(name: 'has_summary')  bool? hasSummary, @JsonKey(name: 'has_transcription')  bool? hasTranscription, @JsonKey(name: 'original_filename')  String? originalFilename,  String? summary,  String? notes,  String? transcription, @JsonKey(name: 'audio_duration')  double? audioDuration)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( int id,  String? title, @JsonKey(name: 'meeting_date', fromJson: _parseFlexibleDate)  DateTime? meetingDate, @JsonKey(name: 'created_at', fromJson: _parseFlexibleDate)  DateTime? createdAt,  String? participants, @JsonKey(name: 'file_size')  int? fileSize, @JsonKey(name: 'is_highlighted')  bool isHighlighted, @JsonKey(name: 'is_inbox')  bool isInbox, @JsonKey(fromJson: _parseRecordingStatus)  RecordingStatus status,  List<Tag> tags, @JsonKey(name: 'folder_id')  int? folderId,  Folder? folder, @JsonKey(name: 'audio_available')  bool? audioAvailable, @JsonKey(name: 'error_message')  String? errorMessage, @JsonKey(name: 'has_summary')  bool? hasSummary, @JsonKey(name: 'has_transcription')  bool? hasTranscription, @JsonKey(name: 'original_filename')  String? originalFilename,  String? summary,  String? notes,  String? transcription, @JsonKey(name: 'audio_duration')  double? audioDuration, @JsonKey(name: 'transcription_model')  String? transcriptionModel,  String? language, @JsonKey(name: 'min_speakers')  int? minSpeakers, @JsonKey(name: 'max_speakers')  int? maxSpeakers,  String? hotwords, @JsonKey(name: 'initial_prompt')  String? initialPrompt)?  $default,) {final _that = this;
 switch (_that) {
 case _Recording() when $default != null:
-return $default(_that.id,_that.title,_that.meetingDate,_that.createdAt,_that.participants,_that.fileSize,_that.isHighlighted,_that.isInbox,_that.status,_that.tags,_that.folderId,_that.folder,_that.audioAvailable,_that.errorMessage,_that.hasSummary,_that.hasTranscription,_that.originalFilename,_that.summary,_that.notes,_that.transcription,_that.audioDuration);case _:
+return $default(_that.id,_that.title,_that.meetingDate,_that.createdAt,_that.participants,_that.fileSize,_that.isHighlighted,_that.isInbox,_that.status,_that.tags,_that.folderId,_that.folder,_that.audioAvailable,_that.errorMessage,_that.hasSummary,_that.hasTranscription,_that.originalFilename,_that.summary,_that.notes,_that.transcription,_that.audioDuration,_that.transcriptionModel,_that.language,_that.minSpeakers,_that.maxSpeakers,_that.hotwords,_that.initialPrompt);case _:
   return null;
 
 }
@@ -1316,7 +1325,7 @@ return $default(_that.id,_that.title,_that.meetingDate,_that.createdAt,_that.par
 @JsonSerializable()
 
 class _Recording implements Recording {
-  const _Recording({required this.id, this.title, @JsonKey(name: 'meeting_date', fromJson: _parseFlexibleDate) this.meetingDate, @JsonKey(name: 'created_at', fromJson: _parseFlexibleDate) this.createdAt, this.participants, @JsonKey(name: 'file_size') this.fileSize, @JsonKey(name: 'is_highlighted') this.isHighlighted = false, @JsonKey(name: 'is_inbox') this.isInbox = false, @JsonKey(fromJson: _parseRecordingStatus) this.status = RecordingStatus.completed, final  List<Tag> tags = const <Tag>[], @JsonKey(name: 'folder_id') this.folderId, this.folder, @JsonKey(name: 'audio_available') this.audioAvailable, @JsonKey(name: 'error_message') this.errorMessage, @JsonKey(name: 'has_summary') this.hasSummary, @JsonKey(name: 'has_transcription') this.hasTranscription, @JsonKey(name: 'original_filename') this.originalFilename, this.summary, this.notes, this.transcription, @JsonKey(name: 'audio_duration') this.audioDuration}): _tags = tags;
+  const _Recording({required this.id, this.title, @JsonKey(name: 'meeting_date', fromJson: _parseFlexibleDate) this.meetingDate, @JsonKey(name: 'created_at', fromJson: _parseFlexibleDate) this.createdAt, this.participants, @JsonKey(name: 'file_size') this.fileSize, @JsonKey(name: 'is_highlighted') this.isHighlighted = false, @JsonKey(name: 'is_inbox') this.isInbox = false, @JsonKey(fromJson: _parseRecordingStatus) this.status = RecordingStatus.completed, final  List<Tag> tags = const <Tag>[], @JsonKey(name: 'folder_id') this.folderId, this.folder, @JsonKey(name: 'audio_available') this.audioAvailable, @JsonKey(name: 'error_message') this.errorMessage, @JsonKey(name: 'has_summary') this.hasSummary, @JsonKey(name: 'has_transcription') this.hasTranscription, @JsonKey(name: 'original_filename') this.originalFilename, this.summary, this.notes, this.transcription, @JsonKey(name: 'audio_duration') this.audioDuration, @JsonKey(name: 'transcription_model') this.transcriptionModel, this.language, @JsonKey(name: 'min_speakers') this.minSpeakers, @JsonKey(name: 'max_speakers') this.maxSpeakers, this.hotwords, @JsonKey(name: 'initial_prompt') this.initialPrompt}): _tags = tags;
   factory _Recording.fromJson(Map<String, dynamic> json) => _$RecordingFromJson(json);
 
 @override final  int id;
@@ -1348,6 +1357,15 @@ class _Recording implements Recording {
 @override final  String? notes;
 @override final  String? transcription;
 @override@JsonKey(name: 'audio_duration') final  double? audioDuration;
+// Optional transcription parameters — present on the unofficial detail
+// endpoint when set; absent otherwise. Used to pre-fill the reprocess
+// transcription dialog.
+@override@JsonKey(name: 'transcription_model') final  String? transcriptionModel;
+@override final  String? language;
+@override@JsonKey(name: 'min_speakers') final  int? minSpeakers;
+@override@JsonKey(name: 'max_speakers') final  int? maxSpeakers;
+@override final  String? hotwords;
+@override@JsonKey(name: 'initial_prompt') final  String? initialPrompt;
 
 /// Create a copy of Recording
 /// with the given fields replaced by the non-null parameter values.
@@ -1362,16 +1380,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Recording&&(identical(other.id, id) || other.id == id)&&(identical(other.title, title) || other.title == title)&&(identical(other.meetingDate, meetingDate) || other.meetingDate == meetingDate)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.participants, participants) || other.participants == participants)&&(identical(other.fileSize, fileSize) || other.fileSize == fileSize)&&(identical(other.isHighlighted, isHighlighted) || other.isHighlighted == isHighlighted)&&(identical(other.isInbox, isInbox) || other.isInbox == isInbox)&&(identical(other.status, status) || other.status == status)&&const DeepCollectionEquality().equals(other._tags, _tags)&&(identical(other.folderId, folderId) || other.folderId == folderId)&&(identical(other.folder, folder) || other.folder == folder)&&(identical(other.audioAvailable, audioAvailable) || other.audioAvailable == audioAvailable)&&(identical(other.errorMessage, errorMessage) || other.errorMessage == errorMessage)&&(identical(other.hasSummary, hasSummary) || other.hasSummary == hasSummary)&&(identical(other.hasTranscription, hasTranscription) || other.hasTranscription == hasTranscription)&&(identical(other.originalFilename, originalFilename) || other.originalFilename == originalFilename)&&(identical(other.summary, summary) || other.summary == summary)&&(identical(other.notes, notes) || other.notes == notes)&&(identical(other.transcription, transcription) || other.transcription == transcription)&&(identical(other.audioDuration, audioDuration) || other.audioDuration == audioDuration));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Recording&&(identical(other.id, id) || other.id == id)&&(identical(other.title, title) || other.title == title)&&(identical(other.meetingDate, meetingDate) || other.meetingDate == meetingDate)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.participants, participants) || other.participants == participants)&&(identical(other.fileSize, fileSize) || other.fileSize == fileSize)&&(identical(other.isHighlighted, isHighlighted) || other.isHighlighted == isHighlighted)&&(identical(other.isInbox, isInbox) || other.isInbox == isInbox)&&(identical(other.status, status) || other.status == status)&&const DeepCollectionEquality().equals(other._tags, _tags)&&(identical(other.folderId, folderId) || other.folderId == folderId)&&(identical(other.folder, folder) || other.folder == folder)&&(identical(other.audioAvailable, audioAvailable) || other.audioAvailable == audioAvailable)&&(identical(other.errorMessage, errorMessage) || other.errorMessage == errorMessage)&&(identical(other.hasSummary, hasSummary) || other.hasSummary == hasSummary)&&(identical(other.hasTranscription, hasTranscription) || other.hasTranscription == hasTranscription)&&(identical(other.originalFilename, originalFilename) || other.originalFilename == originalFilename)&&(identical(other.summary, summary) || other.summary == summary)&&(identical(other.notes, notes) || other.notes == notes)&&(identical(other.transcription, transcription) || other.transcription == transcription)&&(identical(other.audioDuration, audioDuration) || other.audioDuration == audioDuration)&&(identical(other.transcriptionModel, transcriptionModel) || other.transcriptionModel == transcriptionModel)&&(identical(other.language, language) || other.language == language)&&(identical(other.minSpeakers, minSpeakers) || other.minSpeakers == minSpeakers)&&(identical(other.maxSpeakers, maxSpeakers) || other.maxSpeakers == maxSpeakers)&&(identical(other.hotwords, hotwords) || other.hotwords == hotwords)&&(identical(other.initialPrompt, initialPrompt) || other.initialPrompt == initialPrompt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hashAll([runtimeType,id,title,meetingDate,createdAt,participants,fileSize,isHighlighted,isInbox,status,const DeepCollectionEquality().hash(_tags),folderId,folder,audioAvailable,errorMessage,hasSummary,hasTranscription,originalFilename,summary,notes,transcription,audioDuration]);
+int get hashCode => Object.hashAll([runtimeType,id,title,meetingDate,createdAt,participants,fileSize,isHighlighted,isInbox,status,const DeepCollectionEquality().hash(_tags),folderId,folder,audioAvailable,errorMessage,hasSummary,hasTranscription,originalFilename,summary,notes,transcription,audioDuration,transcriptionModel,language,minSpeakers,maxSpeakers,hotwords,initialPrompt]);
 
 @override
 String toString() {
-  return 'Recording(id: $id, title: $title, meetingDate: $meetingDate, createdAt: $createdAt, participants: $participants, fileSize: $fileSize, isHighlighted: $isHighlighted, isInbox: $isInbox, status: $status, tags: $tags, folderId: $folderId, folder: $folder, audioAvailable: $audioAvailable, errorMessage: $errorMessage, hasSummary: $hasSummary, hasTranscription: $hasTranscription, originalFilename: $originalFilename, summary: $summary, notes: $notes, transcription: $transcription, audioDuration: $audioDuration)';
+  return 'Recording(id: $id, title: $title, meetingDate: $meetingDate, createdAt: $createdAt, participants: $participants, fileSize: $fileSize, isHighlighted: $isHighlighted, isInbox: $isInbox, status: $status, tags: $tags, folderId: $folderId, folder: $folder, audioAvailable: $audioAvailable, errorMessage: $errorMessage, hasSummary: $hasSummary, hasTranscription: $hasTranscription, originalFilename: $originalFilename, summary: $summary, notes: $notes, transcription: $transcription, audioDuration: $audioDuration, transcriptionModel: $transcriptionModel, language: $language, minSpeakers: $minSpeakers, maxSpeakers: $maxSpeakers, hotwords: $hotwords, initialPrompt: $initialPrompt)';
 }
 
 
@@ -1382,7 +1400,7 @@ abstract mixin class _$RecordingCopyWith<$Res> implements $RecordingCopyWith<$Re
   factory _$RecordingCopyWith(_Recording value, $Res Function(_Recording) _then) = __$RecordingCopyWithImpl;
 @override @useResult
 $Res call({
- int id, String? title,@JsonKey(name: 'meeting_date', fromJson: _parseFlexibleDate) DateTime? meetingDate,@JsonKey(name: 'created_at', fromJson: _parseFlexibleDate) DateTime? createdAt, String? participants,@JsonKey(name: 'file_size') int? fileSize,@JsonKey(name: 'is_highlighted') bool isHighlighted,@JsonKey(name: 'is_inbox') bool isInbox,@JsonKey(fromJson: _parseRecordingStatus) RecordingStatus status, List<Tag> tags,@JsonKey(name: 'folder_id') int? folderId, Folder? folder,@JsonKey(name: 'audio_available') bool? audioAvailable,@JsonKey(name: 'error_message') String? errorMessage,@JsonKey(name: 'has_summary') bool? hasSummary,@JsonKey(name: 'has_transcription') bool? hasTranscription,@JsonKey(name: 'original_filename') String? originalFilename, String? summary, String? notes, String? transcription,@JsonKey(name: 'audio_duration') double? audioDuration
+ int id, String? title,@JsonKey(name: 'meeting_date', fromJson: _parseFlexibleDate) DateTime? meetingDate,@JsonKey(name: 'created_at', fromJson: _parseFlexibleDate) DateTime? createdAt, String? participants,@JsonKey(name: 'file_size') int? fileSize,@JsonKey(name: 'is_highlighted') bool isHighlighted,@JsonKey(name: 'is_inbox') bool isInbox,@JsonKey(fromJson: _parseRecordingStatus) RecordingStatus status, List<Tag> tags,@JsonKey(name: 'folder_id') int? folderId, Folder? folder,@JsonKey(name: 'audio_available') bool? audioAvailable,@JsonKey(name: 'error_message') String? errorMessage,@JsonKey(name: 'has_summary') bool? hasSummary,@JsonKey(name: 'has_transcription') bool? hasTranscription,@JsonKey(name: 'original_filename') String? originalFilename, String? summary, String? notes, String? transcription,@JsonKey(name: 'audio_duration') double? audioDuration,@JsonKey(name: 'transcription_model') String? transcriptionModel, String? language,@JsonKey(name: 'min_speakers') int? minSpeakers,@JsonKey(name: 'max_speakers') int? maxSpeakers, String? hotwords,@JsonKey(name: 'initial_prompt') String? initialPrompt
 });
 
 
@@ -1399,7 +1417,7 @@ class __$RecordingCopyWithImpl<$Res>
 
 /// Create a copy of Recording
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? title = freezed,Object? meetingDate = freezed,Object? createdAt = freezed,Object? participants = freezed,Object? fileSize = freezed,Object? isHighlighted = null,Object? isInbox = null,Object? status = null,Object? tags = null,Object? folderId = freezed,Object? folder = freezed,Object? audioAvailable = freezed,Object? errorMessage = freezed,Object? hasSummary = freezed,Object? hasTranscription = freezed,Object? originalFilename = freezed,Object? summary = freezed,Object? notes = freezed,Object? transcription = freezed,Object? audioDuration = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? title = freezed,Object? meetingDate = freezed,Object? createdAt = freezed,Object? participants = freezed,Object? fileSize = freezed,Object? isHighlighted = null,Object? isInbox = null,Object? status = null,Object? tags = null,Object? folderId = freezed,Object? folder = freezed,Object? audioAvailable = freezed,Object? errorMessage = freezed,Object? hasSummary = freezed,Object? hasTranscription = freezed,Object? originalFilename = freezed,Object? summary = freezed,Object? notes = freezed,Object? transcription = freezed,Object? audioDuration = freezed,Object? transcriptionModel = freezed,Object? language = freezed,Object? minSpeakers = freezed,Object? maxSpeakers = freezed,Object? hotwords = freezed,Object? initialPrompt = freezed,}) {
   return _then(_Recording(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as int,title: freezed == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
@@ -1422,7 +1440,13 @@ as String?,summary: freezed == summary ? _self.summary : summary // ignore: cast
 as String?,notes: freezed == notes ? _self.notes : notes // ignore: cast_nullable_to_non_nullable
 as String?,transcription: freezed == transcription ? _self.transcription : transcription // ignore: cast_nullable_to_non_nullable
 as String?,audioDuration: freezed == audioDuration ? _self.audioDuration : audioDuration // ignore: cast_nullable_to_non_nullable
-as double?,
+as double?,transcriptionModel: freezed == transcriptionModel ? _self.transcriptionModel : transcriptionModel // ignore: cast_nullable_to_non_nullable
+as String?,language: freezed == language ? _self.language : language // ignore: cast_nullable_to_non_nullable
+as String?,minSpeakers: freezed == minSpeakers ? _self.minSpeakers : minSpeakers // ignore: cast_nullable_to_non_nullable
+as int?,maxSpeakers: freezed == maxSpeakers ? _self.maxSpeakers : maxSpeakers // ignore: cast_nullable_to_non_nullable
+as int?,hotwords: freezed == hotwords ? _self.hotwords : hotwords // ignore: cast_nullable_to_non_nullable
+as String?,initialPrompt: freezed == initialPrompt ? _self.initialPrompt : initialPrompt // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 
@@ -1439,6 +1463,541 @@ $FolderCopyWith<$Res>? get folder {
     return _then(_self.copyWith(folder: value));
   });
 }
+}
+
+
+/// @nodoc
+mixin _$TranscriptionModelOption {
+
+ String get label; String get value;
+/// Create a copy of TranscriptionModelOption
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$TranscriptionModelOptionCopyWith<TranscriptionModelOption> get copyWith => _$TranscriptionModelOptionCopyWithImpl<TranscriptionModelOption>(this as TranscriptionModelOption, _$identity);
+
+  /// Serializes this TranscriptionModelOption to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is TranscriptionModelOption&&(identical(other.label, label) || other.label == label)&&(identical(other.value, value) || other.value == value));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,label,value);
+
+@override
+String toString() {
+  return 'TranscriptionModelOption(label: $label, value: $value)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $TranscriptionModelOptionCopyWith<$Res>  {
+  factory $TranscriptionModelOptionCopyWith(TranscriptionModelOption value, $Res Function(TranscriptionModelOption) _then) = _$TranscriptionModelOptionCopyWithImpl;
+@useResult
+$Res call({
+ String label, String value
+});
+
+
+
+
+}
+/// @nodoc
+class _$TranscriptionModelOptionCopyWithImpl<$Res>
+    implements $TranscriptionModelOptionCopyWith<$Res> {
+  _$TranscriptionModelOptionCopyWithImpl(this._self, this._then);
+
+  final TranscriptionModelOption _self;
+  final $Res Function(TranscriptionModelOption) _then;
+
+/// Create a copy of TranscriptionModelOption
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? label = null,Object? value = null,}) {
+  return _then(_self.copyWith(
+label: null == label ? _self.label : label // ignore: cast_nullable_to_non_nullable
+as String,value: null == value ? _self.value : value // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+}
+
+
+/// Adds pattern-matching-related methods to [TranscriptionModelOption].
+extension TranscriptionModelOptionPatterns on TranscriptionModelOption {
+/// A variant of `map` that fallback to returning `orElse`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _TranscriptionModelOption value)?  $default,{required TResult orElse(),}){
+final _that = this;
+switch (_that) {
+case _TranscriptionModelOption() when $default != null:
+return $default(_that);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// Callbacks receives the raw object, upcasted.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case final Subclass2 value:
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _TranscriptionModelOption value)  $default,){
+final _that = this;
+switch (_that) {
+case _TranscriptionModelOption():
+return $default(_that);}
+}
+/// A variant of `map` that fallback to returning `null`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _TranscriptionModelOption value)?  $default,){
+final _that = this;
+switch (_that) {
+case _TranscriptionModelOption() when $default != null:
+return $default(_that);case _:
+  return null;
+
+}
+}
+/// A variant of `when` that fallback to an `orElse` callback.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String label,  String value)?  $default,{required TResult orElse(),}) {final _that = this;
+switch (_that) {
+case _TranscriptionModelOption() when $default != null:
+return $default(_that.label,_that.value);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// As opposed to `map`, this offers destructuring.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case Subclass2(:final field2):
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String label,  String value)  $default,) {final _that = this;
+switch (_that) {
+case _TranscriptionModelOption():
+return $default(_that.label,_that.value);}
+}
+/// A variant of `when` that fallback to returning `null`
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String label,  String value)?  $default,) {final _that = this;
+switch (_that) {
+case _TranscriptionModelOption() when $default != null:
+return $default(_that.label,_that.value);case _:
+  return null;
+
+}
+}
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class _TranscriptionModelOption implements TranscriptionModelOption {
+  const _TranscriptionModelOption({required this.label, required this.value});
+  factory _TranscriptionModelOption.fromJson(Map<String, dynamic> json) => _$TranscriptionModelOptionFromJson(json);
+
+@override final  String label;
+@override final  String value;
+
+/// Create a copy of TranscriptionModelOption
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$TranscriptionModelOptionCopyWith<_TranscriptionModelOption> get copyWith => __$TranscriptionModelOptionCopyWithImpl<_TranscriptionModelOption>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$TranscriptionModelOptionToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _TranscriptionModelOption&&(identical(other.label, label) || other.label == label)&&(identical(other.value, value) || other.value == value));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,label,value);
+
+@override
+String toString() {
+  return 'TranscriptionModelOption(label: $label, value: $value)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$TranscriptionModelOptionCopyWith<$Res> implements $TranscriptionModelOptionCopyWith<$Res> {
+  factory _$TranscriptionModelOptionCopyWith(_TranscriptionModelOption value, $Res Function(_TranscriptionModelOption) _then) = __$TranscriptionModelOptionCopyWithImpl;
+@override @useResult
+$Res call({
+ String label, String value
+});
+
+
+
+
+}
+/// @nodoc
+class __$TranscriptionModelOptionCopyWithImpl<$Res>
+    implements _$TranscriptionModelOptionCopyWith<$Res> {
+  __$TranscriptionModelOptionCopyWithImpl(this._self, this._then);
+
+  final _TranscriptionModelOption _self;
+  final $Res Function(_TranscriptionModelOption) _then;
+
+/// Create a copy of TranscriptionModelOption
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? label = null,Object? value = null,}) {
+  return _then(_TranscriptionModelOption(
+label: null == label ? _self.label : label // ignore: cast_nullable_to_non_nullable
+as String,value: null == value ? _self.value : value // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+
+}
+
+
+/// @nodoc
+mixin _$Config {
+
+@JsonKey(name: 'transcription_model_options') List<TranscriptionModelOption> get transcriptionModelOptions;@JsonKey(name: 'connector_supports_diarization') bool get connectorSupportsDiarization;@JsonKey(name: 'connector_supports_speaker_count') bool get connectorSupportsSpeakerCount;@JsonKey(name: 'connector_supports_hotwords') bool get connectorSupportsHotwords;@JsonKey(name: 'connector_supports_initial_prompt') bool get connectorSupportsInitialPrompt;
+/// Create a copy of Config
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$ConfigCopyWith<Config> get copyWith => _$ConfigCopyWithImpl<Config>(this as Config, _$identity);
+
+  /// Serializes this Config to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Config&&const DeepCollectionEquality().equals(other.transcriptionModelOptions, transcriptionModelOptions)&&(identical(other.connectorSupportsDiarization, connectorSupportsDiarization) || other.connectorSupportsDiarization == connectorSupportsDiarization)&&(identical(other.connectorSupportsSpeakerCount, connectorSupportsSpeakerCount) || other.connectorSupportsSpeakerCount == connectorSupportsSpeakerCount)&&(identical(other.connectorSupportsHotwords, connectorSupportsHotwords) || other.connectorSupportsHotwords == connectorSupportsHotwords)&&(identical(other.connectorSupportsInitialPrompt, connectorSupportsInitialPrompt) || other.connectorSupportsInitialPrompt == connectorSupportsInitialPrompt));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(transcriptionModelOptions),connectorSupportsDiarization,connectorSupportsSpeakerCount,connectorSupportsHotwords,connectorSupportsInitialPrompt);
+
+@override
+String toString() {
+  return 'Config(transcriptionModelOptions: $transcriptionModelOptions, connectorSupportsDiarization: $connectorSupportsDiarization, connectorSupportsSpeakerCount: $connectorSupportsSpeakerCount, connectorSupportsHotwords: $connectorSupportsHotwords, connectorSupportsInitialPrompt: $connectorSupportsInitialPrompt)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $ConfigCopyWith<$Res>  {
+  factory $ConfigCopyWith(Config value, $Res Function(Config) _then) = _$ConfigCopyWithImpl;
+@useResult
+$Res call({
+@JsonKey(name: 'transcription_model_options') List<TranscriptionModelOption> transcriptionModelOptions,@JsonKey(name: 'connector_supports_diarization') bool connectorSupportsDiarization,@JsonKey(name: 'connector_supports_speaker_count') bool connectorSupportsSpeakerCount,@JsonKey(name: 'connector_supports_hotwords') bool connectorSupportsHotwords,@JsonKey(name: 'connector_supports_initial_prompt') bool connectorSupportsInitialPrompt
+});
+
+
+
+
+}
+/// @nodoc
+class _$ConfigCopyWithImpl<$Res>
+    implements $ConfigCopyWith<$Res> {
+  _$ConfigCopyWithImpl(this._self, this._then);
+
+  final Config _self;
+  final $Res Function(Config) _then;
+
+/// Create a copy of Config
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? transcriptionModelOptions = null,Object? connectorSupportsDiarization = null,Object? connectorSupportsSpeakerCount = null,Object? connectorSupportsHotwords = null,Object? connectorSupportsInitialPrompt = null,}) {
+  return _then(_self.copyWith(
+transcriptionModelOptions: null == transcriptionModelOptions ? _self.transcriptionModelOptions : transcriptionModelOptions // ignore: cast_nullable_to_non_nullable
+as List<TranscriptionModelOption>,connectorSupportsDiarization: null == connectorSupportsDiarization ? _self.connectorSupportsDiarization : connectorSupportsDiarization // ignore: cast_nullable_to_non_nullable
+as bool,connectorSupportsSpeakerCount: null == connectorSupportsSpeakerCount ? _self.connectorSupportsSpeakerCount : connectorSupportsSpeakerCount // ignore: cast_nullable_to_non_nullable
+as bool,connectorSupportsHotwords: null == connectorSupportsHotwords ? _self.connectorSupportsHotwords : connectorSupportsHotwords // ignore: cast_nullable_to_non_nullable
+as bool,connectorSupportsInitialPrompt: null == connectorSupportsInitialPrompt ? _self.connectorSupportsInitialPrompt : connectorSupportsInitialPrompt // ignore: cast_nullable_to_non_nullable
+as bool,
+  ));
+}
+
+}
+
+
+/// Adds pattern-matching-related methods to [Config].
+extension ConfigPatterns on Config {
+/// A variant of `map` that fallback to returning `orElse`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _Config value)?  $default,{required TResult orElse(),}){
+final _that = this;
+switch (_that) {
+case _Config() when $default != null:
+return $default(_that);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// Callbacks receives the raw object, upcasted.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case final Subclass2 value:
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _Config value)  $default,){
+final _that = this;
+switch (_that) {
+case _Config():
+return $default(_that);}
+}
+/// A variant of `map` that fallback to returning `null`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _Config value)?  $default,){
+final _that = this;
+switch (_that) {
+case _Config() when $default != null:
+return $default(_that);case _:
+  return null;
+
+}
+}
+/// A variant of `when` that fallback to an `orElse` callback.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: 'transcription_model_options')  List<TranscriptionModelOption> transcriptionModelOptions, @JsonKey(name: 'connector_supports_diarization')  bool connectorSupportsDiarization, @JsonKey(name: 'connector_supports_speaker_count')  bool connectorSupportsSpeakerCount, @JsonKey(name: 'connector_supports_hotwords')  bool connectorSupportsHotwords, @JsonKey(name: 'connector_supports_initial_prompt')  bool connectorSupportsInitialPrompt)?  $default,{required TResult orElse(),}) {final _that = this;
+switch (_that) {
+case _Config() when $default != null:
+return $default(_that.transcriptionModelOptions,_that.connectorSupportsDiarization,_that.connectorSupportsSpeakerCount,_that.connectorSupportsHotwords,_that.connectorSupportsInitialPrompt);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// As opposed to `map`, this offers destructuring.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case Subclass2(:final field2):
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: 'transcription_model_options')  List<TranscriptionModelOption> transcriptionModelOptions, @JsonKey(name: 'connector_supports_diarization')  bool connectorSupportsDiarization, @JsonKey(name: 'connector_supports_speaker_count')  bool connectorSupportsSpeakerCount, @JsonKey(name: 'connector_supports_hotwords')  bool connectorSupportsHotwords, @JsonKey(name: 'connector_supports_initial_prompt')  bool connectorSupportsInitialPrompt)  $default,) {final _that = this;
+switch (_that) {
+case _Config():
+return $default(_that.transcriptionModelOptions,_that.connectorSupportsDiarization,_that.connectorSupportsSpeakerCount,_that.connectorSupportsHotwords,_that.connectorSupportsInitialPrompt);}
+}
+/// A variant of `when` that fallback to returning `null`
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: 'transcription_model_options')  List<TranscriptionModelOption> transcriptionModelOptions, @JsonKey(name: 'connector_supports_diarization')  bool connectorSupportsDiarization, @JsonKey(name: 'connector_supports_speaker_count')  bool connectorSupportsSpeakerCount, @JsonKey(name: 'connector_supports_hotwords')  bool connectorSupportsHotwords, @JsonKey(name: 'connector_supports_initial_prompt')  bool connectorSupportsInitialPrompt)?  $default,) {final _that = this;
+switch (_that) {
+case _Config() when $default != null:
+return $default(_that.transcriptionModelOptions,_that.connectorSupportsDiarization,_that.connectorSupportsSpeakerCount,_that.connectorSupportsHotwords,_that.connectorSupportsInitialPrompt);case _:
+  return null;
+
+}
+}
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class _Config implements Config {
+  const _Config({@JsonKey(name: 'transcription_model_options') final  List<TranscriptionModelOption> transcriptionModelOptions = const <TranscriptionModelOption>[], @JsonKey(name: 'connector_supports_diarization') this.connectorSupportsDiarization = false, @JsonKey(name: 'connector_supports_speaker_count') this.connectorSupportsSpeakerCount = false, @JsonKey(name: 'connector_supports_hotwords') this.connectorSupportsHotwords = false, @JsonKey(name: 'connector_supports_initial_prompt') this.connectorSupportsInitialPrompt = false}): _transcriptionModelOptions = transcriptionModelOptions;
+  factory _Config.fromJson(Map<String, dynamic> json) => _$ConfigFromJson(json);
+
+ final  List<TranscriptionModelOption> _transcriptionModelOptions;
+@override@JsonKey(name: 'transcription_model_options') List<TranscriptionModelOption> get transcriptionModelOptions {
+  if (_transcriptionModelOptions is EqualUnmodifiableListView) return _transcriptionModelOptions;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_transcriptionModelOptions);
+}
+
+@override@JsonKey(name: 'connector_supports_diarization') final  bool connectorSupportsDiarization;
+@override@JsonKey(name: 'connector_supports_speaker_count') final  bool connectorSupportsSpeakerCount;
+@override@JsonKey(name: 'connector_supports_hotwords') final  bool connectorSupportsHotwords;
+@override@JsonKey(name: 'connector_supports_initial_prompt') final  bool connectorSupportsInitialPrompt;
+
+/// Create a copy of Config
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$ConfigCopyWith<_Config> get copyWith => __$ConfigCopyWithImpl<_Config>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$ConfigToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Config&&const DeepCollectionEquality().equals(other._transcriptionModelOptions, _transcriptionModelOptions)&&(identical(other.connectorSupportsDiarization, connectorSupportsDiarization) || other.connectorSupportsDiarization == connectorSupportsDiarization)&&(identical(other.connectorSupportsSpeakerCount, connectorSupportsSpeakerCount) || other.connectorSupportsSpeakerCount == connectorSupportsSpeakerCount)&&(identical(other.connectorSupportsHotwords, connectorSupportsHotwords) || other.connectorSupportsHotwords == connectorSupportsHotwords)&&(identical(other.connectorSupportsInitialPrompt, connectorSupportsInitialPrompt) || other.connectorSupportsInitialPrompt == connectorSupportsInitialPrompt));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_transcriptionModelOptions),connectorSupportsDiarization,connectorSupportsSpeakerCount,connectorSupportsHotwords,connectorSupportsInitialPrompt);
+
+@override
+String toString() {
+  return 'Config(transcriptionModelOptions: $transcriptionModelOptions, connectorSupportsDiarization: $connectorSupportsDiarization, connectorSupportsSpeakerCount: $connectorSupportsSpeakerCount, connectorSupportsHotwords: $connectorSupportsHotwords, connectorSupportsInitialPrompt: $connectorSupportsInitialPrompt)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$ConfigCopyWith<$Res> implements $ConfigCopyWith<$Res> {
+  factory _$ConfigCopyWith(_Config value, $Res Function(_Config) _then) = __$ConfigCopyWithImpl;
+@override @useResult
+$Res call({
+@JsonKey(name: 'transcription_model_options') List<TranscriptionModelOption> transcriptionModelOptions,@JsonKey(name: 'connector_supports_diarization') bool connectorSupportsDiarization,@JsonKey(name: 'connector_supports_speaker_count') bool connectorSupportsSpeakerCount,@JsonKey(name: 'connector_supports_hotwords') bool connectorSupportsHotwords,@JsonKey(name: 'connector_supports_initial_prompt') bool connectorSupportsInitialPrompt
+});
+
+
+
+
+}
+/// @nodoc
+class __$ConfigCopyWithImpl<$Res>
+    implements _$ConfigCopyWith<$Res> {
+  __$ConfigCopyWithImpl(this._self, this._then);
+
+  final _Config _self;
+  final $Res Function(_Config) _then;
+
+/// Create a copy of Config
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? transcriptionModelOptions = null,Object? connectorSupportsDiarization = null,Object? connectorSupportsSpeakerCount = null,Object? connectorSupportsHotwords = null,Object? connectorSupportsInitialPrompt = null,}) {
+  return _then(_Config(
+transcriptionModelOptions: null == transcriptionModelOptions ? _self._transcriptionModelOptions : transcriptionModelOptions // ignore: cast_nullable_to_non_nullable
+as List<TranscriptionModelOption>,connectorSupportsDiarization: null == connectorSupportsDiarization ? _self.connectorSupportsDiarization : connectorSupportsDiarization // ignore: cast_nullable_to_non_nullable
+as bool,connectorSupportsSpeakerCount: null == connectorSupportsSpeakerCount ? _self.connectorSupportsSpeakerCount : connectorSupportsSpeakerCount // ignore: cast_nullable_to_non_nullable
+as bool,connectorSupportsHotwords: null == connectorSupportsHotwords ? _self.connectorSupportsHotwords : connectorSupportsHotwords // ignore: cast_nullable_to_non_nullable
+as bool,connectorSupportsInitialPrompt: null == connectorSupportsInitialPrompt ? _self.connectorSupportsInitialPrompt : connectorSupportsInitialPrompt // ignore: cast_nullable_to_non_nullable
+as bool,
+  ));
+}
+
+
 }
 
 
