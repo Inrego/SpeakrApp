@@ -1,11 +1,10 @@
 import 'dart:async';
 import 'dart:io' show Platform;
-import 'dart:math' as math;
 
 import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -16,6 +15,7 @@ import '../../features/live/recording_state.dart';
 import '../../theme/colors.dart';
 import '../../theme/typography.dart';
 import '../../widgets/speakr_icons.dart';
+import '../shell/desktop_shortcuts.dart';
 
 class LiveDesktopScreen extends ConsumerStatefulWidget {
   const LiveDesktopScreen({super.key});
@@ -26,7 +26,6 @@ class LiveDesktopScreen extends ConsumerStatefulWidget {
 
 class _LiveDesktopScreenState extends ConsumerState<LiveDesktopScreen> {
   StreamSubscription<RecordingNav>? _navSub;
-  final _titleCtrl = TextEditingController();
   bool _confirmDiscard = false;
 
   @override
@@ -56,10 +55,17 @@ class _LiveDesktopScreenState extends ConsumerState<LiveDesktopScreen> {
     }
   }
 
+  void _minimize() {
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go('/library');
+    }
+  }
+
   @override
   void dispose() {
     _navSub?.cancel();
-    _titleCtrl.dispose();
     super.dispose();
   }
 
@@ -70,58 +76,77 @@ class _LiveDesktopScreenState extends ConsumerState<LiveDesktopScreen> {
     final canOpenMini =
         !kIsWeb && Platform.isWindows && state.started && !state.miniOpen;
 
-    return Scaffold(
-      backgroundColor: SpeakrColors.bg,
-      body: Stack(
-        children: [
-          Column(
+    final canPause = state.started;
+    final canStop = state.started && !state.uploading;
+
+    return CallbackShortcuts(
+      bindings: <ShortcutActivator, VoidCallback>{
+        modActivator(LogicalKeyboardKey.period): () {
+          if (canPause) controller.togglePause();
+        },
+        modActivator(LogicalKeyboardKey.enter): () {
+          if (canStop) controller.stopAndUpload();
+        },
+        modActivator(LogicalKeyboardKey.numpadEnter): () {
+          if (canStop) controller.stopAndUpload();
+        },
+      },
+      child: Focus(
+        autofocus: true,
+        child: Scaffold(
+          backgroundColor: SpeakrColors.bg,
+          body: Stack(
             children: [
-              _TopBar(
-                paused: state.paused,
-                onCancel: () => setState(() => _confirmDiscard = true),
-                onShowMini: canOpenMini ? controller.openMini : null,
-              ),
-              Expanded(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Expanded(
-                      flex: 14,
-                      child: _LeftPane(
-                        state: state,
-                        controller: controller,
-                        titleCtrl: _titleCtrl,
-                        onDiscard: () => setState(() => _confirmDiscard = true),
-                      ),
-                    ),
-                    Container(
-                      width: 340,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFF3F1EC),
-                        border: Border(
-                          left: BorderSide(color: SpeakrColors.line),
+              Column(
+                children: [
+                  _TopBar(
+                    paused: state.paused,
+                    onMinimize: _minimize,
+                    onShowMini: canOpenMini ? controller.openMini : null,
+                  ),
+                  Expanded(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Expanded(
+                          flex: 14,
+                          child: _LeftPane(
+                            state: state,
+                            controller: controller,
+                            onDiscard: () =>
+                                setState(() => _confirmDiscard = true),
+                          ),
                         ),
-                      ),
-                      child: _CapturePanel(
-                        state: state,
-                        controller: controller,
-                      ),
+                        Container(
+                          width: 340,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFFF3F1EC),
+                            border: Border(
+                              left: BorderSide(color: SpeakrColors.line),
+                            ),
+                          ),
+                          child: _CapturePanel(
+                            state: state,
+                            controller: controller,
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
+              if (_confirmDiscard)
+                _DiscardOverlay(
+                  elapsedLabel: state.formattedElapsed,
+                  onCancel: () => setState(() => _confirmDiscard = false),
+                  onConfirm: () async {
+                    setState(() => _confirmDiscard = false);
+                    await controller.cancel();
+                  },
+                ),
             ],
           ),
-          if (_confirmDiscard)
-            _DiscardOverlay(
-              elapsedLabel: state.formattedElapsed,
-              onCancel: () => setState(() => _confirmDiscard = false),
-              onConfirm: () async {
-                setState(() => _confirmDiscard = false);
-                await controller.cancel();
-              },
-            ),
-        ],
+        ),
       ),
     );
   }
@@ -130,11 +155,11 @@ class _LiveDesktopScreenState extends ConsumerState<LiveDesktopScreen> {
 class _TopBar extends StatelessWidget {
   const _TopBar({
     required this.paused,
-    required this.onCancel,
+    required this.onMinimize,
     this.onShowMini,
   });
   final bool paused;
-  final VoidCallback onCancel;
+  final VoidCallback onMinimize;
   final VoidCallback? onShowMini;
 
   @override
@@ -148,13 +173,13 @@ class _TopBar extends StatelessWidget {
       child: Row(
         children: [
           _BorderButton(
-            label: 'Cancel',
-            leading: const Icon(
-              Icons.close,
-              size: 12,
+            label: 'Minimize',
+            leading: const SpeakrIconView(
+              SpeakrIcon.minimize,
+              size: 14,
               color: SpeakrColors.ink2,
             ),
-            onTap: onCancel,
+            onTap: onMinimize,
           ),
           const Spacer(),
           Row(
@@ -279,12 +304,10 @@ class _LeftPane extends StatelessWidget {
   const _LeftPane({
     required this.state,
     required this.controller,
-    required this.titleCtrl,
     required this.onDiscard,
   });
   final RecordingState state;
   final RecordingController controller;
-  final TextEditingController titleCtrl;
   final VoidCallback onDiscard;
 
   @override
@@ -298,51 +321,13 @@ class _LeftPane extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'TITLE',
-            style: SpeakrText.mono(
-              size: 10,
-              color: SpeakrColors.muted,
-              letterSpacing: 1.5,
-            ),
-          ),
-          const SizedBox(height: 8),
-          TextField(
-            controller: titleCtrl,
-            style: SpeakrText.serif(size: 32, weight: FontWeight.w400),
-            decoration: InputDecoration(
-              filled: false,
-              isDense: true,
-              hintText: 'Untitled recording',
-              hintStyle: SpeakrText.serif(size: 32, color: SpeakrColors.muted),
-              border: const UnderlineInputBorder(
-                borderSide: BorderSide(color: SpeakrColors.line),
-              ),
-              enabledBorder: const UnderlineInputBorder(
-                borderSide: BorderSide(color: SpeakrColors.line),
-              ),
-              focusedBorder: const UnderlineInputBorder(
-                borderSide: BorderSide(color: SpeakrColors.ink),
-              ),
-              contentPadding: const EdgeInsets.symmetric(vertical: 8),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            "You can rename it later. We'll suggest one based on the audio.",
-            style: SpeakrText.sans(
-              size: 12,
-              color: SpeakrColors.muted,
-              height: 1.4,
-            ).copyWith(fontStyle: FontStyle.italic),
-          ),
           Expanded(
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 _BigTimer(label: state.formattedElapsed),
+                const SizedBox(height: 18),
                 _SourcesLine(mic: state.micEnabled, sys: state.systemEnabled),
-                _LiveScrollingWave(paused: paused),
               ],
             ),
           ),
@@ -435,99 +420,6 @@ class _SourcesLine extends StatelessWidget {
   }
 }
 
-class _LiveScrollingWave extends StatefulWidget {
-  const _LiveScrollingWave({required this.paused});
-  final bool paused;
-  @override
-  State<_LiveScrollingWave> createState() => _LiveScrollingWaveState();
-}
-
-class _LiveScrollingWaveState extends State<_LiveScrollingWave>
-    with SingleTickerProviderStateMixin {
-  static const _count = 110;
-  final List<double> _bars = List<double>.generate(
-    _count,
-    (i) => 0.2 + (math.sin(i * 0.31).abs() * 0.4),
-  );
-  late final Ticker _ticker;
-  int _tick = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    _ticker = createTicker((_) {
-      _tick++;
-      if (_tick % 3 == 0) {
-        if (mounted) {
-          setState(() {
-            _bars.removeAt(0);
-            final next = widget.paused
-                ? 0.04
-                : (0.18 +
-                      _rand(_tick) *
-                          0.78 *
-                          (0.5 + 0.5 * (math.sin(_tick * 0.07).abs())));
-            _bars.add(next);
-          });
-        }
-      }
-    })..start();
-  }
-
-  double _rand(int seed) {
-    final x = math.sin(seed * 12.9898 + 78.233) * 43758.5453;
-    return x - x.floorToDouble();
-  }
-
-  @override
-  void dispose() {
-    _ticker.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 84,
-      child: CustomPaint(size: Size.infinite, painter: _LiveWavePainter(_bars)),
-    );
-  }
-}
-
-class _LiveWavePainter extends CustomPainter {
-  _LiveWavePainter(this.bars);
-  final List<double> bars;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final w = size.width;
-    final h = size.height;
-    final bw = w / (bars.length * 1.5);
-    final gap = bw * 0.5;
-    final paint = Paint()..color = SpeakrColors.ink;
-    for (var i = 0; i < bars.length; i++) {
-      final v = bars[i];
-      final bh = v * h * 0.9;
-      final x = i * (bw + gap);
-      final y = (h - bh) / 2;
-      paint.color = SpeakrColors.ink.withValues(
-        alpha: 0.25 + 0.75 * (i / bars.length),
-      );
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(
-          Rect.fromLTWH(x, y, bw, bh),
-          Radius.circular(bw / 2),
-        ),
-        paint,
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _LiveWavePainter oldDelegate) =>
-      !identical(oldDelegate.bars, bars);
-}
-
 class _PillBtn extends StatelessWidget {
   const _PillBtn({required this.label, required this.onTap, this.leading});
   final String label;
@@ -599,15 +491,33 @@ class _BigPauseButton extends StatelessWidget {
 // RIGHT pane — capture panel
 // ─────────────────────────────────────────────────────────
 
-class _CapturePanel extends ConsumerWidget {
+class _CapturePanel extends ConsumerStatefulWidget {
   const _CapturePanel({required this.state, required this.controller});
   final RecordingState state;
   final RecordingController controller;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_CapturePanel> createState() => _CapturePanelState();
+}
+
+class _CapturePanelState extends ConsumerState<_CapturePanel> {
+  bool _tagPickerOpen = false;
+  bool _folderPickerOpen = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final state = widget.state;
+    final controller = widget.controller;
     final tags = ref.watch(tagsProvider).value ?? const <Tag>[];
     final folders = ref.watch(foldersProvider).value ?? const <Folder>[];
+    final activeTags = state.activeTags;
+    final suggestable = [
+      for (final t in tags)
+        if (!activeTags.contains(t.name)) t,
+    ];
+    final selectedFolder = folders.firstWhereOrNull(
+      (f) => f.id == state.folderId,
+    );
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(22, 24, 22, 24),
@@ -620,7 +530,6 @@ class _CapturePanel extends ConsumerWidget {
             label: 'Microphone',
             sub: 'Default device',
             on: state.micEnabled,
-            level: state.paused ? 0.05 : 0.72,
             onToggle: () => controller.setMicEnabled(!state.micEnabled),
             disabled: state.micPending,
           ),
@@ -631,7 +540,6 @@ class _CapturePanel extends ConsumerWidget {
                 ? 'All apps'
                 : 'Not supported on this device',
             on: state.systemEnabled,
-            level: state.paused ? 0.03 : 0.34,
             onToggle: state.systemAudioSupported
                 ? () => controller.setSystemEnabled(!state.systemEnabled)
                 : null,
@@ -645,37 +553,98 @@ class _CapturePanel extends ConsumerWidget {
             onMinus: () => controller.setSpeakers(state.speakers - 1),
             onPlus: () => controller.setSpeakers(state.speakers + 1),
           ),
-          if (folders.isNotEmpty) ...[
-            const SizedBox(height: 22),
-            _SectionHeading('Folder'),
-            const SizedBox(height: 8),
+          const SizedBox(height: 22),
+          _SectionHeaderRow(
+            label: 'Folder',
+            action: _folderPickerOpen ? 'Done' : 'Change',
+            onAction: () =>
+                setState(() => _folderPickerOpen = !_folderPickerOpen),
+          ),
+          const SizedBox(height: 8),
+          if (!_folderPickerOpen)
+            selectedFolder != null
+                ? Align(
+                    alignment: Alignment.centerLeft,
+                    child: _FolderChipBtn(
+                      folder: selectedFolder,
+                      active: true,
+                      onTap: () =>
+                          setState(() => _folderPickerOpen = true),
+                    ),
+                  )
+                : Text(
+                    'No folder',
+                    style: SpeakrText.sans(
+                      size: 12,
+                      color: SpeakrColors.muted,
+                    ).copyWith(fontStyle: FontStyle.italic),
+                  )
+          else
             Wrap(
               spacing: 4,
               runSpacing: 4,
               children: [
+                _NoneFolderChip(
+                  selected: state.folderId == null,
+                  onTap: () => controller.setFolder(null),
+                ),
                 for (final f in folders)
                   _FolderChipBtn(
                     folder: f,
                     active: state.folderId == f.id,
-                    onTap: () => controller.setFolder(
-                      state.folderId == f.id ? null : f.id,
-                    ),
+                    onTap: () => controller.setFolder(f.id),
                   ),
               ],
             ),
-          ],
-          if (tags.isNotEmpty) ...[
-            const SizedBox(height: 22),
-            _SectionHeading('Tags'),
+          const SizedBox(height: 22),
+          _SectionHeaderRow(
+            label: 'Tags',
+            action: _tagPickerOpen ? 'Done' : 'Edit',
+            onAction: () => setState(() => _tagPickerOpen = !_tagPickerOpen),
+          ),
+          const SizedBox(height: 8),
+          if (activeTags.isEmpty && !_tagPickerOpen)
+            Text(
+              'None yet',
+              style: SpeakrText.sans(
+                size: 12,
+                color: SpeakrColors.muted,
+              ).copyWith(fontStyle: FontStyle.italic),
+            )
+          else
+            Wrap(
+              spacing: 4,
+              runSpacing: 4,
+              children: [
+                for (final name in activeTags)
+                  _ActiveTagChip(
+                    label: name,
+                    color: _tagColorFor(name, tags),
+                    showRemove: _tagPickerOpen,
+                    onTap: _tagPickerOpen
+                        ? () => controller.toggleTag(name)
+                        : null,
+                  ),
+              ],
+            ),
+          if (_tagPickerOpen && suggestable.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            const Divider(
+              color: SpeakrColors.line,
+              thickness: 1,
+              height: 1,
+            ),
+            const SizedBox(height: 10),
+            _SectionHeading('Suggested'),
             const SizedBox(height: 8),
             Wrap(
               spacing: 4,
               runSpacing: 4,
               children: [
-                for (final t in tags)
+                for (final t in suggestable)
                   _TagChipBtn(
                     tag: t,
-                    active: state.activeTags.contains(t.name),
+                    active: false,
                     onTap: () => controller.toggleTag(t.name),
                   ),
               ],
@@ -687,6 +656,13 @@ class _CapturePanel extends ConsumerWidget {
       ),
     );
   }
+}
+
+Color _tagColorFor(String name, List<Tag> tags) {
+  final t = tags.firstWhereOrNull(
+    (tag) => tag.name.toLowerCase() == name.toLowerCase(),
+  );
+  return t == null ? SpeakrColors.muted : parseHexColor(t.color);
 }
 
 class _SectionHeading extends StatelessWidget {
@@ -705,19 +681,51 @@ class _SectionHeading extends StatelessWidget {
   }
 }
 
+class _SectionHeaderRow extends StatelessWidget {
+  const _SectionHeaderRow({
+    required this.label,
+    required this.action,
+    required this.onAction,
+  });
+  final String label;
+  final String action;
+  final VoidCallback onAction;
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        _SectionHeading(label),
+        InkWell(
+          onTap: onAction,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 4),
+            child: Text(
+              action.toUpperCase(),
+              style: SpeakrText.mono(
+                size: 9.5,
+                color: SpeakrColors.ink,
+                letterSpacing: 1.5,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _SourceCard extends StatelessWidget {
   const _SourceCard({
     required this.label,
     required this.sub,
     required this.on,
-    required this.level,
     required this.onToggle,
     this.disabled = false,
   });
   final String label;
   final String sub;
   final bool on;
-  final double level;
   final VoidCallback? onToggle;
   final bool disabled;
 
@@ -773,7 +781,7 @@ class _SourceCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 10),
-              _LevelMeter(level: level, on: on),
+              _OnIndicator(on: on),
             ],
           ),
         ),
@@ -813,33 +821,31 @@ class _MiniToggle extends StatelessWidget {
   }
 }
 
-class _LevelMeter extends StatelessWidget {
-  const _LevelMeter({required this.level, required this.on});
-  final double level;
+class _OnIndicator extends StatelessWidget {
+  const _OnIndicator({required this.on});
   final bool on;
   @override
   Widget build(BuildContext context) {
-    const count = 18;
-    final lit = (level * count).clamp(0, count).toInt();
-    return SizedBox(
-      height: 5,
-      child: Row(
-        children: List.generate(count, (i) {
-          final isLit = on && i < lit;
-          final isHot = i > 14;
-          return Expanded(
-            child: Container(
-              margin: EdgeInsets.only(right: i == count - 1 ? 0 : 2),
-              decoration: BoxDecoration(
-                color: isLit
-                    ? (isHot ? SpeakrColors.recordingDot : SpeakrColors.ink)
-                    : SpeakrColors.line,
-                borderRadius: BorderRadius.circular(1),
-              ),
-            ),
-          );
-        }),
-      ),
+    return Row(
+      children: [
+        Container(
+          width: 6,
+          height: 6,
+          decoration: BoxDecoration(
+            color: on ? SpeakrColors.recordingDot : SpeakrColors.line,
+            shape: BoxShape.circle,
+          ),
+        ),
+        const SizedBox(width: 7),
+        Text(
+          on ? 'ON' : 'OFF',
+          style: SpeakrText.mono(
+            size: 9,
+            color: on ? SpeakrColors.ink : SpeakrColors.muted,
+            letterSpacing: 1.5,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -1000,13 +1006,93 @@ class _TagChipBtn extends StatelessWidget {
   }
 }
 
+class _ActiveTagChip extends StatelessWidget {
+  const _ActiveTagChip({
+    required this.label,
+    required this.color,
+    required this.showRemove,
+    this.onTap,
+  });
+  final String label;
+  final Color color;
+  final bool showRemove;
+  final VoidCallback? onTap;
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(3),
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: color,
+          border: Border.all(color: color),
+          borderRadius: BorderRadius.circular(3),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label.toUpperCase(),
+              style: SpeakrText.mono(
+                size: 10,
+                color: Colors.white,
+                letterSpacing: 1,
+              ),
+            ),
+            if (showRemove) ...[
+              const SizedBox(width: 6),
+              Text(
+                '×',
+                style: SpeakrText.serif(
+                  size: 12,
+                  color: Colors.white.withValues(alpha: 0.7),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _NoneFolderChip extends StatelessWidget {
+  const _NoneFolderChip({required this.selected, required this.onTap});
+  final bool selected;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) {
+    final c = SpeakrColors.muted;
+    return InkWell(
+      borderRadius: BorderRadius.circular(3),
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+        decoration: BoxDecoration(
+          color: selected ? c : Colors.transparent,
+          border: Border.all(color: selected ? c : c.withValues(alpha: 0.2)),
+          borderRadius: BorderRadius.circular(3),
+        ),
+        child: Text(
+          'NONE',
+          style: SpeakrText.mono(
+            size: 10,
+            color: selected ? Colors.white : c,
+            letterSpacing: 1,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _ShortcutsHint extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final rows = const [
-      ['Pause / resume', '⌘ .'],
-      ['Stop & save', '⌘ ↩'],
-      ['Mark moment', '⌘ M'],
+    final rows = [
+      ['Pause / resume', '$modLabel.'],
+      ['Stop & save', '$modLabel↩'],
     ];
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
