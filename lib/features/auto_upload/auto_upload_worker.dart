@@ -134,18 +134,218 @@ class _DurationProbe {
 /// Probes the audio duration of [file]. Synchronous I/O is fine in the
 /// background isolate where the worker runs. Never throws.
 _DurationProbe _probeDuration(File file) {
+  final isMp3 = p.extension(file.path).toLowerCase() == '.mp3';
   try {
     final metadata = readMetadata(file, getImage: false);
     final d = metadata.duration;
-    if (d == null) return _DurationProbe.unsupported();
-    return _DurationProbe.known(d);
+    if (d != null) return _DurationProbe.known(d);
+    if (isMp3) {
+      final fallback = _estimateMp3Duration(file);
+      if (fallback != null) return _DurationProbe.known(fallback);
+    }
+    return _DurationProbe.unsupported();
   } on NoMetadataParserException {
-    // Format isn't supported by audio_metadata_reader (e.g. raw .aac, .amr,
-    // .3gp). Skip the duration check rather than spam error badges.
+    // audio_metadata_reader didn't recognise the file. For raw .aac, .amr,
+    // .3gp we have nothing useful to do. For a headerless MP3 (no ID3,
+    // no Xing/Info) we can still estimate the duration from the first
+    // MPEG frame header — phone recorder apps often ship MP3s like this,
+    // and we need the duration so the autoDeleteShorterThanSeconds rule
+    // actually applies to them.
+    if (isMp3) {
+      final fallback = _estimateMp3Duration(file);
+      if (fallback != null) return _DurationProbe.known(fallback);
+    }
     return _DurationProbe.unsupported();
   } catch (e) {
     return _DurationProbe.failed(e.toString());
   }
+}
+
+/// Estimates the duration of an MP3 by parsing the first MPEG audio frame
+/// header. Used as a fallback when audio_metadata_reader can't compute it
+/// (headerless MP3 from minimal recorder apps). Accurate for CBR; within
+/// a few percent for VBR — the autoDeleteShorterThanSeconds check is
+/// whole-second granularity so the precision is fine.
+///
+/// Returns `null` on any parse failure; caller treats that as unsupported.
+Duration? _estimateMp3Duration(File file) {
+  RandomAccessFile? raf;
+  try {
+    raf = file.openSync();
+    final fileSize = raf.lengthSync();
+    if (fileSize < 32) return null;
+
+    var headerOffset = 0;
+    final id3Header = raf.readSync(10);
+    if (id3Header.length == 10 &&
+        id3Header[0] == 0x49 &&
+        id3Header[1] == 0x44 &&
+        id3Header[2] == 0x33) {
+      // ID3v2 size is a 4-byte syncsafe int (each byte uses only 7 bits).
+      final size = (id3Header[6] << 21) |
+          (id3Header[7] << 14) |
+          (id3Header[8] << 7) |
+          id3Header[9];
+      headerOffset = 10 + size;
+      // Footer flag (bit 4 of flags byte): ID3v2.4 may append a 10-byte footer.
+      if ((id3Header[5] & 0x10) != 0) headerOffset += 10;
+    }
+
+    var endOffset = fileSize;
+    if (fileSize >= 128) {
+      raf.setPositionSync(fileSize - 128);
+      final tail = raf.readSync(3);
+      if (tail.length == 3 &&
+          tail[0] == 0x54 &&
+          tail[1] == 0x41 &&
+          tail[2] == 0x47) {
+        endOffset = fileSize - 128;
+      }
+    }
+
+    if (headerOffset >= endOffset - 4) return null;
+
+    const scanLimit = 64 * 1024;
+    final scanStart = headerOffset;
+    final scanEndCap = scanStart + scanLimit;
+    final scanEnd = scanEndCap < endOffset ? scanEndCap : endOffset;
+    if (scanEnd - scanStart < 4) return null;
+
+    raf.setPositionSync(scanStart);
+    final buf = raf.readSync(scanEnd - scanStart);
+    if (buf.length < 4) return null;
+
+    for (var i = 0; i + 3 < buf.length; i++) {
+      if (buf[i] != 0xFF) continue;
+      if ((buf[i + 1] & 0xE0) != 0xE0) continue;
+      final header = _decodeMp3FrameHeader(buf, i);
+      if (header == null) continue;
+
+      final nextOffset = i + header.frameLength;
+      final absoluteNext = scanStart + nextOffset;
+      if (absoluteNext + 1 >= endOffset) {
+        // File ends inside the second frame — single-frame stream. Trust it.
+      } else if (nextOffset + 1 < buf.length) {
+        if (buf[nextOffset] != 0xFF || (buf[nextOffset + 1] & 0xE0) != 0xE0) {
+          continue;
+        }
+      } else {
+        raf.setPositionSync(absoluteNext);
+        final probe = raf.readSync(2);
+        if (probe.length < 2 ||
+            probe[0] != 0xFF ||
+            (probe[1] & 0xE0) != 0xE0) {
+          continue;
+        }
+      }
+
+      final firstFrameAbsolute = scanStart + i;
+      final audioBytes = endOffset - firstFrameAbsolute;
+      if (audioBytes <= 0 || header.bitrateBps <= 0) return null;
+      final seconds = audioBytes * 8 / header.bitrateBps;
+      if (seconds.isNaN || seconds.isInfinite || seconds < 0) return null;
+      return Duration(milliseconds: (seconds * 1000).round());
+    }
+    return null;
+  } catch (_) {
+    return null;
+  } finally {
+    try {
+      raf?.closeSync();
+    } catch (_) {}
+  }
+}
+
+class _Mp3FrameHeader {
+  const _Mp3FrameHeader({required this.bitrateBps, required this.frameLength});
+  final int bitrateBps;
+  final int frameLength;
+}
+
+// MP3 bitrate tables (kbps). Index 0 = free format, index 15 = bad — both
+// rejected by the caller. We only index 1..14.
+const List<int> _kV1L1 = [
+  0, 32, 64, 96, 128, 160, 192, 224, 256, 288, 320, 352, 384, 416, 448, -1,
+];
+const List<int> _kV1L2 = [
+  0, 32, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320, 384, -1,
+];
+const List<int> _kV1L3 = [
+  0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320, -1,
+];
+const List<int> _kV2L1 = [
+  0, 32, 48, 56, 64, 80, 96, 112, 128, 144, 160, 176, 192, 224, 256, -1,
+];
+const List<int> _kV2L23 = [
+  0, 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160, -1,
+];
+
+_Mp3FrameHeader? _decodeMp3FrameHeader(List<int> buf, int offset) {
+  if (offset + 3 >= buf.length) return null;
+  final b1 = buf[offset + 1];
+  final b2 = buf[offset + 2];
+  if (buf[offset] != 0xFF || (b1 & 0xE0) != 0xE0) return null;
+
+  // versionBits: 00=V2.5, 01=reserved, 10=V2, 11=V1
+  final versionBits = (b1 >> 3) & 0x03;
+  if (versionBits == 0x01) return null;
+  // layerBits:   00=reserved, 01=L3, 10=L2, 11=L1
+  final layerBits = (b1 >> 1) & 0x03;
+  if (layerBits == 0x00) return null;
+
+  final bitrateIndex = (b2 >> 4) & 0x0F;
+  final sampleRateIndex = (b2 >> 2) & 0x03;
+  final padding = (b2 >> 1) & 0x01;
+  if (bitrateIndex == 0 || bitrateIndex == 15) return null;
+  if (sampleRateIndex == 3) return null;
+
+  final isV1 = versionBits == 0x03;
+  int bitrateKbps;
+  if (isV1) {
+    if (layerBits == 0x03) {
+      bitrateKbps = _kV1L1[bitrateIndex];
+    } else if (layerBits == 0x02) {
+      bitrateKbps = _kV1L2[bitrateIndex];
+    } else {
+      bitrateKbps = _kV1L3[bitrateIndex];
+    }
+  } else {
+    if (layerBits == 0x03) {
+      bitrateKbps = _kV2L1[bitrateIndex];
+    } else {
+      bitrateKbps = _kV2L23[bitrateIndex];
+    }
+  }
+  if (bitrateKbps <= 0) return null;
+
+  const v1Sr = [44100, 48000, 32000];
+  const v2Sr = [22050, 24000, 16000];
+  const v25Sr = [11025, 12000, 8000];
+  int sampleRate;
+  if (versionBits == 0x03) {
+    sampleRate = v1Sr[sampleRateIndex];
+  } else if (versionBits == 0x02) {
+    sampleRate = v2Sr[sampleRateIndex];
+  } else {
+    sampleRate = v25Sr[sampleRateIndex];
+  }
+
+  final bitrateBps = bitrateKbps * 1000;
+  int frameLength;
+  if (layerBits == 0x03) {
+    // Layer I
+    frameLength = ((12 * bitrateBps ~/ sampleRate) + padding) * 4;
+  } else if (layerBits == 0x02) {
+    // Layer II
+    frameLength = (144 * bitrateBps ~/ sampleRate) + padding;
+  } else {
+    // Layer III: V1 uses 144, V2/V2.5 use 72.
+    final coeff = isV1 ? 144 : 72;
+    frameLength = (coeff * bitrateBps ~/ sampleRate) + padding;
+  }
+  if (frameLength < 4) return null;
+
+  return _Mp3FrameHeader(bitrateBps: bitrateBps, frameLength: frameLength);
 }
 
 /// Builds the user-facing error message stored against a file when its
