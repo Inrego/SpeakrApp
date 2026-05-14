@@ -26,6 +26,8 @@ class DesktopShell extends ConsumerWidget {
         modActivator(LogicalKeyboardKey.keyK): () {
           ref.read(sidebarSearchFocusProvider).requestFocus();
         },
+        modActivator(LogicalKeyboardKey.comma): () =>
+            context.push('/settings'),
       },
       child: Focus(
         autofocus: true,

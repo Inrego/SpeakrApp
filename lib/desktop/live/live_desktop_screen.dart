@@ -90,6 +90,8 @@ class _LiveDesktopScreenState extends ConsumerState<LiveDesktopScreen> {
         modActivator(LogicalKeyboardKey.numpadEnter): () {
           if (canStop) controller.stopAndUpload();
         },
+        modActivator(LogicalKeyboardKey.comma): () =>
+            context.push('/settings'),
       },
       child: Focus(
         autofocus: true,
