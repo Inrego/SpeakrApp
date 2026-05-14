@@ -10,6 +10,8 @@ import '../../features/auto_upload/auto_upload_controller.dart';
 import '../../features/auto_upload/auto_upload_settings_store.dart';
 import '../../features/auto_upload/auto_upload_worker.dart';
 import '../../features/library/library_controller.dart';
+import '../../services/preferences/time_format_preference.dart';
+import '../../services/preferences/time_format_providers.dart';
 import '../../theme/colors.dart';
 import '../../theme/typography.dart';
 import '../../utils/formatters.dart';
@@ -458,16 +460,16 @@ class _ColH extends StatelessWidget {
   }
 }
 
-class _ListRow extends StatefulWidget {
+class _ListRow extends ConsumerStatefulWidget {
   const _ListRow({required this.recording, required this.folders});
   final Recording recording;
   final List<Folder> folders;
 
   @override
-  State<_ListRow> createState() => _ListRowState();
+  ConsumerState<_ListRow> createState() => _ListRowState();
 }
 
-class _ListRowState extends State<_ListRow> {
+class _ListRowState extends ConsumerState<_ListRow> {
   bool _hovered = false;
 
   @override
@@ -478,6 +480,9 @@ class _ListRowState extends State<_ListRow> {
     final folder = widget.folders.firstWhereOrNull((f) => f.id == r.folderId);
     final folderColor = folder == null ? null : parseHexColor(folder.color);
     final date = r.meetingDate ?? r.createdAt ?? DateTime.now();
+    final pref = ref.watch(timeFormatPreferenceProvider).asData?.value
+        ?? TimeFormatPreference.system;
+    final use24 = resolveUse24Hour(pref, context);
 
     return MouseRegion(
       cursor: enterable ? SystemMouseCursors.click : SystemMouseCursors.basic,
@@ -576,16 +581,31 @@ class _ListRowState extends State<_ListRow> {
               const SizedBox(width: 16),
               SizedBox(
                 width: 90,
-                child: Align(
-                  alignment: Alignment.centerRight,
-                  child: Text(
-                    _shortDate(date),
-                    style: SpeakrText.mono(
-                      size: 11,
-                      color: SpeakrColors.muted,
-                      letterSpacing: 0,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      _shortDate(date),
+                      style: SpeakrText.mono(
+                        size: 11,
+                        color: SpeakrColors.muted,
+                        letterSpacing: 0,
+                      ),
                     ),
-                  ),
+                    const SizedBox(height: 2),
+                    Opacity(
+                      opacity: 0.75,
+                      child: Text(
+                        formatHourMinute(date, use24Hour: use24),
+                        style: SpeakrText.mono(
+                          size: 10,
+                          color: SpeakrColors.muted,
+                          letterSpacing: 0,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -1039,15 +1059,15 @@ class _GridView extends StatelessWidget {
   }
 }
 
-class _GridCard extends StatefulWidget {
+class _GridCard extends ConsumerStatefulWidget {
   const _GridCard({required this.recording, required this.folders});
   final Recording recording;
   final List<Folder> folders;
   @override
-  State<_GridCard> createState() => _GridCardState();
+  ConsumerState<_GridCard> createState() => _GridCardState();
 }
 
-class _GridCardState extends State<_GridCard> {
+class _GridCardState extends ConsumerState<_GridCard> {
   bool _hovered = false;
   @override
   Widget build(BuildContext context) {
@@ -1056,6 +1076,10 @@ class _GridCardState extends State<_GridCard> {
     final enterable = completed || r.status == RecordingStatus.failed;
     final folder = widget.folders.firstWhereOrNull((f) => f.id == r.folderId);
     final folderColor = folder == null ? null : parseHexColor(folder.color);
+    final date = r.meetingDate ?? r.createdAt ?? DateTime.now();
+    final pref = ref.watch(timeFormatPreferenceProvider).asData?.value
+        ?? TimeFormatPreference.system;
+    final use24 = resolveUse24Hour(pref, context);
 
     return MouseRegion(
       cursor: enterable ? SystemMouseCursors.click : SystemMouseCursors.basic,
@@ -1103,9 +1127,8 @@ class _GridCardState extends State<_GridCard> {
                     ),
                   const Spacer(),
                   Text(
-                    formatRelativeDay(
-                      r.meetingDate ?? r.createdAt ?? DateTime.now(),
-                    ),
+                    '${formatRelativeDay(date)} · '
+                    '${formatHourMinute(date, use24Hour: use24)}',
                     style: SpeakrText.mono(
                       size: 10,
                       color: SpeakrColors.muted,
