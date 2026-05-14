@@ -444,27 +444,30 @@ class _Toggle extends StatelessWidget {
   final VoidCallback? onTap;
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(100),
-      onTap: onTap,
-      child: Container(
-        width: 36,
-        height: 20,
-        decoration: BoxDecoration(
-          color: on ? SpeakrColors.ink : SpeakrColors.line,
-          borderRadius: BorderRadius.circular(100),
-        ),
-        child: AnimatedAlign(
-          duration: const Duration(milliseconds: 180),
-          alignment: on ? Alignment.centerRight : Alignment.centerLeft,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 2),
-            child: Container(
-              width: 16,
-              height: 16,
-              decoration: const BoxDecoration(
-                color: SpeakrColors.bg,
-                shape: BoxShape.circle,
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(100),
+        onTap: onTap,
+        child: Container(
+          width: 36,
+          height: 20,
+          decoration: BoxDecoration(
+            color: on ? SpeakrColors.ink : SpeakrColors.line,
+            borderRadius: BorderRadius.circular(100),
+          ),
+          child: AnimatedAlign(
+            duration: const Duration(milliseconds: 180),
+            alignment: on ? Alignment.centerRight : Alignment.centerLeft,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 2),
+              child: Container(
+                width: 16,
+                height: 16,
+                decoration: const BoxDecoration(
+                  color: SpeakrColors.bg,
+                  shape: BoxShape.circle,
+                ),
               ),
             ),
           ),
@@ -760,36 +763,38 @@ class _RecordingSection extends ConsumerWidget {
             label: 'Auto-record on mic activity',
             hint:
                 'Start recording automatically when a listed app uses the mic.',
-            child: Material(
-              color: Colors.white,
-              shape: RoundedRectangleBorder(
-                side: const BorderSide(color: SpeakrColors.line),
-                borderRadius: BorderRadius.circular(5),
-              ),
-              child: InkWell(
-                borderRadius: BorderRadius.circular(5),
-                onTap: () => context.push('/settings/auto-record'),
-                child: Container(
-                  height: 34,
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  alignment: Alignment.center,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'Configure…',
-                        style: SpeakrText.sans(
-                          size: 12,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Material(
+                color: Colors.white,
+                shape: RoundedRectangleBorder(
+                  side: const BorderSide(color: SpeakrColors.line),
+                  borderRadius: BorderRadius.circular(5),
+                ),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(5),
+                  onTap: () => context.push('/settings/auto-record'),
+                  child: Container(
+                    height: 34,
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Configure…',
+                          style: SpeakrText.sans(
+                            size: 12,
+                            color: SpeakrColors.ink2,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        const SpeakrIconView(
+                          SpeakrIcon.chev,
+                          size: 14,
                           color: SpeakrColors.ink2,
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      const SpeakrIconView(
-                        SpeakrIcon.chev,
-                        size: 14,
-                        color: SpeakrColors.ink2,
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -840,33 +845,35 @@ class _AutoUploadField extends StatelessWidget {
     return _Field(
       label: 'Auto-upload from folders',
       hint: 'Watch device folders and upload new recordings as they appear.',
-      child: Material(
-        color: Colors.white,
-        shape: RoundedRectangleBorder(
-          side: const BorderSide(color: SpeakrColors.line),
-          borderRadius: BorderRadius.circular(5),
-        ),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(5),
-          onTap: () => context.push('/settings/auto-upload'),
-          child: Container(
-            height: 34,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            alignment: Alignment.center,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Configure…',
-                  style: SpeakrText.sans(size: 12, color: SpeakrColors.ink2),
-                ),
-                const SizedBox(width: 8),
-                const SpeakrIconView(
-                  SpeakrIcon.chev,
-                  size: 14,
-                  color: SpeakrColors.ink2,
-                ),
-              ],
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Material(
+          color: Colors.white,
+          shape: RoundedRectangleBorder(
+            side: const BorderSide(color: SpeakrColors.line),
+            borderRadius: BorderRadius.circular(5),
+          ),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(5),
+            onTap: () => context.push('/settings/auto-upload'),
+            child: Container(
+              height: 34,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Configure…',
+                    style: SpeakrText.sans(size: 12, color: SpeakrColors.ink2),
+                  ),
+                  const SizedBox(width: 8),
+                  const SpeakrIconView(
+                    SpeakrIcon.chev,
+                    size: 14,
+                    color: SpeakrColors.ink2,
+                  ),
+                ],
+              ),
             ),
           ),
         ),
