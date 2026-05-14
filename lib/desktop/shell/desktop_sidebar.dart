@@ -206,15 +206,17 @@ class _RecordButton extends StatelessWidget {
                 letterSpacing: 0.2,
               ),
             ),
-            const SizedBox(width: 8),
-            Text(
-              '${modLabel}R',
-              style: SpeakrText.mono(
-                size: 10,
-                color: SpeakrColors.bg,
-                letterSpacing: 0.5,
-              ).copyWith(color: SpeakrColors.bg.withValues(alpha: 0.6)),
-            ),
+            if (supportsKeyboardShortcuts) ...[
+              const SizedBox(width: 8),
+              Text(
+                '${modLabel}R',
+                style: SpeakrText.mono(
+                  size: 10,
+                  color: SpeakrColors.bg,
+                  letterSpacing: 0.5,
+                ).copyWith(color: SpeakrColors.bg.withValues(alpha: 0.6)),
+              ),
+            ],
           ],
         ),
       ),
@@ -286,21 +288,22 @@ class _SidebarSearchState extends ConsumerState<_SidebarSearch> {
               },
             ),
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-            decoration: BoxDecoration(
-              border: Border.all(color: SpeakrColors.line),
-              borderRadius: BorderRadius.circular(3),
-            ),
-            child: Text(
-              '${modLabel}K',
-              style: SpeakrText.mono(
-                size: 9,
-                color: SpeakrColors.muted,
-                letterSpacing: 0.5,
+          if (supportsKeyboardShortcuts)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+              decoration: BoxDecoration(
+                border: Border.all(color: SpeakrColors.line),
+                borderRadius: BorderRadius.circular(3),
+              ),
+              child: Text(
+                '${modLabel}K',
+                style: SpeakrText.mono(
+                  size: 9,
+                  color: SpeakrColors.muted,
+                  letterSpacing: 0.5,
+                ),
               ),
             ),
-          ),
         ],
       ),
     );

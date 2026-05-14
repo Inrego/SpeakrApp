@@ -203,13 +203,13 @@ class _SubSidebar extends StatelessWidget {
   final ValueChanged<_SettingsSection> onChange;
   final VoidCallback onBack;
 
-  static const _items = <(_SettingsSection, String)>[
+  static List<(_SettingsSection, String)> get _items => [
     (_SettingsSection.profile, 'Profile'),
     (_SettingsSection.server, 'Server'),
     (_SettingsSection.recording, 'Recording'),
     (_SettingsSection.transcription, 'Transcription'),
     (_SettingsSection.appearance, 'Appearance'),
-    (_SettingsSection.shortcuts, 'Shortcuts'),
+    if (supportsKeyboardShortcuts) (_SettingsSection.shortcuts, 'Shortcuts'),
     (_SettingsSection.about, 'About'),
   ];
 
@@ -723,7 +723,7 @@ class _RecordingSection extends ConsumerWidget {
       children: [
         const _SectionHead(
           title: 'Recording',
-          sub: 'What happens when you hit ⌘R.',
+          sub: 'Defaults for new recordings.',
         ),
         _Field(
           label: 'Record microphone by default',
@@ -1055,7 +1055,7 @@ class _ShortcutsSection extends StatelessWidget {
     return [
       ('New recording', combo('R')),
       ('Pause / resume', combo('.')),
-      ('Stop & save', combo(isMac ? '↩' : 'Enter')),
+      ('Stop & save', combo(returnKeyLabel)),
       ('Search library', combo('K')),
       ('Open settings', combo(',')),
     ];
@@ -1063,6 +1063,7 @@ class _ShortcutsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (!supportsKeyboardShortcuts) return const SizedBox.shrink();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
