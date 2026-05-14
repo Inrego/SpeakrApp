@@ -28,7 +28,15 @@ dependencies:
   # Audio
   just_audio: ^0.10.5
   just_audio_media_kit: ^2.1.0
-  media_kit_libs_windows_audio: any
+  # No newer pub.dev release exists (1.0.9 from 2 years ago).
+  # Pinned to upstream commit 7102e7d which lands the CMP0175 fix:
+  # https://github.com/media-kit/media-kit/commit/7102e7d
+  # Drop this override once a 1.0.10+ is published to pub.dev.
+  media_kit_libs_windows_audio:
+    git:
+      url: https://github.com/media-kit/media-kit.git
+      ref: 7102e7d
+      path: libs/windows/media_kit_libs_windows_audio
   record: ^6.2.0
 
   # UI
