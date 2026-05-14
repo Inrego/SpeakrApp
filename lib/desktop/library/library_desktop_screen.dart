@@ -1335,7 +1335,9 @@ class _Empty extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           Text(
-            'Use ${modLabel}R or the New recording button in the sidebar to make your first recording.',
+            supportsKeyboardShortcuts
+                ? 'Use ${modLabel}R or the New recording button in the sidebar to make your first recording.'
+                : 'Use the New recording button in the sidebar to make your first recording.',
             style: SpeakrText.sans(
               size: 15,
               height: 1.5,

@@ -773,8 +773,10 @@ class _CapturePanelState extends ConsumerState<_CapturePanel> {
                   ),
               ],
             ),
-          const SizedBox(height: 30),
-          _ShortcutsHint(),
+          if (supportsKeyboardShortcuts) ...[
+            const SizedBox(height: 30),
+            _ShortcutsHint(),
+          ],
         ],
       ),
     );
@@ -1102,7 +1104,7 @@ class _ShortcutsHint extends StatelessWidget {
   Widget build(BuildContext context) {
     final rows = [
       ['Pause / resume', '$modLabel.'],
-      ['Stop & save', '$modLabel↩'],
+      ['Stop & save', '$modLabel$returnKeyLabel'],
     ];
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
