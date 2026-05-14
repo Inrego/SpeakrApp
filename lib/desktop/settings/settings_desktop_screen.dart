@@ -18,6 +18,7 @@ import '../../theme/colors.dart';
 import '../../theme/typography.dart';
 import '../../utils/formatters.dart';
 import '../../widgets/speakr_icons.dart';
+import '../shell/desktop_shortcuts.dart';
 
 enum _SettingsSection {
   profile,
@@ -1040,15 +1041,19 @@ class _TimeChip extends StatelessWidget {
 
 class _ShortcutsSection extends StatelessWidget {
   const _ShortcutsSection();
-  static const _rows = <(String, String)>[
-    ('New recording', '⌘ R'),
-    ('Pause / resume', '⌘ .'),
-    ('Stop & save', '⌘ ↩'),
-    ('Mark moment', '⌘ M'),
-    ('Open mini window', '⌘ ⇧ M'),
-    ('Search library', '⌘ K'),
-    ('Open settings', '⌘ ,'),
-  ];
+
+  static List<(String, String)> _buildRows() {
+    final isMac = Platform.isMacOS;
+    String combo(String key) => isMac ? '$modLabel $key' : '$modLabel$key';
+    return [
+      ('New recording', combo('R')),
+      ('Pause / resume', combo('.')),
+      ('Stop & save', combo(isMac ? '↩' : 'Enter')),
+      ('Search library', combo('K')),
+      ('Open settings', combo(',')),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -1060,7 +1065,7 @@ class _ShortcutsSection extends StatelessWidget {
               "System-wide hotkeys live on the roadmap. Today's shortcuts "
               "are active only while Speakr is focused.",
         ),
-        for (final (label, key) in _rows)
+        for (final (label, key) in _buildRows())
           Container(
             decoration: const BoxDecoration(
               border: Border(bottom: BorderSide(color: SpeakrColors.line)),
