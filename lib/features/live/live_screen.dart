@@ -111,6 +111,11 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
             const SizedBox(height: 18),
             RecordingTimer(text: state.formattedElapsed),
             const Spacer(),
+            BreathingDot(
+              paused: state.paused || !state.started,
+              level: state.audioLevel,
+            ),
+            const Spacer(),
             if (state.error != null)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24),

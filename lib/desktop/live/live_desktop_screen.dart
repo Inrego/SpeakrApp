@@ -321,13 +321,23 @@ class _LeftPane extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          const _TitleBlock(),
           Expanded(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                _BigTimer(label: state.formattedElapsed),
+                _BigTimer(elapsedSeconds: state.elapsedSeconds),
                 const SizedBox(height: 18),
-                _SourcesLine(mic: state.micEnabled, sys: state.systemEnabled),
+                _StartedLine(
+                  elapsedSeconds: state.elapsedSeconds,
+                  mic: state.micEnabled,
+                  sys: state.systemEnabled,
+                ),
+                const SizedBox(height: 12),
+                _BreathingDot(
+                  paused: paused || !started,
+                  level: state.audioLevel,
+                ),
               ],
             ),
           ),
@@ -376,30 +386,116 @@ class _LeftPane extends StatelessWidget {
   }
 }
 
-class _BigTimer extends StatelessWidget {
-  const _BigTimer({required this.label});
-  final String label;
+/// Header above the timer: small uppercase eyebrow + serif placeholder
+/// title + italic hint. Mirrors the design's "TITLE / Untitled recording /
+/// A title will be generated…" block. The title isn't editable from here;
+/// it's generated after the recording is summarized.
+class _TitleBlock extends StatelessWidget {
+  const _TitleBlock();
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Text(
-        label,
-        style: SpeakrText.serif(
-          size: 128,
-          weight: FontWeight.w300,
-          height: 1,
-          letterSpacing: -3,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'TITLE',
+          style: SpeakrText.mono(
+            size: 10,
+            color: SpeakrColors.muted,
+            letterSpacing: 1.5,
+          ),
         ),
-      ),
+        const SizedBox(height: 8),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.only(top: 6, bottom: 10),
+          decoration: const BoxDecoration(
+            border: Border(bottom: BorderSide(color: SpeakrColors.line)),
+          ),
+          child: Text(
+            'Untitled recording',
+            style: SpeakrText.serif(
+              size: 32,
+              color: SpeakrColors.muted,
+            ).copyWith(fontStyle: FontStyle.italic),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'A title will be generated automatically after the recording is summarized.',
+          style: SpeakrText.sans(
+            size: 12,
+            color: SpeakrColors.muted,
+          ).copyWith(fontStyle: FontStyle.italic),
+        ),
+      ],
     );
   }
 }
 
-class _SourcesLine extends StatelessWidget {
-  const _SourcesLine({required this.mic, required this.sys});
+class _BigTimer extends StatelessWidget {
+  const _BigTimer({required this.elapsedSeconds});
+  final int elapsedSeconds;
+
+  @override
+  Widget build(BuildContext context) {
+    final h = elapsedSeconds ~/ 3600;
+    final m = (elapsedSeconds ~/ 60) % 60;
+    final s = elapsedSeconds % 60;
+    final ss = s.toString().padLeft(2, '0');
+    final leading = h > 0 ? '$h' : '$m';
+    final trailing = h > 0
+        ? '${m.toString().padLeft(2, '0')}:$ss'
+        : ss;
+    // For h>0 we render the inner ':' between mm and ss in the trailing
+    // segment as the dimmed separator. We split it ourselves so both
+    // colons are dimmed consistently.
+    final List<InlineSpan> spans;
+    final style = SpeakrText.serif(
+      size: 128,
+      weight: FontWeight.w300,
+      height: 1,
+      letterSpacing: -3,
+    ).copyWith(
+      fontFeatures: const [FontFeature.tabularFigures()],
+    );
+    final dimColon = style.copyWith(
+      color: SpeakrColors.ink.withValues(alpha: 0.35),
+    );
+    if (h > 0) {
+      // h:mm:ss — dim both colons.
+      spans = [
+        TextSpan(text: leading, style: style),
+        TextSpan(text: ':', style: dimColon),
+        TextSpan(text: m.toString().padLeft(2, '0'), style: style),
+        TextSpan(text: ':', style: dimColon),
+        TextSpan(text: ss, style: style),
+      ];
+    } else {
+      // m:ss — single dimmed colon.
+      spans = [
+        TextSpan(text: leading, style: style),
+        TextSpan(text: ':', style: dimColon),
+        TextSpan(text: trailing, style: style),
+      ];
+    }
+    return Center(
+      child: Text.rich(TextSpan(children: spans), textAlign: TextAlign.center),
+    );
+  }
+}
+
+class _StartedLine extends StatelessWidget {
+  const _StartedLine({
+    required this.elapsedSeconds,
+    required this.mic,
+    required this.sys,
+  });
+  final int elapsedSeconds;
   final bool mic;
   final bool sys;
+
   @override
   Widget build(BuildContext context) {
     final src = mic && sys
@@ -409,12 +505,97 @@ class _SourcesLine extends StatelessWidget {
         : sys
         ? 'System only'
         : 'No source';
+    final startedAt = DateTime.now().subtract(Duration(seconds: elapsedSeconds));
+    final hour24 = startedAt.hour;
+    final hour12 = ((hour24 + 11) % 12) + 1;
+    final period = hour24 >= 12 ? 'PM' : 'AM';
+    final minute = startedAt.minute.toString().padLeft(2, '0');
+    final timeStr = '$hour12:$minute $period';
     return Text(
-      src.toUpperCase(),
+      'STARTED $timeStr   ·   ${src.toUpperCase()}',
       style: SpeakrText.mono(
         size: 11,
         color: SpeakrColors.muted,
         letterSpacing: 1.5,
+      ),
+    );
+  }
+}
+
+/// Single calm dot that breathes with the captured audio level. Floor
+/// is 0.18 (per design) so the dot never collapses to nothing while
+/// active. When paused or before recording starts, the dot/mid ring
+/// soften to the line colour and the caption flips to "NO SIGNAL".
+class _BreathingDot extends StatelessWidget {
+  const _BreathingDot({required this.paused, required this.level});
+  final bool paused;
+  final double level;
+
+  @override
+  Widget build(BuildContext context) {
+    final clamped = paused
+        ? 0.05
+        : (level.isFinite ? level.clamp(0.18, 1.0) : 0.18);
+    final coreSize = 28.0 + clamped * 36.0; // 28 → 64 px
+    final ringSize = coreSize + 26.0;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Column(
+        children: [
+          SizedBox(
+            width: 120,
+            height: 120,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                // Static outer ring — fixed max bound.
+                Container(
+                  width: 110,
+                  height: 110,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: SpeakrColors.line),
+                  ),
+                ),
+                // Mid breathing ring — tracks the level, ink-tinted while
+                // recording and line-tinted while paused.
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 120),
+                  curve: Curves.linear,
+                  width: ringSize,
+                  height: ringSize,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: (paused ? SpeakrColors.line : SpeakrColors.ink)
+                          .withValues(alpha: paused ? 0.25 : 0.18),
+                    ),
+                  ),
+                ),
+                // Core dot.
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 120),
+                  curve: Curves.linear,
+                  width: coreSize,
+                  height: coreSize,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: paused ? SpeakrColors.line : SpeakrColors.ink,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            paused ? 'NO SIGNAL' : 'AUDIO LEVEL',
+            style: SpeakrText.mono(
+              size: 10,
+              color: SpeakrColors.muted,
+              letterSpacing: 1.5,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -501,23 +682,15 @@ class _CapturePanel extends ConsumerStatefulWidget {
 }
 
 class _CapturePanelState extends ConsumerState<_CapturePanel> {
-  bool _tagPickerOpen = false;
-  bool _folderPickerOpen = false;
-
   @override
   Widget build(BuildContext context) {
     final state = widget.state;
     final controller = widget.controller;
     final tags = ref.watch(tagsProvider).value ?? const <Tag>[];
     final folders = ref.watch(foldersProvider).value ?? const <Folder>[];
-    final activeTags = state.activeTags;
-    final suggestable = [
-      for (final t in tags)
-        if (!activeTags.contains(t.name)) t,
-    ];
-    final selectedFolder = folders.firstWhereOrNull(
-      (f) => f.id == state.folderId,
-    );
+    final activeTagSet = {
+      for (final n in state.activeTags) n.toLowerCase(),
+    };
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(22, 24, 22, 24),
@@ -554,58 +727,32 @@ class _CapturePanelState extends ConsumerState<_CapturePanel> {
             onPlus: () => controller.setSpeakers(state.speakers + 1),
           ),
           const SizedBox(height: 22),
-          _SectionHeaderRow(
-            label: 'Folder',
-            action: _folderPickerOpen ? 'Done' : 'Change',
-            onAction: () =>
-                setState(() => _folderPickerOpen = !_folderPickerOpen),
-          ),
+          _SectionHeading('Folder'),
           const SizedBox(height: 8),
-          if (!_folderPickerOpen)
-            selectedFolder != null
-                ? Align(
-                    alignment: Alignment.centerLeft,
-                    child: _FolderChipBtn(
-                      folder: selectedFolder,
-                      active: true,
-                      onTap: () =>
-                          setState(() => _folderPickerOpen = true),
-                    ),
-                  )
-                : Text(
-                    'No folder',
-                    style: SpeakrText.sans(
-                      size: 12,
-                      color: SpeakrColors.muted,
-                    ).copyWith(fontStyle: FontStyle.italic),
-                  )
-          else
-            Wrap(
-              spacing: 4,
-              runSpacing: 4,
-              children: [
-                _NoneFolderChip(
-                  selected: state.folderId == null,
-                  onTap: () => controller.setFolder(null),
-                ),
-                for (final f in folders)
-                  _FolderChipBtn(
-                    folder: f,
-                    active: state.folderId == f.id,
-                    onTap: () => controller.setFolder(f.id),
+          Wrap(
+            spacing: 4,
+            runSpacing: 4,
+            children: [
+              _NoneFolderChip(
+                selected: state.folderId == null,
+                onTap: () => controller.setFolder(null),
+              ),
+              for (final f in folders)
+                _FolderChipBtn(
+                  folder: f,
+                  active: state.folderId == f.id,
+                  onTap: () => controller.setFolder(
+                    state.folderId == f.id ? null : f.id,
                   ),
-              ],
-            ),
-          const SizedBox(height: 22),
-          _SectionHeaderRow(
-            label: 'Tags',
-            action: _tagPickerOpen ? 'Done' : 'Edit',
-            onAction: () => setState(() => _tagPickerOpen = !_tagPickerOpen),
+                ),
+            ],
           ),
+          const SizedBox(height: 22),
+          _SectionHeading('Tags'),
           const SizedBox(height: 8),
-          if (activeTags.isEmpty && !_tagPickerOpen)
+          if (tags.isEmpty)
             Text(
-              'None yet',
+              'No tags yet',
               style: SpeakrText.sans(
                 size: 12,
                 color: SpeakrColors.muted,
@@ -616,53 +763,20 @@ class _CapturePanelState extends ConsumerState<_CapturePanel> {
               spacing: 4,
               runSpacing: 4,
               children: [
-                for (final name in activeTags)
-                  _ActiveTagChip(
-                    label: name,
-                    color: _tagColorFor(name, tags),
-                    showRemove: _tagPickerOpen,
-                    onTap: _tagPickerOpen
-                        ? () => controller.toggleTag(name)
-                        : null,
-                  ),
-              ],
-            ),
-          if (_tagPickerOpen && suggestable.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            const Divider(
-              color: SpeakrColors.line,
-              thickness: 1,
-              height: 1,
-            ),
-            const SizedBox(height: 10),
-            _SectionHeading('Suggested'),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 4,
-              runSpacing: 4,
-              children: [
-                for (final t in suggestable)
+                for (final t in tags)
                   _TagChipBtn(
                     tag: t,
-                    active: false,
+                    active: activeTagSet.contains(t.name.toLowerCase()),
                     onTap: () => controller.toggleTag(t.name),
                   ),
               ],
             ),
-          ],
           const SizedBox(height: 30),
           _ShortcutsHint(),
         ],
       ),
     );
   }
-}
-
-Color _tagColorFor(String name, List<Tag> tags) {
-  final t = tags.firstWhereOrNull(
-    (tag) => tag.name.toLowerCase() == name.toLowerCase(),
-  );
-  return t == null ? SpeakrColors.muted : parseHexColor(t.color);
 }
 
 class _SectionHeading extends StatelessWidget {
@@ -681,40 +795,6 @@ class _SectionHeading extends StatelessWidget {
   }
 }
 
-class _SectionHeaderRow extends StatelessWidget {
-  const _SectionHeaderRow({
-    required this.label,
-    required this.action,
-    required this.onAction,
-  });
-  final String label;
-  final String action;
-  final VoidCallback onAction;
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        _SectionHeading(label),
-        InkWell(
-          onTap: onAction,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 4),
-            child: Text(
-              action.toUpperCase(),
-              style: SpeakrText.mono(
-                size: 9.5,
-                color: SpeakrColors.ink,
-                letterSpacing: 1.5,
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
 class _SourceCard extends StatelessWidget {
   const _SourceCard({
     required this.label,
@@ -728,6 +808,10 @@ class _SourceCard extends StatelessWidget {
   final bool on;
   final VoidCallback? onToggle;
   final bool disabled;
+
+  // Green status pip when on (matches Speakr Desktop design #3a8a5a),
+  // line colour when off.
+  static const _onPip = Color(0xFF3A8A5A);
 
   @override
   Widget build(BuildContext context) {
@@ -749,39 +833,43 @@ class _SourceCard extends StatelessWidget {
             ),
             borderRadius: BorderRadius.circular(5),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Row(
             children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          label,
-                          style: SpeakrText.sans(
-                            size: 13,
-                            weight: FontWeight.w500,
-                            color: SpeakrColors.ink,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          sub,
-                          style: SpeakrText.sans(
-                            size: 11,
-                            color: SpeakrColors.muted,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  _MiniToggle(on: on),
-                ],
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: on ? _onPip : SpeakrColors.line,
+                ),
               ),
-              const SizedBox(height: 10),
-              _OnIndicator(on: on),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      style: SpeakrText.sans(
+                        size: 13,
+                        weight: FontWeight.w500,
+                        color: SpeakrColors.ink,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      sub,
+                      style: SpeakrText.sans(
+                        size: 11,
+                        color: SpeakrColors.muted,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              _MiniToggle(on: on),
             ],
           ),
         ),
@@ -817,35 +905,6 @@ class _MiniToggle extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-class _OnIndicator extends StatelessWidget {
-  const _OnIndicator({required this.on});
-  final bool on;
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Container(
-          width: 6,
-          height: 6,
-          decoration: BoxDecoration(
-            color: on ? SpeakrColors.recordingDot : SpeakrColors.line,
-            shape: BoxShape.circle,
-          ),
-        ),
-        const SizedBox(width: 7),
-        Text(
-          on ? 'ON' : 'OFF',
-          style: SpeakrText.mono(
-            size: 9,
-            color: on ? SpeakrColors.ink : SpeakrColors.muted,
-            letterSpacing: 1.5,
-          ),
-        ),
-      ],
     );
   }
 }
@@ -1000,57 +1059,6 @@ class _TagChipBtn extends StatelessWidget {
             color: active ? Colors.white : c,
             letterSpacing: 1,
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ActiveTagChip extends StatelessWidget {
-  const _ActiveTagChip({
-    required this.label,
-    required this.color,
-    required this.showRemove,
-    this.onTap,
-  });
-  final String label;
-  final Color color;
-  final bool showRemove;
-  final VoidCallback? onTap;
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(3),
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        decoration: BoxDecoration(
-          color: color,
-          border: Border.all(color: color),
-          borderRadius: BorderRadius.circular(3),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              label.toUpperCase(),
-              style: SpeakrText.mono(
-                size: 10,
-                color: Colors.white,
-                letterSpacing: 1,
-              ),
-            ),
-            if (showRemove) ...[
-              const SizedBox(width: 6),
-              Text(
-                '×',
-                style: SpeakrText.serif(
-                  size: 12,
-                  color: Colors.white.withValues(alpha: 0.7),
-                ),
-              ),
-            ],
-          ],
         ),
       ),
     );

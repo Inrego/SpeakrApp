@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:record/record.dart';
@@ -17,6 +19,24 @@ class RecordPluginAudioRecorder implements LiveAudioRecorder {
 
   @override
   bool get supportsLiveMicToggle => false;
+
+  @override
+  Stream<double> get audioLevel => _recorder
+      .onAmplitudeChanged(const Duration(milliseconds: 50))
+      .map((a) {
+        // record returns dBFS in `a.current` (≤0 dB, with −160 ≈ silence).
+        // dB-linear VU mapping: −55 dBFS → 0, −12 dBFS → 1. Matches the
+        // Windows / Android native sides so the breathing dot reads the
+        // same on every platform.
+        final db = a.current;
+        if (db.isNaN || db.isInfinite || db <= -120) return 0.0;
+        const floorDb = -55.0;
+        const ceilDb = -12.0;
+        final v = (db - floorDb) / (ceilDb - floorDb);
+        if (v.isNaN || v <= 0) return 0.0;
+        if (v >= 1.0) return 1.0;
+        return v;
+      });
 
   @override
   Future<bool> isRecording() => _recorder.isRecording();

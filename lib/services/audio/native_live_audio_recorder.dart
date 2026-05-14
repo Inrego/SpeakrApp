@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
 
@@ -12,6 +14,12 @@ class NativeLiveAudioRecorder implements LiveAudioRecorder {
   NativeLiveAudioRecorder._(this._supportsSystemAudio);
 
   static const MethodChannel _channel = MethodChannel('speakr.audio/recorder');
+
+  // Poll cadence for the audio level — ~20 Hz matches the design's
+  // breathing-dot animation. Native side buffers the latest RMS-derived
+  // level; we pull it via `getLevel` so we don't need an EventChannel
+  // (whose sinks can only fire on the platform thread on Windows).
+  static const Duration _levelPollInterval = Duration(milliseconds: 50);
 
   final bool _supportsSystemAudio;
 
@@ -33,6 +41,42 @@ class NativeLiveAudioRecorder implements LiveAudioRecorder {
 
   @override
   bool get supportsLiveMicToggle => true;
+
+  @override
+  Stream<double> get audioLevel {
+    // One controller per listener, so each subscription gets its own
+    // polling timer. The controller is closed (and the timer cancelled)
+    // automatically when the subscription is cancelled.
+    late StreamController<double> controller;
+    Timer? timer;
+
+    Future<void> tick() async {
+      try {
+        final v = await _channel.invokeMethod<double>('getLevel');
+        if (controller.isClosed) return;
+        final clamped = (v ?? 0.0).clamp(0.0, 1.0);
+        controller.add(clamped);
+      } catch (_) {
+        // MissingPlugin or platform error — emit silence so subscribers
+        // don't see stale values.
+        if (!controller.isClosed) controller.add(0.0);
+      }
+    }
+
+    controller = StreamController<double>(
+      onListen: () {
+        timer = Timer.periodic(_levelPollInterval, (_) => tick());
+        // Kick an immediate sample so the meter isn't blank for the
+        // first poll interval after the listener attaches.
+        tick();
+      },
+      onCancel: () async {
+        timer?.cancel();
+        timer = null;
+      },
+    );
+    return controller.stream;
+  }
 
   @override
   Future<bool> isRecording() async {

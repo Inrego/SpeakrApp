@@ -3,12 +3,12 @@ package dk.renescott.speakr_app
 import androidx.lifecycle.lifecycleScope
 import dk.renescott.speakr_app.audio.ProjectionConsentBridge
 import dk.renescott.speakr_app.audio.SpeakrAudioRecorder
-import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import kotlinx.coroutines.launch
 
-class MainActivity : FlutterActivity() {
+class MainActivity : FlutterFragmentActivity() {
     private var consentBridge: ProjectionConsentBridge? = null
     private var recorder: SpeakrAudioRecorder? = null
 
@@ -31,6 +31,7 @@ class MainActivity : FlutterActivity() {
             when (call.method) {
                 "supportsSystemAudio" -> result.success(rec.supportsSystemAudio())
                 "isRecording" -> result.success(rec.isRecording())
+                "getLevel" -> result.success(rec.getLevel())
                 "requestSystemPermission" -> {
                     lifecycleScope.launch {
                         val ok = try {
