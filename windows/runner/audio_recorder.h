@@ -50,6 +50,14 @@ class SpeakrAudioRecorder {
   std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>>
       channel_;
 
+  // Latest captured audio level in [0, 1], updated by the worker on every
+  // mixed chunk and read by Dart via the `getLevel` MethodChannel call.
+  // We can't push from the worker because EventSink::Success must run on
+  // the platform thread; Dart polls at its own cadence (~20 Hz) instead.
+  // Stored as raw bits so we don't depend on lock-free `atomic<double>`,
+  // which isn't guaranteed pre-C++20.
+  std::atomic<uint64_t> last_level_bits_{0};
+
   // Lifecycle.
   std::thread worker_;
   std::atomic<bool> running_{false};

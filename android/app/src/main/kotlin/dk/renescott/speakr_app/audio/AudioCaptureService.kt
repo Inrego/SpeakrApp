@@ -30,12 +30,16 @@ class AudioCaptureService : Service() {
         ensureChannel(this)
         val notification = buildNotification(this, "Recording…")
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            startForeground(
-                NOTIF_ID,
-                notification,
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION or
-                    ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
-            )
+            // The mediaProjection FGS type requires the project_media
+            // appop — only granted by an active MediaProjection consent
+            // token. Requesting it without a token (mic-only sessions)
+            // is a SecurityException on Android 14+ (targetSDK 34+).
+            val useProjection = intent?.getBooleanExtra(EXTRA_USE_MEDIA_PROJECTION, false) ?: false
+            var type = ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+            if (useProjection) {
+                type = type or ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
+            }
+            startForeground(NOTIF_ID, notification, type)
         } else {
             startForeground(NOTIF_ID, notification)
         }
@@ -53,9 +57,11 @@ class AudioCaptureService : Service() {
         private const val CHANNEL_ID = "speakr_recording"
         private const val CHANNEL_NAME = "Recording"
         private const val NOTIF_ID = 0x53504B52  // 'SPKR'
+        private const val EXTRA_USE_MEDIA_PROJECTION = "use_media_projection"
 
-        fun start(ctx: Context) {
+        fun start(ctx: Context, useMediaProjection: Boolean) {
             val intent = Intent(ctx, AudioCaptureService::class.java)
+                .putExtra(EXTRA_USE_MEDIA_PROJECTION, useMediaProjection)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 ctx.startForegroundService(intent)
             } else {

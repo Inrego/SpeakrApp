@@ -16,6 +16,7 @@ import android.media.projection.MediaProjectionManager
 import android.os.Build
 import android.util.Log
 import io.flutter.plugin.common.MethodChannel
+import kotlin.math.sqrt
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -69,6 +70,25 @@ class SpeakrAudioRecorder(
     private var projection: MediaProjection? = null
     private var pendingProjectionResult: ProjectionResult? = null
 
+    // Level meter buffer — the worker writes the latest RMS-derived
+    // level here on every mixed chunk; Dart polls it via the `getLevel`
+    // MethodChannel call (~20 Hz). We can't push from the worker because
+    // EventChannel sinks must be invoked on the platform thread, and
+    // bouncing through Looper.getMainLooper() still triggers Flutter's
+    // platform-thread assertion on Windows-style embeddings.
+    @Volatile private var lastLevel: Double = 0.0
+
+    fun getLevel(): Double = lastLevel
+
+    private fun storeLevel(linear: Double) {
+        lastLevel = when {
+            linear.isNaN() -> 0.0
+            linear < 0.0 -> 0.0
+            linear > 1.0 -> 1.0
+            else -> linear
+        }
+    }
+
     fun supportsSystemAudio(): Boolean {
         return Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
     }
@@ -106,6 +126,7 @@ class SpeakrAudioRecorder(
                 paused.set(false)
                 stopRequested.set(false)
                 lastError = null
+                lastLevel = 0.0
 
                 // System capture needs a MediaProjection — use the cached
                 // one if we have it, otherwise request now.
@@ -119,7 +140,11 @@ class SpeakrAudioRecorder(
                 }
 
                 // Start the foreground service before activating projection.
-                AudioCaptureService.start(context)
+                // Only request the mediaProjection FGS type when we have a
+                // consent token — without one, Android 14+ rejects the
+                // startForeground call with SecurityException.
+                val useProjection = sysOn && pendingProjectionResult != null
+                AudioCaptureService.start(context, useProjection)
                 running.set(true)
                 sessionJob = scope.launch { runSession() }
                 onDone(null)
@@ -268,6 +293,7 @@ class SpeakrAudioRecorder(
         val sysBuf = ShortArray(FRAMES_PER_CHUNK * 2)
         val mixed = ShortArray(FRAMES_PER_CHUNK * 2)
         val codecInfo = MediaCodec.BufferInfo()
+        var chunkCounter = 0L
 
         while (!stopRequested.get()) {
             // Read mic mono → mixed stereo (duplicated to L+R).
@@ -276,6 +302,12 @@ class SpeakrAudioRecorder(
             // Read system stereo.
             val sysRead = sysRecord?.read(sysBuf, 0, FRAMES_PER_CHUNK * 2) ?: 0
             val haveSys = systemEnabled.get() && sysRead > 0
+            // Track per-source RMS so the breathing dot reflects either
+            // source independently. RMS over the mix biases towards
+            // whichever source has the louder noise floor (typically
+            // the mic), so quiet system audio never registers.
+            var micSumSq = 0.0
+            var sysSumSq = 0.0
             for (i in 0 until FRAMES_PER_CHUNK) {
                 val mLeft = if (haveMic && i < micRead) micBuf[i].toInt() else 0
                 val mRight = mLeft
@@ -289,9 +321,38 @@ class SpeakrAudioRecorder(
                 if (r < Short.MIN_VALUE) r = Short.MIN_VALUE.toInt()
                 mixed[i * 2] = l.toShort()
                 mixed[i * 2 + 1] = r.toShort()
+                val mNorm = mLeft.toDouble() / 32768.0
+                val sLeftNorm = sLeft.toDouble() / 32768.0
+                val sRightNorm = sRight.toDouble() / 32768.0
+                micSumSq += mNorm * mNorm * 2.0  // mono → both channels
+                sysSumSq += sLeftNorm * sLeftNorm + sRightNorm * sRightNorm
             }
 
-            if (paused.get()) continue
+            if (paused.get()) {
+                storeLevel(0.0)
+                continue
+            }
+
+            // dB-linear VU mapping per source; the meter shows whichever
+            // is louder. -55 dBFS → floor, -12 dBFS → full.
+            val micRms = sqrt(micSumSq / (FRAMES_PER_CHUNK * 2.0))
+            val sysRms = sqrt(sysSumSq / (FRAMES_PER_CHUNK * 2.0))
+            val kFloorDb = -55.0
+            val kCeilDb = -12.0
+            fun rmsToLevel(r: Double): Double = if (r < 1e-6) 0.0 else {
+                val db = 20.0 * kotlin.math.log10(r)
+                ((db - kFloorDb) / (kCeilDb - kFloorDb)).coerceIn(0.0, 1.0)
+            }
+            val level = maxOf(rmsToLevel(micRms), rmsToLevel(sysRms))
+            storeLevel(level)
+            if (chunkCounter % 50L == 0L) {
+                Log.d(TAG, "level mic=%.3f (rms=%.4f) sys=%.3f (rms=%.4f) " +
+                    "haveSys=%b sysEnabled=%b".format(
+                        rmsToLevel(micRms), micRms,
+                        rmsToLevel(sysRms), sysRms,
+                        sysRecord != null, systemEnabled.get()))
+            }
+            chunkCounter++
 
             // Feed encoder.
             val inIdx = codec.dequeueInputBuffer(10_000)
@@ -362,6 +423,10 @@ class SpeakrAudioRecorder(
             if (muxerStarted) muxer.stop()
             muxer.release()
         } catch (_: Throwable) {}
+
+        // Session wound down — flush the meter so the dot collapses on
+        // the next poll.
+        storeLevel(0.0)
 
         if (lastError != null) {
             try { File(path).delete() } catch (_: Throwable) {}

@@ -25,6 +25,7 @@ sealed class RecordingState with _$RecordingState {
     @Default(false) bool systemAudioSupported,
     @Default(false) bool micPending,
     @Default(false) bool systemPending,
+    @Default(0.0) double audioLevel,
   }) = _RecordingState;
 
   factory RecordingState.fromJson(Map<String, dynamic> json) =>

@@ -67,6 +67,94 @@ class _Dot extends StatelessWidget {
       );
 }
 
+/// Single calm dot that breathes with the captured audio level. Floor
+/// is 0.18 (per design) so the dot never collapses to nothing while
+/// active. When paused or before recording starts, the dot/mid ring
+/// soften to the line colour and the caption flips to "NO SIGNAL".
+class BreathingDot extends StatelessWidget {
+  const BreathingDot({
+    super.key,
+    required this.paused,
+    required this.level,
+    this.compact = false,
+  });
+  final bool paused;
+  final double level;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final clamped = paused
+        ? 0.05
+        : (level.isFinite ? level.clamp(0.18, 1.0) : 0.18);
+    final scale = compact ? 0.75 : 1.0;
+    final coreSize = (28.0 + clamped * 36.0) * scale; // 28→64 px, scaled
+    final ringSize = coreSize + 26.0 * scale;
+    final outerSize = 110.0 * scale;
+    final frameSize = 120.0 * scale;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Column(
+        children: [
+          SizedBox(
+            width: frameSize,
+            height: frameSize,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                // Static outer ring — fixed max bound.
+                Container(
+                  width: outerSize,
+                  height: outerSize,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: SpeakrColors.line),
+                  ),
+                ),
+                // Mid breathing ring — tracks the level, ink-tinted while
+                // recording and line-tinted while paused.
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 120),
+                  curve: Curves.linear,
+                  width: ringSize,
+                  height: ringSize,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: (paused ? SpeakrColors.line : SpeakrColors.ink)
+                          .withValues(alpha: paused ? 0.25 : 0.18),
+                    ),
+                  ),
+                ),
+                // Core dot.
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 120),
+                  curve: Curves.linear,
+                  width: coreSize,
+                  height: coreSize,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: paused ? SpeakrColors.line : SpeakrColors.ink,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            paused ? 'NO SIGNAL' : 'AUDIO LEVEL',
+            style: SpeakrText.mono(
+              size: 10,
+              color: SpeakrColors.muted,
+              letterSpacing: 1.5,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class RecordingTimer extends StatelessWidget {
   const RecordingTimer({super.key, required this.text, this.compact = false});
   final String text;

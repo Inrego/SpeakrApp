@@ -27,6 +27,7 @@ _RecordingState _$RecordingStateFromJson(Map<String, dynamic> json) =>
       systemAudioSupported: json['systemAudioSupported'] as bool? ?? false,
       micPending: json['micPending'] as bool? ?? false,
       systemPending: json['systemPending'] as bool? ?? false,
+      audioLevel: (json['audioLevel'] as num?)?.toDouble() ?? 0.0,
     );
 
 Map<String, dynamic> _$RecordingStateToJson(_RecordingState instance) =>
@@ -46,4 +47,5 @@ Map<String, dynamic> _$RecordingStateToJson(_RecordingState instance) =>
       'systemAudioSupported': instance.systemAudioSupported,
       'micPending': instance.micPending,
       'systemPending': instance.systemPending,
+      'audioLevel': instance.audioLevel,
     };

@@ -13,6 +13,7 @@
 #include <objbase.h>
 
 #include <algorithm>
+#include <cmath>
 #include <cstring>
 #include <vector>
 
@@ -250,6 +251,26 @@ struct CaptureSource {
 //                           SpeakrAudioRecorder
 // ---------------------------------------------------------------------------
 
+namespace {
+
+// Helpers to pack/unpack a double into the `last_level_bits_` atomic. We
+// avoid `atomic<double>` because lock-freedom for it isn't guaranteed on
+// older toolchains; the worker writes ~50× per second so contention is
+// not a concern.
+uint64_t DoubleToBits(double v) {
+  uint64_t bits = 0;
+  std::memcpy(&bits, &v, sizeof(bits));
+  return bits;
+}
+
+double BitsToDouble(uint64_t bits) {
+  double v = 0.0;
+  std::memcpy(&v, &bits, sizeof(v));
+  return v;
+}
+
+}  // namespace
+
 SpeakrAudioRecorder::SpeakrAudioRecorder(flutter::FlutterEngine* engine) {
   channel_ = std::make_unique<flutter::MethodChannel<EncodableValue>>(
       engine->messenger(), "speakr.audio/recorder",
@@ -291,6 +312,14 @@ void SpeakrAudioRecorder::HandleMethodCall(
   }
   if (name == "isRecording") {
     result->Success(EncodableValue(running_.load() && !stop_requested_.load()));
+    return;
+  }
+  if (name == "getLevel") {
+    // Read whatever the worker last stored. While not running, this is
+    // 0 (set in Stop / DisposeRecorder / on worker exit), which is what
+    // the meter wants too.
+    const double level = BitsToDouble(last_level_bits_.load());
+    result->Success(EncodableValue(level));
     return;
   }
   if (name == "start") {
@@ -399,6 +428,7 @@ bool SpeakrAudioRecorder::Start(const std::string& path, bool mic_enabled,
   paused_.store(false);
   stop_requested_.store(false);
   setup_ok_.store(false);
+  last_level_bits_.store(DoubleToBits(0.0));
   {
     std::lock_guard<std::mutex> lock(error_mu_);
     last_error_.clear();
@@ -623,6 +653,14 @@ void SpeakrAudioRecorder::RunWorker() {
     // Mix as many full chunks as both queues have ready.
     while (mic_src.pcm.size() >= kChunkSamples &&
            sys_src.pcm.size() >= kChunkSamples) {
+      // Track each source's sum-of-squares separately so the meter
+      // reflects whichever source is louder. RMS over the mix (m+s) has
+      // a subtle bias: a constant mic noise floor dominates the result
+      // so a quiet system signal never moves the dot. Taking the max of
+      // per-source levels solves that — system music will register even
+      // when the user isn't speaking.
+      double mic_sum_sq = 0.0;
+      double sys_sum_sq = 0.0;
       for (size_t i = 0; i < kChunkSamples; ++i) {
         float m = mic_src.pcm[i];
         float s = sys_src.pcm[i];
@@ -630,16 +668,59 @@ void SpeakrAudioRecorder::RunWorker() {
         if (sum > 1.0f) sum = 1.0f;
         if (sum < -1.0f) sum = -1.0f;
         out_pcm[i] = static_cast<int16_t>(sum * 32767.0f);
+        mic_sum_sq += static_cast<double>(m) * static_cast<double>(m);
+        sys_sum_sq += static_cast<double>(s) * static_cast<double>(s);
       }
       mic_src.pcm.erase(mic_src.pcm.begin(),
                         mic_src.pcm.begin() + kChunkSamples);
       sys_src.pcm.erase(sys_src.pcm.begin(),
                         sys_src.pcm.begin() + kChunkSamples);
+
+      // Buffer the latest meter sample in `last_level_bits_`; Dart polls
+      // via `getLevel`. While paused, park the value at 0 so the
+      // breathing dot collapses on the next poll.
       if (paused_.load()) {
+        last_level_bits_.store(DoubleToBits(0.0));
         // Drop the chunk — don't advance pts. Effectively pauses the
         // timeline. (The Dart-side timer also pauses in this state.)
         continue;
       }
+      const double mic_rms =
+          std::sqrt(mic_sum_sq / static_cast<double>(kChunkSamples));
+      const double sys_rms =
+          std::sqrt(sys_sum_sq / static_cast<double>(kChunkSamples));
+      // -55 dBFS → 0, -12 dBFS → 1. Picked so a quiet room sits at
+      // floor, normal speech (~-30 dBFS RMS) reads ~0.58, a loud talker
+      // (~-15 dBFS RMS) approaches the top.
+      constexpr double kFloorDb = -55.0;
+      constexpr double kCeilDb = -12.0;
+      auto rms_to_level = [kFloorDb, kCeilDb](double r) -> double {
+        if (r < 1e-6) return 0.0;
+        const double db = 20.0 * std::log10(r);
+        double v = (db - kFloorDb) / (kCeilDb - kFloorDb);
+        if (v < 0.0) return 0.0;
+        if (v > 1.0) return 1.0;
+        return v;
+      };
+      const double mic_level = rms_to_level(mic_rms);
+      const double sys_level = rms_to_level(sys_rms);
+      const double level = std::max(mic_level, sys_level);
+      last_level_bits_.store(DoubleToBits(level));
+#ifndef NDEBUG
+      // Periodic per-source breadcrumb so we can confirm via DebugView /
+      // VS output whether loopback is delivering data. ~1 line per
+      // second at 50 chunks/s.
+      if ((chunks_written % 50u) == 0u) {
+        char dbg[160];
+        snprintf(dbg, sizeof(dbg),
+                 "[speakr] level mic=%.3f (rms=%.4f) sys=%.3f (rms=%.4f) "
+                 "have_system=%d sys_enabled=%d\n",
+                 mic_level, mic_rms, sys_level, sys_rms,
+                 have_system ? 1 : 0,
+                 system_enabled_.load() ? 1 : 0);
+        OutputDebugStringA(dbg);
+      }
+#endif
       IMFMediaBuffer* buf = nullptr;
       const DWORD byte_count = static_cast<DWORD>(kChunkSamples * sizeof(int16_t));
       hr = MFCreateMemoryBuffer(byte_count, &buf);
@@ -701,6 +782,9 @@ void SpeakrAudioRecorder::RunWorker() {
     // Best-effort cleanup of the partial m4a so we don't upload it.
     DeleteFileW(wpath.c_str());
   }
+
+  // Worker exiting → meter should read silent on the next poll.
+  last_level_bits_.store(DoubleToBits(0.0));
 
   MFShutdown();
   if (task) AvRevertMmThreadCharacteristics(task);

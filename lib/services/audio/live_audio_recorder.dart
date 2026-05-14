@@ -11,6 +11,13 @@ abstract class LiveAudioRecorder {
   /// addition to mic. UI must hide / disable the system toggle when false.
   bool get supportsSystemAudio;
 
+  /// Linear audio level [0.0, 1.0] of the captured mix, emitted ~20 Hz
+  /// while a recording is active. Implementations should clamp samples
+  /// into range and emit `0` while paused or before [start] is called.
+  /// Subscribers must tolerate gaps and silent platforms (the stream may
+  /// emit nothing if the underlying pipeline can't report a level).
+  Stream<double> get audioLevel;
+
   /// Whether the mic source can be muted live (zero-filled into the
   /// output file) without pausing the encoder. When false, the live
   /// screen should treat mic-off as a pause/resume rather than a per-source

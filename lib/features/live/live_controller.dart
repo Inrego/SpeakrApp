@@ -54,6 +54,8 @@ class RecordingController extends StateNotifier<RecordingState> {
   WindowController? _miniController;
   bool _ipcRegistered = false;
   DateTime? _recordingStartedAt;
+  StreamSubscription<double>? _audioLevelSub;
+  DateTime _audioLevelLastPush = DateTime.fromMillisecondsSinceEpoch(0);
 
   final _navController = StreamController<RecordingNav>.broadcast();
   Stream<RecordingNav> get navStream => _navController.stream;
@@ -254,6 +256,7 @@ class RecordingController extends StateNotifier<RecordingState> {
           state = state.copyWith(elapsedSeconds: state.elapsedSeconds + 1);
         }
       });
+      _subscribeAudioLevel();
       state = state.copyWith(started: true);
       if (!kIsWeb && Platform.isWindows) {
         await _openMiniWindow();
@@ -272,10 +275,46 @@ class RecordingController extends StateNotifier<RecordingState> {
       } else {
         await _recorder.pause();
       }
-      state = state.copyWith(paused: !state.paused);
+      final nextPaused = !state.paused;
+      // Snap the meter to zero immediately when paused so the breathing
+      // dot collapses without waiting for the recorder to emit a new
+      // level sample. The recorder's stream is the source of truth once
+      // we resume.
+      state = state.copyWith(
+        paused: nextPaused,
+        audioLevel: nextPaused ? 0.0 : state.audioLevel,
+      );
     } catch (e) {
       state = state.copyWith(error: 'Failed to toggle pause: $e');
     }
+  }
+
+  void _subscribeAudioLevel() {
+    _audioLevelSub?.cancel();
+    try {
+      _audioLevelSub = _recorder.audioLevel.listen(
+        (level) {
+          if (state.paused) return;
+          final now = DateTime.now();
+          if (now.difference(_audioLevelLastPush).inMilliseconds < 45) {
+            return;
+          }
+          _audioLevelLastPush = now;
+          final clamped = level.isFinite ? level.clamp(0.0, 1.0) : 0.0;
+          if ((clamped - state.audioLevel).abs() < 0.005) return;
+          state = state.copyWith(audioLevel: clamped);
+        },
+        onError: (_) {/* ignore — meter is best-effort */},
+      );
+    } catch (_) {
+      // Platforms that don't expose a level stream: leave dot at the floor.
+      _audioLevelSub = null;
+    }
+  }
+
+  void _unsubscribeAudioLevel() {
+    _audioLevelSub?.cancel();
+    _audioLevelSub = null;
   }
 
   /// Toggle the mic source. Effective immediately on platforms with
@@ -355,6 +394,7 @@ class RecordingController extends StateNotifier<RecordingState> {
       final path = await _recorder.stop();
       _ticker?.cancel();
       _ticker = null;
+      _unsubscribeAudioLevel();
       if (path == null) {
         throw Exception('Recorder returned no file path.');
       }
@@ -409,6 +449,7 @@ class RecordingController extends StateNotifier<RecordingState> {
   Future<void> cancel() async {
     _ticker?.cancel();
     _ticker = null;
+    _unsubscribeAudioLevel();
     try {
       if (await _recorder.isRecording()) {
         final path = await _recorder.stop();
@@ -450,6 +491,7 @@ class RecordingController extends StateNotifier<RecordingState> {
   Future<void> _cleanupAfterFailure() async {
     _ticker?.cancel();
     _ticker = null;
+    _unsubscribeAudioLevel();
     try {
       if (await _recorder.isRecording()) {
         final path = await _recorder.stop();
@@ -540,6 +582,7 @@ class RecordingController extends StateNotifier<RecordingState> {
   @override
   void dispose() {
     _ticker?.cancel();
+    _unsubscribeAudioLevel();
     _recorder.dispose();
     _navController.close();
     super.dispose();
