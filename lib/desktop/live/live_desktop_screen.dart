@@ -12,6 +12,7 @@ import '../../api/models.dart';
 import '../../features/library/library_controller.dart';
 import '../../features/live/live_controller.dart';
 import '../../features/live/recording_state.dart';
+import '../../features/live/widgets/discard_sheet.dart';
 import '../../theme/colors.dart';
 import '../../theme/typography.dart';
 import '../../widgets/speakr_icons.dart';
@@ -26,7 +27,6 @@ class LiveDesktopScreen extends ConsumerStatefulWidget {
 
 class _LiveDesktopScreenState extends ConsumerState<LiveDesktopScreen> {
   StreamSubscription<RecordingNav>? _navSub;
-  bool _confirmDiscard = false;
 
   @override
   void initState() {
@@ -115,8 +115,9 @@ class _LiveDesktopScreenState extends ConsumerState<LiveDesktopScreen> {
                           child: _LeftPane(
                             state: state,
                             controller: controller,
-                            onDiscard: () =>
-                                setState(() => _confirmDiscard = true),
+                            onDiscard: () => ref
+                                .read(discardArmedProvider.notifier)
+                                .state = true,
                           ),
                         ),
                         Container(
@@ -137,15 +138,6 @@ class _LiveDesktopScreenState extends ConsumerState<LiveDesktopScreen> {
                   ),
                 ],
               ),
-              if (_confirmDiscard)
-                _DiscardOverlay(
-                  elapsedLabel: state.formattedElapsed,
-                  onCancel: () => setState(() => _confirmDiscard = false),
-                  onConfirm: () async {
-                    setState(() => _confirmDiscard = false);
-                    await controller.cancel();
-                  },
-                ),
             ],
           ),
         ),
@@ -1147,103 +1139,3 @@ class _ShortcutsHint extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────
-// Discard overlay
-// ─────────────────────────────────────────────────────────
-
-class _DiscardOverlay extends StatelessWidget {
-  const _DiscardOverlay({
-    required this.elapsedLabel,
-    required this.onCancel,
-    required this.onConfirm,
-  });
-  final String elapsedLabel;
-  final VoidCallback onCancel;
-  final VoidCallback onConfirm;
-  @override
-  Widget build(BuildContext context) {
-    return Positioned.fill(
-      child: GestureDetector(
-        onTap: onCancel,
-        child: Container(
-          color: const Color(0x66141210),
-          alignment: Alignment.center,
-          child: GestureDetector(
-            onTap: () {},
-            child: Container(
-              width: 440,
-              padding: const EdgeInsets.all(28),
-              decoration: BoxDecoration(
-                color: SpeakrColors.bg,
-                borderRadius: BorderRadius.circular(10),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Color(0x40000000),
-                    offset: Offset(0, 24),
-                    blurRadius: 60,
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'DISCARD RECORDING',
-                    style: SpeakrText.mono(
-                      size: 9.5,
-                      color: SpeakrColors.recordingDot,
-                      letterSpacing: 1.5,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Throw away $elapsedLabel of audio?',
-                    style: SpeakrText.serif(size: 22, height: 1.25),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    "The recording will be permanently deleted. It won't be transcribed.",
-                    style: SpeakrText.sans(
-                      size: 13,
-                      color: SpeakrColors.muted,
-                      height: 1.45,
-                    ).copyWith(fontStyle: FontStyle.italic),
-                  ),
-                  const SizedBox(height: 22),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      _PillBtn(label: 'Keep recording', onTap: onCancel),
-                      const SizedBox(width: 8),
-                      Material(
-                        color: SpeakrColors.recordingDot,
-                        shape: const StadiumBorder(),
-                        child: InkWell(
-                          customBorder: const StadiumBorder(),
-                          onTap: onConfirm,
-                          child: Container(
-                            height: 36,
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            alignment: Alignment.center,
-                            child: Text(
-                              'Discard',
-                              style: SpeakrText.sans(
-                                size: 13,
-                                weight: FontWeight.w500,
-                                color: SpeakrColors.bg,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
