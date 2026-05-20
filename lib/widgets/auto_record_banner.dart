@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../features/live/mini/mini_window_native.dart';
 import '../routing/router.dart';
 import '../services/auto_record/auto_record_bootstrap.dart';
 import '../services/auto_record/auto_record_coordinator.dart';
@@ -32,6 +33,11 @@ class _AutoRecordPromptListenerState
 
   Future<void> _show(StopPromptRequest req) async {
     if (_open || !mounted) return;
+    // Surface the main window first — the app may be closed-to-tray or
+    // minimized while auto-record runs in the background. Done before
+    // grabbing the Navigator context so the lookup sees the live tree.
+    await MiniWindowNative.focusMain();
+    if (!mounted) return;
     // This widget is mounted in MaterialApp.builder — *above* the
     // Navigator — so its own `context` has no Navigator ancestor.
     // Route the dialog through the router's navigatorKey instead.
@@ -41,20 +47,37 @@ class _AutoRecordPromptListenerState
     coord?.notePromptShown();
     _open = true;
     try {
-      final keep = await showDialog<bool>(
+      // navCtx is a fresh lookup from speakrNavigatorKey *after* the
+      // focusMain await; analyzer's flow check can't see that.
+      final choice = await showDialog<_StopPromptChoice>(
+        // ignore: use_build_context_synchronously
         context: navCtx,
         barrierDismissible: false,
         builder: (_) => _StopPromptDialog(req: req),
       );
-      coord?.notePromptDismissed(keepRecording: keep == true);
-      if (keep == false && coord != null) {
-        await coord.stopAutoSession();
+      // Null = dialog dismissed without a choice; treat as "keep" so the
+      // session continues until the next idle window re-arms a prompt.
+      final resolved = choice ?? _StopPromptChoice.keep;
+      coord?.notePromptDismissed(
+        keepRecording: resolved == _StopPromptChoice.keep,
+      );
+      if (coord != null) {
+        switch (resolved) {
+          case _StopPromptChoice.keep:
+            break;
+          case _StopPromptChoice.stop:
+            await coord.stopAutoSession();
+          case _StopPromptChoice.discard:
+            await coord.discardAutoSession();
+        }
       }
     } finally {
       _open = false;
     }
   }
 }
+
+enum _StopPromptChoice { keep, stop, discard }
 
 class _StopPromptDialog extends StatelessWidget {
   const _StopPromptDialog({required this.req});
@@ -68,22 +91,32 @@ class _StopPromptDialog extends StatelessWidget {
       content: Text(
         'Speakr has been auto-recording ${req.triggerLabel} for '
         '${_formatElapsed(req.elapsed)}. The mic and audio output have '
-        'been idle. Stop and upload now?',
+        'been idle.',
         style: SpeakrText.sans(size: 14, color: SpeakrColors.ink2),
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.of(context).pop(true),
+          onPressed: () =>
+              Navigator.of(context).pop(_StopPromptChoice.keep),
           child: Text(
-            'Keep recording',
+            'Continue recording',
             style: SpeakrText.sans(size: 14, color: SpeakrColors.ink),
           ),
         ),
         TextButton(
-          onPressed: () => Navigator.of(context).pop(false),
+          onPressed: () =>
+              Navigator.of(context).pop(_StopPromptChoice.discard),
           child: Text(
-            'Stop',
+            'Discard',
             style: SpeakrText.sans(size: 14, color: SpeakrColors.danger),
+          ),
+        ),
+        TextButton(
+          onPressed: () =>
+              Navigator.of(context).pop(_StopPromptChoice.stop),
+          child: Text(
+            'Stop & save',
+            style: SpeakrText.sans(size: 14, color: SpeakrColors.ink),
           ),
         ),
       ],

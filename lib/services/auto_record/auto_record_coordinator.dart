@@ -327,6 +327,15 @@ class AutoRecordCoordinator {
     }
   }
 
+  /// Stops the in-progress auto session and discards the recording
+  /// unconditionally — no library entry regardless of duration. Used
+  /// when the user picks "Discard" on the idle stop-prompt.
+  Future<void> discardAutoSession() async {
+    if (!_autoSession) return;
+    debugPrint('[auto-record] user discarded auto session');
+    await cancelRecording();
+  }
+
   // ── Helpers ───────────────────────────────────────────────────────────────
 
   Future<void> _startAutoRecording(MicUser user, AllowlistEntry entry) async {
