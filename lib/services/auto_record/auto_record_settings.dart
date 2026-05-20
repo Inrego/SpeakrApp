@@ -173,7 +173,7 @@ class AutoRecordSettings {
     this.enabled = false,
     this.allowlist = const [],
     this.recentlySeen = const [],
-    this.silenceSeconds = 15,
+    this.silenceSeconds = 5,
     this.minKeepSeconds = 10,
     this.defaultSpeakers = 2,
     this.defaultTagIds = const [],
@@ -186,9 +186,9 @@ class AutoRecordSettings {
   final List<AllowlistEntry> allowlist;
   final List<RecentlySeenEntry> recentlySeen;
 
-  /// Auto-stop prompt fires only after the speaker output has been
-  /// quiet for at least this long *and* the trigger app has released
-  /// the mic.
+  /// Auto-stop prompt fires once the trigger app's microphone and the
+  /// system audio output have *both* been idle, simultaneously, for at
+  /// least this many seconds.
   final int silenceSeconds;
 
   /// Auto-recorded sessions shorter than this are discarded silently
@@ -261,7 +261,7 @@ class AutoRecordSettings {
           .whereType<Map<String, dynamic>>()
           .map(RecentlySeenEntry.fromJson)
           .toList(growable: false),
-      silenceSeconds: (json['silenceSeconds'] as num?)?.toInt() ?? 15,
+      silenceSeconds: (json['silenceSeconds'] as num?)?.toInt() ?? 5,
       minKeepSeconds: (json['minKeepSeconds'] as num?)?.toInt() ?? 10,
       defaultSpeakers: (json['defaultSpeakers'] as num?)?.toInt() ?? 2,
       defaultTagIds: (json['defaultTagIds'] as List? ?? const [])

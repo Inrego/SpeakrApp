@@ -81,10 +81,10 @@ class _AutoRecordSettingsScreenState
                       Text(
                         'When an allowlisted app starts using your '
                         'microphone, Speakr automatically begins '
-                        'recording. Recording continues until the app '
-                        'releases the mic and audio has been quiet for '
-                        '${s.silenceSeconds} seconds — then Speakr asks '
-                        'whether to stop.',
+                        'recording. Recording continues until both the '
+                        'app has released the mic and the audio output '
+                        'has been idle for ${s.silenceSeconds} seconds — '
+                        'then Speakr asks whether to stop.',
                         style: SpeakrText.sans(
                           size: 13,
                           color: SpeakrColors.ink2,
@@ -463,7 +463,7 @@ class _BehaviorGroup extends ConsumerWidget {
       label: 'Behavior',
       children: [
         SettingsRow(
-          label: 'Stop-prompt silence threshold',
+          label: 'Stop-prompt idle threshold',
           trailing: _IntStepper(
             value: settings.silenceSeconds,
             suffix: 's',

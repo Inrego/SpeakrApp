@@ -117,7 +117,14 @@ class AutoRecordCoordinator {
   /// Bookkeeping for the silence/mic-released stop heuristic.
   DateTime? _silentSinceUtc;
   DateTime? _micReleasedSinceUtc;
-  DateTime? _suppressPromptsUntilUtc;
+
+  /// True after the user picked "Keep recording". Suppresses further
+  /// prompts until *either* the trigger app re-acquires the mic or audio
+  /// resumes — i.e., a real "activity resumed" boundary. Cleared in
+  /// [_trackTriggerRelease] / [_onPeak]; the next time both conditions
+  /// go inactive for [AutoRecordSettings.silenceSeconds] again, a fresh
+  /// prompt fires.
+  bool _waitingForReactivation = false;
   bool _promptOpen = false;
 
   final _prompts = StreamController<StopPromptRequest>.broadcast();
@@ -132,12 +139,11 @@ class AutoRecordCoordinator {
   void notePromptDismissed({required bool keepRecording}) {
     _promptOpen = false;
     if (keepRecording) {
-      // Suppress further prompts for ~2x silence window so the user
-      // isn't nagged repeatedly during a quiet stretch they explicitly
-      // chose to keep.
-      final secs = store.read().silenceSeconds * 2;
-      _suppressPromptsUntilUtc =
-          DateTime.now().toUtc().add(Duration(seconds: secs));
+      // Suppress further prompts until activity resumes (mic re-acquired
+      // or audio playback resumes) — only then does another idle window
+      // re-arm the prompt. Anchors the next nag to a real meeting-
+      // resumed-then-paused boundary rather than a fixed clock.
+      _waitingForReactivation = true;
       _silentSinceUtc = null;
       _micReleasedSinceUtc = null;
     }
@@ -224,8 +230,10 @@ class AutoRecordCoordinator {
     final now = DateTime.now().toUtc();
     if (trigger != null && trigger.isInUse) {
       // Trigger app re-acquired the mic. Reset the released window and
-      // dismiss any visible prompt — the meeting resumed.
+      // dismiss any visible prompt — the meeting resumed. Mic activity
+      // also re-arms the prompt after the user picked "Keep recording".
       _micReleasedSinceUtc = null;
+      _waitingForReactivation = false;
       if (_promptOpen) _promptOpen = false;
     } else {
       _micReleasedSinceUtc ??= now;
@@ -235,10 +243,11 @@ class AutoRecordCoordinator {
   // ── Recording-state handler ───────────────────────────────────────────────
 
   void _onRecordingState(RecordingState state) {
+    final wasStarted = _recordingState.started;
     _recordingState = state;
     if (_autoSession && state.started && !state.uploading) {
       _meterSub ??= outputMeter.peaks.listen(_onPeak);
-    } else if (!state.started && !state.uploading) {
+    } else if (wasStarted && !state.started && !state.uploading) {
       // Session finished (or was cancelled). Clear auto-session state.
       _meterSub?.cancel();
       _meterSub = null;
@@ -255,6 +264,7 @@ class AutoRecordCoordinator {
       _activeTriggerLabel = null;
       _silentSinceUtc = null;
       _micReleasedSinceUtc = null;
+      _waitingForReactivation = false;
       _promptOpen = false;
     }
   }
@@ -268,6 +278,9 @@ class AutoRecordCoordinator {
       _silentSinceUtc ??= now;
     } else {
       _silentSinceUtc = null;
+      // Audio resumed counts as activity — re-arm the prompt if the user
+      // had previously picked "Keep recording".
+      _waitingForReactivation = false;
     }
 
     _maybeFireStopPrompt(settings, now);
@@ -276,27 +289,22 @@ class AutoRecordCoordinator {
   void _maybeFireStopPrompt(AutoRecordSettings settings, DateTime now) {
     if (_promptOpen) return;
     if (!_autoSession) return;
-    if (_suppressPromptsUntilUtc != null &&
-        now.isBefore(_suppressPromptsUntilUtc!)) {
-      return;
-    }
+    if (_waitingForReactivation) return;
+
     final silentSince = _silentSinceUtc;
     final releasedSince = _micReleasedSinceUtc;
     if (silentSince == null || releasedSince == null) return;
 
-    // Require the trigger to have been released for at least 5 s — handles
-    // Teams' brief device-switching drops without firing a premature prompt.
-    final silenceFor = now.difference(silentSince);
-    final releasedFor = now.difference(releasedSince);
-    final silenceWindow = Duration(seconds: settings.silenceSeconds);
-    if (silenceFor < silenceWindow) return;
-    if (releasedFor < const Duration(seconds: 5)) return;
+    // Fire only when both the trigger app's mic and the system audio
+    // output have been simultaneously inactive for [silenceSeconds] — the
+    // later of the two "since" timestamps is when both became idle.
+    final bothInactiveSince =
+        silentSince.isAfter(releasedSince) ? silentSince : releasedSince;
+    final inactiveFor = now.difference(bothInactiveSince);
+    if (inactiveFor < Duration(seconds: settings.silenceSeconds)) return;
 
-    final label = _activeTriggerLabel ?? 'recording';
-    debugPrint(
-        '[auto-record] silence=${silenceFor.inSeconds}s released=${releasedFor.inSeconds}s → prompt');
     _prompts.add(StopPromptRequest(
-      triggerLabel: label,
+      triggerLabel: _activeTriggerLabel ?? 'recording',
       elapsed: Duration(seconds: _recordingState.elapsedSeconds),
     ));
   }

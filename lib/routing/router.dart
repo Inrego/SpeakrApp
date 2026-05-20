@@ -19,8 +19,15 @@ import '../responsive/breakpoints.dart';
 import '../services/credentials_store.dart';
 import '../theme/colors.dart';
 
+/// Root navigator key. Exposed so non-widget code (e.g. the auto-record
+/// stop-prompt listener, which sits in `MaterialApp.builder` and therefore
+/// above the Navigator) can reach a context that's a descendant of the
+/// Navigator for [showDialog] / [Navigator.of] calls.
+final speakrNavigatorKey = GlobalKey<NavigatorState>();
+
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
+    navigatorKey: speakrNavigatorKey,
     initialLocation: '/onboarding',
     redirect: (context, state) {
       // While the FutureProvider resolves, leave wherever the user is and
