@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:just_audio/just_audio.dart';
 
 import '../../features/detail/detail_controller.dart';
+import '../../features/detail/widgets/transcript_copy_menu.dart';
 import '../../theme/colors.dart';
 import '../../theme/typography.dart';
 
@@ -106,7 +107,7 @@ class DesktopTranscriptPane extends ConsumerWidget {
               padding: const EdgeInsets.fromLTRB(28, 20, 28, 60),
               itemCount: segments.length,
               separatorBuilder: (_, __) => const SizedBox(height: 18),
-              itemBuilder: (_, i) {
+              itemBuilder: (context, i) {
                 final s = segments[i];
                 final speakerName = s.speaker;
                 final color = colorFor(speakerName);
@@ -115,63 +116,87 @@ class DesktopTranscriptPane extends ConsumerWidget {
                 final mm = (ts ~/ 60).toString().padLeft(2, '0');
                 final ss = (ts % 60).floor().toString().padLeft(2, '0');
 
-                return Opacity(
-                  opacity: active ? 1.0 : 0.85,
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SizedBox(
-                        width: 88,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Text(
-                              (speakerName ?? '—').toUpperCase(),
-                              textAlign: TextAlign.right,
-                              style: SpeakrText.sans(
-                                size: 12,
-                                color: color,
-                                weight: FontWeight.w600,
-                                letterSpacing: 0.8,
-                              ),
+                void seekAndPlay() {
+                  final start = s.startTime;
+                  if (start == null) return;
+                  player.seek(Duration(milliseconds: (start * 1000).round()));
+                  player.play();
+                }
+
+                void showCopy(Offset globalPosition) {
+                  showTranscriptCopyMenu(
+                    context,
+                    globalPosition,
+                    s.sentence ?? '',
+                  );
+                }
+
+                return MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: seekAndPlay,
+                    onSecondaryTapDown: (d) => showCopy(d.globalPosition),
+                    onLongPressStart: (d) => showCopy(d.globalPosition),
+                    child: Opacity(
+                      opacity: active ? 1.0 : 0.85,
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SizedBox(
+                            width: 88,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Text(
+                                  (speakerName ?? '—').toUpperCase(),
+                                  textAlign: TextAlign.right,
+                                  style: SpeakrText.sans(
+                                    size: 12,
+                                    color: color,
+                                    weight: FontWeight.w600,
+                                    letterSpacing: 0.8,
+                                  ),
+                                ),
+                                const SizedBox(height: 3),
+                                Text(
+                                  '$mm:$ss',
+                                  style: SpeakrText.mono(
+                                    size: 10,
+                                    color: SpeakrColors.muted,
+                                    letterSpacing: 0,
+                                  ),
+                                ),
+                              ],
                             ),
-                            const SizedBox(height: 3),
-                            Text(
-                              '$mm:$ss',
-                              style: SpeakrText.mono(
-                                size: 10,
-                                color: SpeakrColors.muted,
-                                letterSpacing: 0,
+                          ),
+                          const SizedBox(width: 18),
+                          Expanded(
+                            child: Container(
+                              padding: const EdgeInsets.fromLTRB(14, 1, 0, 1),
+                              decoration: BoxDecoration(
+                                border: Border(
+                                  left: BorderSide(
+                                    color: active ? color : Colors.transparent,
+                                    width: 2,
+                                  ),
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 18),
-                      Expanded(
-                        child: Container(
-                          padding: const EdgeInsets.fromLTRB(14, 1, 0, 1),
-                          decoration: BoxDecoration(
-                            border: Border(
-                              left: BorderSide(
-                                color: active ? color : Colors.transparent,
-                                width: 2,
+                              child: Text(
+                                s.sentence ?? '',
+                                style: SpeakrText.serif(
+                                  size: 16,
+                                  height: 1.6,
+                                  color: active
+                                      ? SpeakrColors.ink
+                                      : SpeakrColors.ink2,
+                                ),
                               ),
                             ),
                           ),
-                          child: SelectableText(
-                            s.sentence ?? '',
-                            style: SpeakrText.serif(
-                              size: 16,
-                              height: 1.6,
-                              color: active
-                                  ? SpeakrColors.ink
-                                  : SpeakrColors.ink2,
-                            ),
-                          ),
-                        ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
                 );
               },

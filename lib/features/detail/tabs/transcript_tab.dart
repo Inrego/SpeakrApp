@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:just_audio/just_audio.dart';
 
 import '../../../api/models.dart';
 import '../../../theme/colors.dart';
@@ -7,10 +8,16 @@ import '../../../theme/typography.dart';
 import '../../../utils/formatters.dart';
 import '../../../widgets/mono_eyebrow.dart';
 import '../detail_controller.dart';
+import '../widgets/transcript_copy_menu.dart';
 
 class TranscriptTab extends ConsumerWidget {
-  const TranscriptTab({super.key, required this.recordingId});
+  const TranscriptTab({
+    super.key,
+    required this.recordingId,
+    required this.player,
+  });
   final int recordingId;
+  final AudioPlayer player;
 
   static const _palette = [
     SpeakrColors.tagRoadmap,
@@ -82,6 +89,7 @@ class TranscriptTab extends ConsumerWidget {
               segment: s,
               isMe: isMe,
               speakerColor: colorFor(s.speaker),
+              player: player,
             );
           },
         );
@@ -95,10 +103,19 @@ class _Bubble extends StatelessWidget {
     required this.segment,
     required this.isMe,
     required this.speakerColor,
+    required this.player,
   });
   final TranscriptSegment segment;
   final bool isMe;
   final Color speakerColor;
+  final AudioPlayer player;
+
+  void _seekAndPlay() {
+    final start = segment.startTime;
+    if (start == null) return;
+    player.seek(Duration(milliseconds: (start * 1000).round()));
+    player.play();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -106,9 +123,17 @@ class _Bubble extends StatelessWidget {
     final timestamp =
         segment.startTime == null ? '' : formatDuration(segment.startTime!);
 
-    return Column(
-      crossAxisAlignment: align,
-      children: [
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: _seekAndPlay,
+      onLongPressStart: (details) => showTranscriptCopyMenu(
+        context,
+        details.globalPosition,
+        segment.sentence ?? '',
+      ),
+      child: Column(
+        crossAxisAlignment: align,
+        children: [
         if (segment.speaker != null) ...[
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 6),
@@ -167,7 +192,8 @@ class _Bubble extends StatelessWidget {
             ),
           ),
         ),
-      ],
+        ],
+      ),
     );
   }
 }

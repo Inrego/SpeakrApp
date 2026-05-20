@@ -174,7 +174,7 @@ class _DetailBody extends ConsumerWidget {
             index: tab,
             children: [
               SummaryTab(recordingId: recording.id),
-              TranscriptTab(recordingId: recording.id),
+              TranscriptTab(recordingId: recording.id, player: audioPlayer),
               ChatTab(recordingId: recording.id),
             ],
           ),
