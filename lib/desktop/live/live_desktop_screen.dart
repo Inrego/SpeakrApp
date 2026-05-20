@@ -13,6 +13,8 @@ import '../../features/library/library_controller.dart';
 import '../../features/live/live_controller.dart';
 import '../../features/live/recording_state.dart';
 import '../../features/live/widgets/discard_sheet.dart';
+import '../../features/live/widgets/recording_widgets.dart'
+    show PillSourceCard, PillSourceOption;
 import '../../theme/colors.dart';
 import '../../theme/typography.dart';
 import '../../widgets/speakr_icons.dart';
@@ -325,7 +327,8 @@ class _LeftPane extends StatelessWidget {
                 _StartedLine(
                   elapsedSeconds: state.elapsedSeconds,
                   mic: state.micEnabled,
-                  sys: state.systemEnabled,
+                  systemMode: state.systemMode,
+                  processSourceName: state.processSourceName,
                 ),
                 const SizedBox(height: 12),
                 _BreathingDot(
@@ -484,20 +487,31 @@ class _StartedLine extends StatelessWidget {
   const _StartedLine({
     required this.elapsedSeconds,
     required this.mic,
-    required this.sys,
+    required this.systemMode,
+    this.processSourceName,
   });
   final int elapsedSeconds;
   final bool mic;
-  final bool sys;
+  final SystemAudioMode systemMode;
+  final String? processSourceName;
 
   @override
   Widget build(BuildContext context) {
-    final src = mic && sys
-        ? 'Mic + system'
+    final String sysLabel;
+    switch (systemMode) {
+      case SystemAudioMode.off:
+        sysLabel = '';
+      case SystemAudioMode.allSystem:
+        sysLabel = 'system';
+      case SystemAudioMode.processOnly:
+        sysLabel = processSourceName ?? 'process';
+    }
+    final src = mic && sysLabel.isNotEmpty
+        ? 'Mic + $sysLabel'
         : mic
         ? 'Mic only'
-        : sys
-        ? 'System only'
+        : sysLabel.isNotEmpty
+        ? '$sysLabel only'
         : 'No source';
     final startedAt = DateTime.now().subtract(Duration(seconds: elapsedSeconds));
     final hour24 = startedAt.hour;
@@ -693,25 +707,57 @@ class _CapturePanelState extends ConsumerState<_CapturePanel> {
         children: [
           _SectionHeading('Capture'),
           const SizedBox(height: 14),
-          _SourceCard(
+          PillSourceCard<bool>(
             label: 'Microphone',
-            sub: 'Default device',
-            on: state.micEnabled,
-            onToggle: () => controller.setMicEnabled(!state.micEnabled),
-            disabled: state.micPending,
+            sub: state.micEnabled ? 'Default device' : 'Not capturing voice',
+            value: state.micEnabled,
+            pending: state.micPending,
+            onChanged: controller.setMicEnabled,
+            options: const [
+              PillSourceOption(id: false, label: 'Off'),
+              PillSourceOption(
+                id: true,
+                label: 'Mic',
+                icon: SpeakrIcon.mic,
+              ),
+            ],
           ),
           const SizedBox(height: 8),
-          _SourceCard(
-            label: 'System audio',
-            sub: state.systemAudioSupported
-                ? 'All apps'
-                : 'Not supported on this device',
-            on: state.systemEnabled,
-            onToggle: state.systemAudioSupported
-                ? () => controller.setSystemEnabled(!state.systemEnabled)
-                : null,
-            disabled: state.systemPending || !state.systemAudioSupported,
-          ),
+          if (state.systemAudioSupported)
+            PillSourceCard<SystemAudioMode>(
+              label: 'System audio',
+              sub: _desktopSystemSub(
+                state.systemMode,
+                state.processSourceName,
+              ),
+              value: state.systemMode,
+              pending: state.systemPending,
+              onChanged: controller.setSystemMode,
+              options: [
+                const PillSourceOption(
+                    id: SystemAudioMode.off, label: 'Off'),
+                const PillSourceOption(
+                  id: SystemAudioMode.allSystem,
+                  label: 'System',
+                  icon: SpeakrIcon.speaker,
+                ),
+                if (state.processSourceName != null &&
+                    state.processSourcePid != null &&
+                    state.processLoopbackSupported)
+                  PillSourceOption(
+                    id: SystemAudioMode.processOnly,
+                    label: state.processSourceName!,
+                  ),
+              ],
+            )
+          else
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Text(
+                'System audio not supported on this device.',
+                style: SpeakrText.sans(size: 11, color: SpeakrColors.muted),
+              ),
+            ),
           const SizedBox(height: 22),
           _SectionHeading('Speakers'),
           const SizedBox(height: 8),
@@ -791,117 +837,16 @@ class _SectionHeading extends StatelessWidget {
   }
 }
 
-class _SourceCard extends StatelessWidget {
-  const _SourceCard({
-    required this.label,
-    required this.sub,
-    required this.on,
-    required this.onToggle,
-    this.disabled = false,
-  });
-  final String label;
-  final String sub;
-  final bool on;
-  final VoidCallback? onToggle;
-  final bool disabled;
-
-  // Green status pip when on (matches Speakr Desktop design #3a8a5a),
-  // line colour when off.
-  static const _onPip = Color(0xFF3A8A5A);
-
-  @override
-  Widget build(BuildContext context) {
-    return Opacity(
-      opacity: disabled
-          ? 0.5
-          : on
-          ? 1.0
-          : 0.55,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(5),
-        onTap: disabled ? null : onToggle,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          decoration: BoxDecoration(
-            color: on ? Colors.white : Colors.transparent,
-            border: Border.all(
-              color: on ? SpeakrColors.line : Colors.transparent,
-            ),
-            borderRadius: BorderRadius.circular(5),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 8,
-                height: 8,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: on ? _onPip : SpeakrColors.line,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      label,
-                      style: SpeakrText.sans(
-                        size: 13,
-                        weight: FontWeight.w500,
-                        color: SpeakrColors.ink,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      sub,
-                      style: SpeakrText.sans(
-                        size: 11,
-                        color: SpeakrColors.muted,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              _MiniToggle(on: on),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _MiniToggle extends StatelessWidget {
-  const _MiniToggle({required this.on});
-  final bool on;
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 32,
-      height: 18,
-      decoration: BoxDecoration(
-        color: on ? SpeakrColors.ink : SpeakrColors.line,
-        borderRadius: BorderRadius.circular(100),
-      ),
-      child: AnimatedAlign(
-        duration: const Duration(milliseconds: 180),
-        alignment: on ? Alignment.centerRight : Alignment.centerLeft,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 2),
-          child: Container(
-            width: 14,
-            height: 14,
-            decoration: const BoxDecoration(
-              color: SpeakrColors.bg,
-              shape: BoxShape.circle,
-            ),
-          ),
-        ),
-      ),
-    );
+String _desktopSystemSub(SystemAudioMode mode, String? processSourceName) {
+  switch (mode) {
+    case SystemAudioMode.off:
+      return 'Not capturing app audio';
+    case SystemAudioMode.allSystem:
+      return 'All apps · system mix';
+    case SystemAudioMode.processOnly:
+      return processSourceName != null
+          ? '$processSourceName only'
+          : 'Process-only';
   }
 }
 

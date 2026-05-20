@@ -40,6 +40,7 @@ class AutoRecordCoordinator {
     required this.store,
     required this.onSettingsChanged,
     this.applyTriggerMetadata,
+    this.findProcessPids,
   });
 
   final MicMonitor micMonitor;
@@ -56,10 +57,28 @@ class AutoRecordCoordinator {
   ///
   /// [startRecording] accepts the pre-resolved source flags so the native
   /// recorder can pick them up at boot rather than reconfiguring mid-stream.
-  final Future<void> Function({bool? micEnabled, bool? systemEnabled})
-      startRecording;
+  /// [processSourceName] / [processSourcePid] identify the trigger app
+  /// so the live screen can render its name as the third pill segment
+  /// and the native recorder can target it with process-loopback capture.
+  final Future<void> Function({
+    bool? micEnabled,
+    SystemAudioMode? systemMode,
+    String? processSourceName,
+    int? processSourcePid,
+  }) startRecording;
   final Future<void> Function() stopAndUpload;
   final Future<void> Function() cancelRecording;
+
+  /// Resolve candidate PIDs for a watched process. Bootstrap injects a
+  /// closure backed by the recorder's `findProcessPids` method. Returns
+  /// an empty list (or `null` when omitted) on platforms / configurations
+  /// without process-loopback support, in which case the coordinator
+  /// falls back to all-system capture.
+  final Future<List<int>> Function({
+    String? exePath,
+    required String matchKey,
+    required AllowlistKind kind,
+  })? findProcessPids;
 
   final AutoRecordSettingsStore store;
 
@@ -355,12 +374,47 @@ class AutoRecordCoordinator {
     // the recorder, so they're applied after start succeeds.
     final preStartSettings = store.read();
     final micEnabled = entry.micEnabled ?? preStartSettings.defaultMicEnabled;
-    final systemEnabled =
+    final systemOn =
         entry.systemEnabled ?? preStartSettings.defaultSystemEnabled;
+    final scope = entry.systemScope ?? preStartSettings.defaultSystemScope;
+
+    SystemAudioMode systemMode;
+    int? processPid;
+    if (!systemOn) {
+      systemMode = SystemAudioMode.off;
+    } else {
+      // Always try to resolve the trigger process PID when system audio
+      // is on — even when the configured scope is allSystem. The PID
+      // doesn't affect the initial mode, but storing it in state lets
+      // the user promote to processOnly mid-session via the third pill.
+      // Without this, allSystem auto-records of a Teams call show the
+      // trigger name but no per-app option.
+      if (findProcessPids != null) {
+        final pids = await findProcessPids!(
+          exePath: user.exePath,
+          matchKey: user.key,
+          kind: user.kind,
+        );
+        if (pids.isNotEmpty) processPid = pids.first;
+      }
+      if (scope == SystemAudioScope.processOnly && processPid != null) {
+        systemMode = SystemAudioMode.processOnly;
+      } else {
+        systemMode = SystemAudioMode.allSystem;
+        if (scope == SystemAudioScope.processOnly) {
+          debugPrint(
+              '[auto-record] processOnly requested but no PIDs found for '
+              '${user.displayName} (matchKey=${user.key} '
+              'exe=${user.exePath ?? '<unset>'}) — falling back to allSystem');
+        }
+      }
+    }
 
     await startRecording(
       micEnabled: micEnabled,
-      systemEnabled: systemEnabled,
+      systemMode: systemMode,
+      processSourceName: entry.displayName,
+      processSourcePid: processPid,
     );
     if (!_recordingState.started) {
       // Permission denied or another error — bail.

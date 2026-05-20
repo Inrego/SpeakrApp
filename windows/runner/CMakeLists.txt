@@ -38,7 +38,8 @@ target_compile_definitions(${BINARY_NAME} PRIVATE "NOMINMAX")
 # dependencies here.
 target_link_libraries(${BINARY_NAME} PRIVATE flutter flutter_wrapper_app)
 target_link_libraries(${BINARY_NAME} PRIVATE "dwmapi.lib")
-# Audio recorder: WASAPI (Mmdevapi/AvRt) + Media Foundation Sink Writer.
+# Audio recorder: WASAPI (Mmdevapi/AvRt) + Media Foundation Sink Writer
+# + Psapi for process enumeration (per-process loopback target lookup).
 target_link_libraries(${BINARY_NAME} PRIVATE
   "Mmdevapi.lib"
   "Avrt.lib"
@@ -47,6 +48,8 @@ target_link_libraries(${BINARY_NAME} PRIVATE
   "Mfuuid.lib"
   "Mf.lib"
   "Ole32.lib"
+  "Psapi.lib"
+  "Kernel32.lib"
 )
 target_include_directories(${BINARY_NAME} PRIVATE "${CMAKE_SOURCE_DIR}")
 

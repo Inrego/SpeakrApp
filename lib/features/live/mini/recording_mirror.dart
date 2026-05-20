@@ -103,8 +103,19 @@ class RecordingMirror extends StateNotifier<RecordingState> {
       _send(MiniIpc.cmdSetFolder, {'id': id});
   Future<void> setMicEnabled(bool enabled) =>
       _send(MiniIpc.cmdSetMicEnabled, {'enabled': enabled});
-  Future<void> setSystemEnabled(bool enabled) =>
-      _send(MiniIpc.cmdSetSystemEnabled, {'enabled': enabled});
+  Future<void> setSystemMode(SystemAudioMode mode) =>
+      _send(MiniIpc.cmdSetSystemMode, {'mode': _modeToIpc(mode)});
+
+  static String _modeToIpc(SystemAudioMode mode) {
+    switch (mode) {
+      case SystemAudioMode.off:
+        return 'off';
+      case SystemAudioMode.allSystem:
+        return 'allSystem';
+      case SystemAudioMode.processOnly:
+        return 'processOnly';
+    }
+  }
   Future<void> beginDrag() => _send(MiniIpc.cmdBeginDrag);
   Future<void> showMain() => _send(MiniIpc.cmdShowMain);
 }

@@ -23,11 +23,17 @@ _RecordingState _$RecordingStateFromJson(Map<String, dynamic> json) =>
       miniOpen: json['miniOpen'] as bool? ?? false,
       miniWindowId: (json['miniWindowId'] as num?)?.toInt(),
       micEnabled: json['micEnabled'] as bool? ?? true,
-      systemEnabled: json['systemEnabled'] as bool? ?? false,
+      systemMode:
+          $enumDecodeNullable(_$SystemAudioModeEnumMap, json['systemMode']) ??
+          SystemAudioMode.off,
       systemAudioSupported: json['systemAudioSupported'] as bool? ?? false,
+      processLoopbackSupported:
+          json['processLoopbackSupported'] as bool? ?? false,
       micPending: json['micPending'] as bool? ?? false,
       systemPending: json['systemPending'] as bool? ?? false,
       audioLevel: (json['audioLevel'] as num?)?.toDouble() ?? 0.0,
+      processSourceName: json['processSourceName'] as String?,
+      processSourcePid: (json['processSourcePid'] as num?)?.toInt(),
     );
 
 Map<String, dynamic> _$RecordingStateToJson(_RecordingState instance) =>
@@ -43,9 +49,18 @@ Map<String, dynamic> _$RecordingStateToJson(_RecordingState instance) =>
       'miniOpen': instance.miniOpen,
       'miniWindowId': instance.miniWindowId,
       'micEnabled': instance.micEnabled,
-      'systemEnabled': instance.systemEnabled,
+      'systemMode': _$SystemAudioModeEnumMap[instance.systemMode]!,
       'systemAudioSupported': instance.systemAudioSupported,
+      'processLoopbackSupported': instance.processLoopbackSupported,
       'micPending': instance.micPending,
       'systemPending': instance.systemPending,
       'audioLevel': instance.audioLevel,
+      'processSourceName': instance.processSourceName,
+      'processSourcePid': instance.processSourcePid,
     };
+
+const _$SystemAudioModeEnumMap = {
+  SystemAudioMode.off: 'off',
+  SystemAudioMode.allSystem: 'allSystem',
+  SystemAudioMode.processOnly: 'processOnly',
+};

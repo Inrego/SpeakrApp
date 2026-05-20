@@ -669,6 +669,7 @@ class _PerAppConfigSheet extends ConsumerWidget {
             defaultFolderId: s.defaultFolderId,
             defaultMicEnabled: s.defaultMicEnabled,
             defaultSystemEnabled: s.defaultSystemEnabled,
+            defaultSystemScope: s.defaultSystemScope,
             controller: controller,
           );
         },
@@ -694,6 +695,7 @@ class _PerAppConfigSheetBody extends ConsumerWidget {
     required this.defaultFolderId,
     required this.defaultMicEnabled,
     required this.defaultSystemEnabled,
+    required this.defaultSystemScope,
     required this.controller,
   });
   final AllowlistEntry entry;
@@ -702,6 +704,7 @@ class _PerAppConfigSheetBody extends ConsumerWidget {
   final int? defaultFolderId;
   final bool defaultMicEnabled;
   final bool defaultSystemEnabled;
+  final SystemAudioScope defaultSystemScope;
   final AutoRecordSettingsController controller;
 
   @override
@@ -899,26 +902,111 @@ class _PerAppConfigSheetBody extends ConsumerWidget {
             padding: const EdgeInsets.fromLTRB(24, 0, 24, 6),
             child: MonoEyebrow('System audio', size: 9),
           ),
-          _SheetRow(
-            label: 'Use default (${defaultSystemEnabled ? 'on' : 'off'})',
-            selected: entry.systemEnabled == null,
-            onTap: () =>
-                controller.setEntryOverrides(entry, clearSystem: true),
-          ),
-          _SheetRow(
-            label: 'Always on',
-            selected: entry.systemEnabled == true,
-            onTap: () =>
-                controller.setEntryOverrides(entry, systemEnabled: true),
-          ),
-          _SheetRow(
-            label: 'Always off',
-            selected: entry.systemEnabled == false,
-            onTap: () =>
-                controller.setEntryOverrides(entry, systemEnabled: false),
+          _SystemAudioSection(
+            entry: entry,
+            defaultSystemEnabled: defaultSystemEnabled,
+            defaultSystemScope: defaultSystemScope,
+            controller: controller,
           ),
         ],
       ),
+    );
+  }
+}
+
+/// 4-option System-audio chooser for the per-app config sheet. The
+/// "Only this app's audio" row is hidden when the host Windows build
+/// doesn't support `ActivateAudioInterfaceAsync` process-loopback
+/// (anything earlier than build 20348 / Win 11). Gating happens in the
+/// Widget rather than the model so the JSON shape stays stable across
+/// machines — a setting authored on a Win 11 box still round-trips
+/// through a Win 10 22H2 install (it just can't be edited there).
+class _SystemAudioSection extends ConsumerWidget {
+  const _SystemAudioSection({
+    required this.entry,
+    required this.defaultSystemEnabled,
+    required this.defaultSystemScope,
+    required this.controller,
+  });
+  final AllowlistEntry entry;
+  final bool defaultSystemEnabled;
+  final SystemAudioScope defaultSystemScope;
+  final AutoRecordSettingsController controller;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final processSupported =
+        ref.watch(processLoopbackSupportedProvider).value ?? false;
+
+    final defaultLabel = defaultSystemEnabled
+        ? defaultSystemScope == SystemAudioScope.processOnly
+            ? 'on, this app only'
+            : 'on, all system audio'
+        : 'off';
+
+    final isDefault = entry.systemEnabled == null && entry.systemScope == null;
+    final isOff = entry.systemEnabled == false;
+    final scope = entry.systemScope ?? defaultSystemScope;
+    final isAlwaysOnAll = entry.systemEnabled == true &&
+        scope == SystemAudioScope.allSystem;
+    final isAlwaysOnProcess = entry.systemEnabled == true &&
+        scope == SystemAudioScope.processOnly;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _SheetRow(
+          label: 'Use default ($defaultLabel)',
+          selected: isDefault,
+          onTap: () => controller.setEntryOverrides(
+            entry,
+            clearSystem: true,
+            clearSystemScope: true,
+          ),
+        ),
+        _SheetRow(
+          label: 'Always off',
+          selected: isOff,
+          onTap: () => controller.setEntryOverrides(
+            entry,
+            systemEnabled: false,
+            clearSystemScope: true,
+          ),
+        ),
+        _SheetRow(
+          label: 'Always on — all system audio',
+          selected: isAlwaysOnAll,
+          onTap: () => controller.setEntryOverrides(
+            entry,
+            systemEnabled: true,
+            systemScope: SystemAudioScope.allSystem,
+          ),
+        ),
+        if (processSupported)
+          _SheetRow(
+            label: "Always on — only this app's audio",
+            selected: isAlwaysOnProcess,
+            onTap: () => controller.setEntryOverrides(
+              entry,
+              systemEnabled: true,
+              systemScope: SystemAudioScope.processOnly,
+            ),
+          ),
+        if (processSupported)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
+            child: Text(
+              "Only this app's audio uses Windows process-loopback — "
+              "child processes (e.g. Teams' WebView helpers) are included "
+              'automatically.',
+              style: SpeakrText.sans(
+                size: 11.5,
+                color: SpeakrColors.muted,
+                height: 1.4,
+              ).copyWith(fontStyle: FontStyle.italic),
+            ),
+          ),
+      ],
     );
   }
 }

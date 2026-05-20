@@ -11,11 +11,50 @@
 #include <ks.h>
 #include <ksmedia.h>
 #include <objbase.h>
+#include <Psapi.h>
+#include <appmodel.h>
+#include <wrl/client.h>
+#include <wrl/implements.h>
 
 #include <algorithm>
 #include <cmath>
+#include <cstdio>
 #include <cstring>
 #include <vector>
+
+// The process-loopback activation parameters were added in Windows SDK
+// 10.0.20348. To stay compatible with older SDKs the runner is built
+// against, declare the symbols inline rather than pulling in
+// `AudioClientActivationParams.h`. The structs are stable Windows ABI;
+// runtime support is gated by `SupportsProcessLoopback()` below.
+#ifndef VIRTUAL_AUDIO_DEVICE_PROCESS_LOOPBACK
+#define VIRTUAL_AUDIO_DEVICE_PROCESS_LOOPBACK \
+  L"VAD\\Process_Loopback"
+#endif
+
+#ifndef SPEAKR_HAS_PROCESS_LOOPBACK_PARAMS
+typedef enum SPEAKR_AUDIOCLIENT_ACTIVATION_TYPE {
+  SPEAKR_AUDIOCLIENT_ACTIVATION_TYPE_DEFAULT = 0,
+  SPEAKR_AUDIOCLIENT_ACTIVATION_TYPE_PROCESS_LOOPBACK = 1,
+} SPEAKR_AUDIOCLIENT_ACTIVATION_TYPE;
+
+typedef enum SPEAKR_PROCESS_LOOPBACK_MODE {
+  SPEAKR_PROCESS_LOOPBACK_MODE_INCLUDE_TARGET_PROCESS_TREE = 0,
+  SPEAKR_PROCESS_LOOPBACK_MODE_EXCLUDE_TARGET_PROCESS_TREE = 1,
+} SPEAKR_PROCESS_LOOPBACK_MODE;
+
+typedef struct SPEAKR_AUDIOCLIENT_PROCESS_LOOPBACK_PARAMS {
+  DWORD TargetProcessId;
+  SPEAKR_PROCESS_LOOPBACK_MODE ProcessLoopbackMode;
+} SPEAKR_AUDIOCLIENT_PROCESS_LOOPBACK_PARAMS;
+
+typedef struct SPEAKR_AUDIOCLIENT_ACTIVATION_PARAMS {
+  SPEAKR_AUDIOCLIENT_ACTIVATION_TYPE ActivationType;
+  union {
+    SPEAKR_AUDIOCLIENT_PROCESS_LOOPBACK_PARAMS ProcessLoopbackParams;
+  };
+} SPEAKR_AUDIOCLIENT_ACTIVATION_PARAMS;
+#endif
 
 using flutter::EncodableMap;
 using flutter::EncodableValue;
@@ -148,6 +187,36 @@ struct StereoResampler {
   }
 };
 
+// Synchronous completion handler for `ActivateAudioInterfaceAsync`.
+// The Windows API is fire-and-forget; we wait on a manual-reset event
+// so the worker can use it like a synchronous call.
+struct ActivateCompletionHandler
+    : public Microsoft::WRL::RuntimeClass<
+          Microsoft::WRL::RuntimeClassFlags<Microsoft::WRL::ClassicCom>,
+          IActivateAudioInterfaceCompletionHandler> {
+  HANDLE done = INVALID_HANDLE_VALUE;
+  HRESULT activate_hr = E_PENDING;
+  IUnknown* activated = nullptr;
+
+  ActivateCompletionHandler() {
+    done = CreateEventW(nullptr, TRUE, FALSE, nullptr);
+  }
+
+  ~ActivateCompletionHandler() {
+    if (done && done != INVALID_HANDLE_VALUE) CloseHandle(done);
+    SafeRelease(&activated);
+  }
+
+  STDMETHOD(ActivateCompleted)(
+      IActivateAudioInterfaceAsyncOperation* op) override {
+    HRESULT activate_status = E_FAIL;
+    HRESULT op_hr = op->GetActivateResult(&activate_status, &activated);
+    activate_hr = SUCCEEDED(op_hr) ? activate_status : op_hr;
+    SetEvent(done);
+    return S_OK;
+  }
+};
+
 // One WASAPI capture source — wraps device + audio client + capture
 // client + the resampler that brings it to the common mix rate.
 struct CaptureSource {
@@ -161,6 +230,8 @@ struct CaptureSource {
   std::vector<float> pcm;
   bool loopback = false;
   bool started = false;
+  // 0 = all-system loopback; non-zero = root PID for process loopback.
+  DWORD process_pid = 0;
 
   ~CaptureSource() {
     if (audio_client && started) audio_client->Stop();
@@ -171,8 +242,11 @@ struct CaptureSource {
     if (fmt) CoTaskMemFree(fmt);
   }
 
+  // Open the mic or default-loopback source via the standard
+  // `IMMDevice::Activate` path.
   HRESULT Open(IMMDeviceEnumerator* enumer, EDataFlow flow, bool is_loopback) {
     loopback = is_loopback;
+    process_pid = 0;
     HRESULT hr = enumer->GetDefaultAudioEndpoint(flow, eMultimedia, &device);
     if (FAILED(hr)) return hr;
     hr = device->Activate(__uuidof(IAudioClient), CLSCTX_ALL, nullptr,
@@ -197,6 +271,87 @@ struct CaptureSource {
       hr = audio_client->SetEventHandle(event);
       if (FAILED(hr)) return hr;
     }
+    hr = audio_client->GetService(__uuidof(IAudioCaptureClient),
+                                  reinterpret_cast<void**>(&capture_client));
+    if (FAILED(hr)) return hr;
+    resampler.src_rate = fmt->nSamplesPerSec;
+    return S_OK;
+  }
+
+  // Open a process-loopback source via `ActivateAudioInterfaceAsync`
+  // against `VIRTUAL_AUDIO_DEVICE_PROCESS_LOOPBACK`, scoped to the
+  // process tree rooted at `pid`. The format is fixed by the API
+  // (48 kHz 16-bit stereo PCM); we still run the resampler to keep
+  // a single code path with the mic source.
+  HRESULT OpenProcessLoopback(DWORD pid) {
+    loopback = true;
+    process_pid = pid;
+
+    SPEAKR_AUDIOCLIENT_ACTIVATION_PARAMS params = {};
+    params.ActivationType =
+        SPEAKR_AUDIOCLIENT_ACTIVATION_TYPE_PROCESS_LOOPBACK;
+    params.ProcessLoopbackParams.TargetProcessId = pid;
+    params.ProcessLoopbackParams.ProcessLoopbackMode =
+        SPEAKR_PROCESS_LOOPBACK_MODE_INCLUDE_TARGET_PROCESS_TREE;
+
+    PROPVARIANT prop;
+    PropVariantInit(&prop);
+    prop.vt = VT_BLOB;
+    prop.blob.cbSize = sizeof(params);
+    prop.blob.pBlobData = reinterpret_cast<BYTE*>(&params);
+
+    Microsoft::WRL::ComPtr<ActivateCompletionHandler> handler =
+        Microsoft::WRL::Make<ActivateCompletionHandler>();
+    if (!handler || handler->done == INVALID_HANDLE_VALUE) {
+      return E_OUTOFMEMORY;
+    }
+
+    IActivateAudioInterfaceAsyncOperation* op = nullptr;
+    HRESULT hr = ActivateAudioInterfaceAsync(
+        VIRTUAL_AUDIO_DEVICE_PROCESS_LOOPBACK,
+        __uuidof(IAudioClient),
+        &prop,
+        handler.Get(),
+        &op);
+    if (FAILED(hr)) {
+      SafeRelease(&op);
+      return hr;
+    }
+    // Wait up to 2 s for activation. WASAPI usually completes in well
+    // under 100 ms; the timeout is just so we don't deadlock the
+    // worker if Windows misbehaves.
+    DWORD wait = WaitForSingleObject(handler->done, 2000);
+    SafeRelease(&op);
+    if (wait != WAIT_OBJECT_0) return HRESULT_FROM_WIN32(ERROR_TIMEOUT);
+    if (FAILED(handler->activate_hr)) return handler->activate_hr;
+    hr = handler->activated->QueryInterface(
+        __uuidof(IAudioClient),
+        reinterpret_cast<void**>(&audio_client));
+    if (FAILED(hr)) return hr;
+
+    // The process-loopback endpoint requires a fixed 48 kHz / stereo /
+    // 16-bit PCM format — `GetMixFormat` doesn't apply here.
+    fmt = static_cast<WAVEFORMATEX*>(CoTaskMemAlloc(sizeof(WAVEFORMATEX)));
+    if (!fmt) return E_OUTOFMEMORY;
+    fmt->wFormatTag = WAVE_FORMAT_PCM;
+    fmt->nChannels = 2;
+    fmt->nSamplesPerSec = 48000;
+    fmt->wBitsPerSample = 16;
+    fmt->nBlockAlign = static_cast<WORD>(fmt->nChannels *
+                                         fmt->wBitsPerSample / 8);
+    fmt->nAvgBytesPerSec = fmt->nSamplesPerSec * fmt->nBlockAlign;
+    fmt->cbSize = 0;
+
+    // EVENTCALLBACK | LOOPBACK as required by the process-loopback API.
+    DWORD flags = AUDCLNT_STREAMFLAGS_EVENTCALLBACK |
+                  AUDCLNT_STREAMFLAGS_LOOPBACK;
+    hr = audio_client->Initialize(AUDCLNT_SHAREMODE_SHARED, flags,
+                                  kBufferDuration, 0, fmt, nullptr);
+    if (FAILED(hr)) return hr;
+    event = CreateEventW(nullptr, FALSE, FALSE, nullptr);
+    if (!event) return HRESULT_FROM_WIN32(GetLastError());
+    hr = audio_client->SetEventHandle(event);
+    if (FAILED(hr)) return hr;
     hr = audio_client->GetService(__uuidof(IAudioCaptureClient),
                                   reinterpret_cast<void**>(&capture_client));
     if (FAILED(hr)) return hr;
@@ -286,6 +441,117 @@ SpeakrAudioRecorder::~SpeakrAudioRecorder() {
   DisposeRecorder();
 }
 
+bool SpeakrAudioRecorder::SupportsProcessLoopback() {
+  int cached = process_loopback_supported_.load();
+  if (cached != 0) return cached == 2;
+  // Build-number probe via RtlGetVersion — the public Get*Version
+  // wrappers report 10.0 / 6.2 even on Windows 11, so we read the real
+  // build number from ntdll. PROCESS_LOOPBACK was added in build 20348
+  // (Server 2022 / Windows 11).
+  bool supported = false;
+  HMODULE ntdll = ::GetModuleHandleW(L"ntdll.dll");
+  if (ntdll) {
+    using RtlGetVersionFn = LONG(WINAPI*)(PRTL_OSVERSIONINFOW);
+    auto fn = reinterpret_cast<RtlGetVersionFn>(
+        ::GetProcAddress(ntdll, "RtlGetVersion"));
+    if (fn) {
+      RTL_OSVERSIONINFOW info = {};
+      info.dwOSVersionInfoSize = sizeof(info);
+      if (fn(&info) == 0 /* STATUS_SUCCESS */) {
+        supported = info.dwBuildNumber >= 20348;
+      }
+    }
+  }
+  process_loopback_supported_.store(supported ? 2 : 1);
+  return supported;
+}
+
+namespace {
+
+// Case-insensitive ASCII compare. Sufficient for exe basenames and
+// package-family prefixes (both restricted to ASCII in practice).
+bool IEqual(const std::wstring& a, const std::wstring& b) {
+  if (a.size() != b.size()) return false;
+  for (size_t i = 0; i < a.size(); ++i) {
+    wchar_t ca = a[i], cb = b[i];
+    if (ca >= L'A' && ca <= L'Z') ca = ca - L'A' + L'a';
+    if (cb >= L'A' && cb <= L'Z') cb = cb - L'A' + L'a';
+    if (ca != cb) return false;
+  }
+  return true;
+}
+
+bool IStartsWith(const std::wstring& a, const std::wstring& prefix) {
+  if (a.size() < prefix.size()) return false;
+  return IEqual(a.substr(0, prefix.size()), prefix);
+}
+
+std::wstring Utf8ToWide(const std::string& s) {
+  if (s.empty()) return L"";
+  int len = ::MultiByteToWideChar(CP_UTF8, 0, s.data(),
+                                  static_cast<int>(s.size()), nullptr, 0);
+  std::wstring w(len, L'\0');
+  ::MultiByteToWideChar(CP_UTF8, 0, s.data(), static_cast<int>(s.size()),
+                        w.data(), len);
+  return w;
+}
+
+}  // namespace
+
+std::vector<int> SpeakrAudioRecorder::FindProcessPids(
+    const std::string& kind, const std::string& matchKey,
+    const std::string& /*exePath*/) {
+  std::vector<int> result;
+  if (!SupportsProcessLoopback()) return result;
+  const std::wstring key = Utf8ToWide(matchKey);
+  const bool packaged = (kind == "packagedPrefix");
+
+  DWORD pids[2048];
+  DWORD bytes = 0;
+  if (!EnumProcesses(pids, sizeof(pids), &bytes)) return result;
+  const DWORD count = bytes / sizeof(DWORD);
+  for (DWORD i = 0; i < count; ++i) {
+    DWORD pid = pids[i];
+    if (pid == 0 || pid == ::GetCurrentProcessId()) continue;
+    HANDLE h = ::OpenProcess(
+        PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);
+    if (!h) continue;
+    if (packaged) {
+      // Compare package family prefix via the process AUMID, when set.
+      UINT32 len = 0;
+      LONG rc = ::GetApplicationUserModelId(h, &len, nullptr);
+      if (rc == ERROR_INSUFFICIENT_BUFFER && len > 0) {
+        std::wstring aumid(len, L'\0');
+        rc = ::GetApplicationUserModelId(h, &len, aumid.data());
+        if (rc == ERROR_SUCCESS) {
+          if (!aumid.empty() && aumid.back() == L'\0') aumid.pop_back();
+          // AUMID looks like "MSTeams_8wekyb3d8bbwe!Teams". The match key
+          // is the package family ("MSTeams_8wekyb3d8bbwe") or a prefix
+          // of it ("MSTeams").
+          if (IStartsWith(aumid, key)) {
+            result.push_back(static_cast<int>(pid));
+          }
+        }
+      }
+    } else {
+      // Match the exe basename, case-insensitively.
+      wchar_t path[MAX_PATH];
+      DWORD path_len = MAX_PATH;
+      if (::QueryFullProcessImageNameW(h, 0, path, &path_len)) {
+        std::wstring full(path, path_len);
+        size_t slash = full.find_last_of(L"\\/");
+        std::wstring base =
+            slash == std::wstring::npos ? full : full.substr(slash + 1);
+        if (IEqual(base, key)) {
+          result.push_back(static_cast<int>(pid));
+        }
+      }
+    }
+    ::CloseHandle(h);
+  }
+  return result;
+}
+
 void SpeakrAudioRecorder::DisposeRecorder() {
   if (running_.load()) {
     stop_requested_.store(true);
@@ -305,9 +571,38 @@ void SpeakrAudioRecorder::HandleMethodCall(
     result->Success(EncodableValue(true));
     return;
   }
+  if (name == "supportsProcessLoopback") {
+    result->Success(EncodableValue(SupportsProcessLoopback()));
+    return;
+  }
   if (name == "requestSystemPermission") {
     // Windows doesn't need a per-session consent for WASAPI loopback.
     result->Success(EncodableValue(true));
+    return;
+  }
+  if (name == "findProcessPids") {
+    const auto* args = std::get_if<EncodableMap>(call.arguments());
+    std::string kind, matchKey, exePath;
+    if (args) {
+      for (const auto& kv : *args) {
+        const auto* key = std::get_if<std::string>(&kv.first);
+        if (!key) continue;
+        if (*key == "kind") {
+          if (const auto* v = std::get_if<std::string>(&kv.second)) kind = *v;
+        } else if (*key == "matchKey") {
+          if (const auto* v = std::get_if<std::string>(&kv.second))
+            matchKey = *v;
+        } else if (*key == "exePath") {
+          if (const auto* v = std::get_if<std::string>(&kv.second))
+            exePath = *v;
+        }
+      }
+    }
+    auto pids = FindProcessPids(kind, matchKey, exePath);
+    flutter::EncodableList out;
+    out.reserve(pids.size());
+    for (int p : pids) out.push_back(EncodableValue(p));
+    result->Success(EncodableValue(out));
     return;
   }
   if (name == "isRecording") {
@@ -330,7 +625,8 @@ void SpeakrAudioRecorder::HandleMethodCall(
     }
     std::string path;
     bool mic = true;
-    bool sys = false;
+    SystemMode mode = SystemMode::kOff;
+    DWORD pid = 0;
     for (const auto& kv : *args) {
       const auto* key = std::get_if<std::string>(&kv.first);
       if (!key) continue;
@@ -338,12 +634,22 @@ void SpeakrAudioRecorder::HandleMethodCall(
         if (const auto* v = std::get_if<std::string>(&kv.second)) path = *v;
       } else if (*key == "micEnabled") {
         if (const auto* v = std::get_if<bool>(&kv.second)) mic = *v;
-      } else if (*key == "systemEnabled") {
-        if (const auto* v = std::get_if<bool>(&kv.second)) sys = *v;
+      } else if (*key == "systemMode") {
+        if (const auto* v = std::get_if<std::string>(&kv.second)) {
+          if (*v == "all") mode = SystemMode::kAllSystem;
+          else if (*v == "process") mode = SystemMode::kProcessOnly;
+          else mode = SystemMode::kOff;
+        }
+      } else if (*key == "processLoopbackPid") {
+        if (const auto* v = std::get_if<int32_t>(&kv.second)) {
+          pid = static_cast<DWORD>(*v);
+        } else if (const auto* v64 = std::get_if<int64_t>(&kv.second)) {
+          pid = static_cast<DWORD>(*v64);
+        }
       }
     }
     std::string err;
-    if (!Start(path, mic, sys, &err)) {
+    if (!Start(path, mic, mode, pid, &err)) {
       result->Error("start_failed", err);
       return;
     }
@@ -366,19 +672,32 @@ void SpeakrAudioRecorder::HandleMethodCall(
     result->Success();
     return;
   }
-  if (name == "setSystemEnabled") {
+  if (name == "setSystemMode") {
     const auto* args = std::get_if<EncodableMap>(call.arguments());
-    bool v = false;
+    SystemMode mode = SystemMode::kOff;
+    DWORD pid = 0;
     if (args) {
       for (const auto& kv : *args) {
-        if (const auto* key = std::get_if<std::string>(&kv.first)) {
-          if (*key == "enabled") {
-            if (const auto* b = std::get_if<bool>(&kv.second)) v = *b;
+        const auto* key = std::get_if<std::string>(&kv.first);
+        if (!key) continue;
+        if (*key == "mode") {
+          if (const auto* v = std::get_if<std::string>(&kv.second)) {
+            if (*v == "all") mode = SystemMode::kAllSystem;
+            else if (*v == "process") mode = SystemMode::kProcessOnly;
+            else mode = SystemMode::kOff;
+          }
+        } else if (*key == "processLoopbackPid") {
+          if (const auto* v = std::get_if<int32_t>(&kv.second)) {
+            pid = static_cast<DWORD>(*v);
+          } else if (const auto* v64 = std::get_if<int64_t>(&kv.second)) {
+            pid = static_cast<DWORD>(*v64);
           }
         }
       }
     }
-    system_enabled_.store(v);
+    sys_mode_target_.store(static_cast<int>(mode));
+    sys_pid_target_.store(pid);
+    sys_mode_dirty_.store(true);
     result->Success();
     return;
   }
@@ -413,7 +732,9 @@ void SpeakrAudioRecorder::HandleMethodCall(
 }
 
 bool SpeakrAudioRecorder::Start(const std::string& path, bool mic_enabled,
-                                bool system_enabled, std::string* out_error) {
+                                SystemMode system_mode,
+                                DWORD process_loopback_pid,
+                                std::string* out_error) {
   if (running_.load()) {
     if (out_error) *out_error = "Recorder is already running.";
     return false;
@@ -424,7 +745,9 @@ bool SpeakrAudioRecorder::Start(const std::string& path, bool mic_enabled,
   }
   output_path_ = path;
   mic_enabled_.store(mic_enabled);
-  system_enabled_.store(system_enabled);
+  sys_mode_target_.store(static_cast<int>(system_mode));
+  sys_pid_target_.store(process_loopback_pid);
+  sys_mode_dirty_.store(false);
   paused_.store(false);
   stop_requested_.store(false);
   setup_ok_.store(false);
@@ -511,7 +834,8 @@ void SpeakrAudioRecorder::RunWorker() {
     return;
   }
 
-  CaptureSource mic_src, sys_src;
+  CaptureSource mic_src;
+  std::unique_ptr<CaptureSource> sys_src;
   hr = mic_src.Open(enumer, eCapture, /*is_loopback=*/false);
   if (FAILED(hr)) {
     record_error("Could not open microphone (HRESULT 0x" +
@@ -523,9 +847,48 @@ void SpeakrAudioRecorder::RunWorker() {
     if (co_init) CoUninitialize();
     return;
   }
-  hr = sys_src.Open(enumer, eRender, /*is_loopback=*/true);
-  bool have_system = SUCCEEDED(hr);
-  SafeRelease(&enumer);
+
+  // Lambda to (re)build sys_src for the current target mode. Called
+  // both during initial setup and any time `sys_mode_dirty_` flips.
+  auto rebuild_sys_src = [&]() -> bool {
+    sys_src.reset();
+    SystemMode mode =
+        static_cast<SystemMode>(sys_mode_target_.load());
+    if (mode == SystemMode::kOff) {
+      return false;
+    }
+    auto next = std::make_unique<CaptureSource>();
+    HRESULT open_hr = E_FAIL;
+    if (mode == SystemMode::kAllSystem) {
+      open_hr = next->Open(enumer, eRender, /*is_loopback=*/true);
+    } else {
+      DWORD pid = sys_pid_target_.load();
+      if (pid != 0) {
+        open_hr = next->OpenProcessLoopback(pid);
+      }
+    }
+    if (FAILED(open_hr)) {
+#ifndef NDEBUG
+      char dbg[128];
+      snprintf(dbg, sizeof(dbg),
+               "[speakr] sys_src open mode=%d hr=0x%08X\n",
+               static_cast<int>(mode), static_cast<unsigned>(open_hr));
+      OutputDebugStringA(dbg);
+#endif
+      return false;
+    }
+    HRESULT start_hr = next->Start();
+    if (FAILED(start_hr)) {
+      return false;
+    }
+    sys_src = std::move(next);
+    return true;
+  };
+
+  bool have_system = rebuild_sys_src();
+  // Keep `enumer` alive for the worker's lifetime so the mid-session
+  // hot-swap path can reopen `sys_src` against `eRender` without a
+  // fresh CoCreateInstance round-trip.
 
   // Configure MF sink writer for AAC m4a.
   IMFSinkWriter* writer = nullptr;
@@ -588,18 +951,14 @@ void SpeakrAudioRecorder::RunWorker() {
   if (FAILED(hr)) {
     record_error("Mic IAudioClient::Start failed.");
     SafeRelease(&writer);
+    SafeRelease(&enumer);
     SetEvent(setup_done_event_);
     MFShutdown();
     if (task) AvRevertMmThreadCharacteristics(task);
     if (co_init) CoUninitialize();
     return;
   }
-  if (have_system) {
-    hr = sys_src.Start();
-    if (FAILED(hr)) {
-      have_system = false;  // Continue mic-only.
-    }
-  }
+  // `sys_src` (when active) was already Start()-ed by `rebuild_sys_src`.
 
   setup_ok_.store(true);
   SetEvent(setup_done_event_);
@@ -616,8 +975,22 @@ void SpeakrAudioRecorder::RunWorker() {
   LONGLONG pts_hns = 0;
   uint64_t chunks_written = 0;
 
+  // Sidecar buffer fed when `sys_src` is null (mic-only or between
+  // hot-swap rebuilds). Kept structurally identical to the active
+  // `sys_src` so the chunk-write loop below can read from a single
+  // source without branching.
+  std::vector<float> sys_silence_pcm;
+
   // Loop until stop_requested.
   while (!stop_requested_.load()) {
+    // Hot-swap the loopback source if the channel handler bumped
+    // sys_mode_dirty_. Runs on the worker thread (not the channel
+    // thread) so it doesn't race with `sys_src->Drain()` below.
+    if (sys_mode_dirty_.exchange(false)) {
+      have_system = rebuild_sys_src();
+      sys_silence_pcm.clear();
+    }
+
     // Wait for mic event; on timeout still poll loopback.
     if (mic_src.event) {
       WaitForSingleObject(mic_src.event, 20);
@@ -631,28 +1004,33 @@ void SpeakrAudioRecorder::RunWorker() {
       record_error("Mic drain failed.");
       break;
     }
-    if (have_system) {
-      const size_t sys_before = sys_src.pcm.size();
-      dh = sys_src.Drain(/*gate_to_silence=*/!system_enabled_.load());
+    if (have_system && sys_src) {
+      const size_t sys_before = sys_src->pcm.size();
+      dh = sys_src->Drain(/*gate_to_silence=*/false);
       if (FAILED(dh)) {
         // Loopback can transiently fail; treat as silence and keep going.
-        sys_src.AppendSilence(kChunkFrames);
-      } else if (sys_src.pcm.size() == sys_before) {
+        sys_src->AppendSilence(kChunkFrames);
+      } else if (sys_src->pcm.size() == sys_before) {
         // WASAPI loopback returns no packets while nothing is playing,
         // rather than zero-filled silence buffers. Pad with our own
         // silence so the chunk-write condition below (which AND-s mic
         // and system queue sizes) can still fire — otherwise a silent
         // system stalls the whole pipeline and the recording ends with
         // zero chunks written.
-        sys_src.AppendSilence(kChunkFrames);
+        sys_src->AppendSilence(kChunkFrames);
       }
     } else {
-      sys_src.AppendSilence(kChunkFrames);
+      sys_silence_pcm.insert(
+          sys_silence_pcm.end(),
+          static_cast<size_t>(kChunkFrames) * kTargetChannels,
+          0.0f);
     }
+
+    auto& sys_pcm = (have_system && sys_src) ? sys_src->pcm : sys_silence_pcm;
 
     // Mix as many full chunks as both queues have ready.
     while (mic_src.pcm.size() >= kChunkSamples &&
-           sys_src.pcm.size() >= kChunkSamples) {
+           sys_pcm.size() >= kChunkSamples) {
       // Track each source's sum-of-squares separately so the meter
       // reflects whichever source is louder. RMS over the mix (m+s) has
       // a subtle bias: a constant mic noise floor dominates the result
@@ -663,7 +1041,7 @@ void SpeakrAudioRecorder::RunWorker() {
       double sys_sum_sq = 0.0;
       for (size_t i = 0; i < kChunkSamples; ++i) {
         float m = mic_src.pcm[i];
-        float s = sys_src.pcm[i];
+        float s = sys_pcm[i];
         float sum = m + s;
         if (sum > 1.0f) sum = 1.0f;
         if (sum < -1.0f) sum = -1.0f;
@@ -673,8 +1051,7 @@ void SpeakrAudioRecorder::RunWorker() {
       }
       mic_src.pcm.erase(mic_src.pcm.begin(),
                         mic_src.pcm.begin() + kChunkSamples);
-      sys_src.pcm.erase(sys_src.pcm.begin(),
-                        sys_src.pcm.begin() + kChunkSamples);
+      sys_pcm.erase(sys_pcm.begin(), sys_pcm.begin() + kChunkSamples);
 
       // Buffer the latest meter sample in `last_level_bits_`; Dart polls
       // via `getLevel`. While paused, park the value at 0 so the
@@ -714,10 +1091,11 @@ void SpeakrAudioRecorder::RunWorker() {
         char dbg[160];
         snprintf(dbg, sizeof(dbg),
                  "[speakr] level mic=%.3f (rms=%.4f) sys=%.3f (rms=%.4f) "
-                 "have_system=%d sys_enabled=%d\n",
+                 "have_system=%d sys_mode=%d sys_pid=%lu\n",
                  mic_level, mic_rms, sys_level, sys_rms,
                  have_system ? 1 : 0,
-                 system_enabled_.load() ? 1 : 0);
+                 sys_mode_target_.load(),
+                 static_cast<unsigned long>(sys_pid_target_.load()));
         OutputDebugStringA(dbg);
       }
 #endif
@@ -785,6 +1163,9 @@ void SpeakrAudioRecorder::RunWorker() {
 
   // Worker exiting → meter should read silent on the next poll.
   last_level_bits_.store(DoubleToBits(0.0));
+
+  sys_src.reset();
+  SafeRelease(&enumer);
 
   MFShutdown();
   if (task) AvRevertMmThreadCharacteristics(task);

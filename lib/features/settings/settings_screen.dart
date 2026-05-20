@@ -9,6 +9,8 @@ import '../../api/models.dart';
 import '../../api/providers.dart';
 import '../../api/speakr_api.dart';
 import '../../services/auto_record/auto_record_providers.dart';
+import '../../services/auto_record/auto_record_settings.dart'
+    show SystemAudioScope;
 import '../../services/auto_start/auto_start_providers.dart';
 import '../../services/credentials_store.dart';
 import '../../services/preferences/time_format_preference.dart';
@@ -276,6 +278,37 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       onToggle: (supported && settings != null)
                           ? controller.setDefaultSystemEnabled
                           : null,
+                    );
+                  },
+                ),
+                Consumer(
+                  builder: (context, ref, _) {
+                    final s = ref.watch(autoRecordSettingsProvider);
+                    final settings = s.value;
+                    if (settings == null || !settings.defaultSystemEnabled) {
+                      return const SizedBox.shrink();
+                    }
+                    final processSupported =
+                        ref.watch(processLoopbackSupportedProvider).value ??
+                            false;
+                    if (!processSupported) return const SizedBox.shrink();
+                    final controller =
+                        ref.read(autoRecordSettingsControllerProvider);
+                    final isProcessOnly = settings.defaultSystemScope ==
+                        SystemAudioScope.processOnly;
+                    return SettingsRow(
+                      label: 'Default system-audio scope',
+                      subtitle:
+                          "All-system mixes every app. Trigger-only captures "
+                          'only the auto-record trigger app (Windows 11 / '
+                          'Server 2022). Used when an app has no per-app '
+                          'override.',
+                      value: isProcessOnly ? 'Trigger app only' : 'All system',
+                      onTap: () => controller.setDefaultSystemScope(
+                        isProcessOnly
+                            ? SystemAudioScope.allSystem
+                            : SystemAudioScope.processOnly,
+                      ),
                     );
                   },
                 ),

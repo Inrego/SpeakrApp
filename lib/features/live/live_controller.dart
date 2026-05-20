@@ -71,8 +71,12 @@ class RecordingController extends StateNotifier<RecordingState> {
       final old = _recorder;
       _recorder = r;
       _recorderProbed = true;
-      if (state.systemAudioSupported != r.supportsSystemAudio) {
-        state = state.copyWith(systemAudioSupported: r.supportsSystemAudio);
+      if (state.systemAudioSupported != r.supportsSystemAudio ||
+          state.processLoopbackSupported != r.supportsProcessLoopback) {
+        state = state.copyWith(
+          systemAudioSupported: r.supportsSystemAudio,
+          processLoopbackSupported: r.supportsProcessLoopback,
+        );
       }
       // The fallback recorder we constructed synchronously is no longer
       // needed once the native one is wired up.
@@ -129,9 +133,10 @@ class RecordingController extends StateNotifier<RecordingState> {
         final v = (call.arguments as Map?)?['enabled'];
         if (v is bool) await setMicEnabled(v);
         return null;
-      case MiniIpc.cmdSetSystemEnabled:
-        final v = (call.arguments as Map?)?['enabled'];
-        if (v is bool) await setSystemEnabled(v);
+      case MiniIpc.cmdSetSystemMode:
+        final raw = (call.arguments as Map?)?['mode'];
+        final mode = _systemModeFromIpc(raw);
+        if (mode != null) await setSystemMode(mode);
         return null;
       case MiniIpc.cmdBeginDrag:
         await MiniWindowNative.beginMiniDrag();
@@ -180,21 +185,34 @@ class RecordingController extends StateNotifier<RecordingState> {
 
   // ---------------- Public actions ----------------
 
-  /// Start a new recording. When [micEnabled] / [systemEnabled] are
+  /// Start a new recording. When [micEnabled] / [systemMode] are
   /// passed (auto-record coordinator path), those values win; otherwise
   /// the controller falls back to [AutoRecordSettings.defaultMicEnabled]
-  /// / [AutoRecordSettings.defaultSystemEnabled]. The system flag is
-  /// silently downgraded to false on platforms where the recorder can't
-  /// capture system audio.
-  Future<void> start({bool? micEnabled, bool? systemEnabled}) async {
+  /// / [AutoRecordSettings.defaultSystemEnabled] +
+  /// [AutoRecordSettings.defaultSystemScope]. The system mode is
+  /// silently downgraded to `off` on platforms where the recorder can't
+  /// capture system audio, and from [SystemAudioMode.processOnly] to
+  /// [SystemAudioMode.allSystem] on Windows builds without process
+  /// loopback support.
+  ///
+  /// [processSourceName] / [processSourcePid] identify the auto-record
+  /// trigger process when the coordinator is the caller — they enable
+  /// the 3-segment pill on the live screen and feed the native
+  /// process-loopback client. Both are `null` for manual recordings.
+  Future<void> start({
+    bool? micEnabled,
+    SystemAudioMode? systemMode,
+    String? processSourceName,
+    int? processSourcePid,
+  }) async {
     if (state.started) return;
     state = state.copyWith(error: null);
 
     bool mic;
-    bool sys;
-    if (micEnabled != null && systemEnabled != null) {
+    SystemAudioMode sysMode;
+    if (micEnabled != null && systemMode != null) {
       mic = micEnabled;
-      sys = systemEnabled;
+      sysMode = systemMode;
     } else {
       AutoRecordSettings settings;
       try {
@@ -203,18 +221,41 @@ class RecordingController extends StateNotifier<RecordingState> {
         settings = const AutoRecordSettings();
       }
       mic = micEnabled ?? settings.defaultMicEnabled;
-      sys = systemEnabled ?? settings.defaultSystemEnabled;
+      if (systemMode != null) {
+        sysMode = systemMode;
+      } else if (!settings.defaultSystemEnabled) {
+        sysMode = SystemAudioMode.off;
+      } else {
+        sysMode = settings.defaultSystemScope == SystemAudioScope.processOnly
+            ? SystemAudioMode.processOnly
+            : SystemAudioMode.allSystem;
+      }
     }
-    if (sys && !_recorder.supportsSystemAudio) sys = false;
+    // Downgrade chain: processOnly → allSystem → off when the host
+    // doesn't support the higher tier.
+    if (sysMode == SystemAudioMode.processOnly &&
+        !_recorder.supportsProcessLoopback) {
+      sysMode = SystemAudioMode.allSystem;
+    }
+    if (sysMode != SystemAudioMode.off && !_recorder.supportsSystemAudio) {
+      sysMode = SystemAudioMode.off;
+    }
+    // Manual sessions can't keep the process-only mode (no trigger PID).
+    if (sysMode == SystemAudioMode.processOnly && processSourcePid == null) {
+      sysMode = SystemAudioMode.allSystem;
+    }
     // At least one source must be on at session start, so the user
     // gets a meaningful recording. If both got resolved to off, fall
     // back to mic on — that matches the prior plugin behavior.
-    if (!mic && !sys) mic = true;
+    if (!mic && sysMode == SystemAudioMode.off) mic = true;
 
     state = state.copyWith(
       micEnabled: mic,
-      systemEnabled: sys,
+      systemMode: sysMode,
       systemAudioSupported: _recorder.supportsSystemAudio,
+      processLoopbackSupported: _recorder.supportsProcessLoopback,
+      processSourceName: processSourceName,
+      processSourcePid: processSourcePid,
     );
 
     if (mic) {
@@ -225,7 +266,7 @@ class RecordingController extends StateNotifier<RecordingState> {
         return;
       }
     }
-    if (sys) {
+    if (sysMode != SystemAudioMode.off) {
       final ok = await _recorder.requestSystemPermission();
       if (!ok) {
         if (!mic) {
@@ -233,9 +274,9 @@ class RecordingController extends StateNotifier<RecordingState> {
           return;
         }
         // Continue mic-only.
-        sys = false;
+        sysMode = SystemAudioMode.off;
         state = state.copyWith(
-          systemEnabled: false,
+          systemMode: SystemAudioMode.off,
           error: 'System-audio permission was denied — continuing with mic only.',
         );
       }
@@ -248,7 +289,10 @@ class RecordingController extends StateNotifier<RecordingState> {
       await _recorder.start(
         path: path,
         micEnabled: mic,
-        systemEnabled: sys,
+        systemMode: sysMode,
+        processLoopbackPid: sysMode == SystemAudioMode.processOnly
+            ? processSourcePid
+            : null,
       );
       _recordingStartedAt = DateTime.now();
       _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
@@ -266,6 +310,20 @@ class RecordingController extends StateNotifier<RecordingState> {
       await _cleanupAfterFailure();
     }
   }
+
+  /// Resolve candidate PIDs for a process the auto-record coordinator
+  /// is about to trigger on. Returns an empty list when process
+  /// loopback isn't supported or no matching process is alive.
+  Future<List<int>> findProcessPids({
+    String? exePath,
+    required String matchKey,
+    required AllowlistKind kind,
+  }) =>
+      _recorder.findProcessPids(
+        exePath: exePath,
+        matchKey: matchKey,
+        kind: kind,
+      );
 
   Future<void> togglePause() async {
     if (!state.started) return;
@@ -350,24 +408,40 @@ class RecordingController extends StateNotifier<RecordingState> {
     }
   }
 
-  /// Toggle the system-audio source. Effective immediately on platforms
-  /// with live source-mute support (Windows, Android); throws (via
-  /// surfaced error state) on platforms where it isn't supported.
-  Future<void> setSystemEnabled(bool v) async {
+  /// Change the system-audio source mode. Session-only — the new mode
+  /// is never written back to [AutoRecordSettings], so a mid-recording
+  /// switch from "Teams" → "System" won't change next session's default.
+  ///
+  /// Effective immediately on platforms with live source-mute support
+  /// (Windows, Android); surfaces an error state on platforms where
+  /// the requested mode isn't supported.
+  Future<void> setSystemMode(SystemAudioMode mode) async {
     if (state.systemPending) return;
-    if (v && !_recorder.supportsSystemAudio) {
+    if (mode != SystemAudioMode.off && !_recorder.supportsSystemAudio) {
       state = state.copyWith(
           error: 'System audio capture isn\'t supported on this device.');
       return;
     }
-    if (state.systemEnabled == v && state.started) return;
+    if (mode == SystemAudioMode.processOnly) {
+      if (!_recorder.supportsProcessLoopback) {
+        state = state.copyWith(
+            error: 'Per-process audio capture requires Windows 11 / Server 2022.');
+        return;
+      }
+      if (state.processSourcePid == null) {
+        state = state.copyWith(
+            error: 'No trigger process available — pick "System" instead.');
+        return;
+      }
+    }
+    if (state.systemMode == mode && state.started) return;
     if (!state.started) {
-      state = state.copyWith(systemEnabled: v);
+      state = state.copyWith(systemMode: mode);
       return;
     }
     state = state.copyWith(systemPending: true);
     try {
-      if (v) {
+      if (mode != SystemAudioMode.off) {
         final ok = await _recorder.requestSystemPermission();
         if (!ok) {
           state = state.copyWith(
@@ -377,12 +451,17 @@ class RecordingController extends StateNotifier<RecordingState> {
           return;
         }
       }
-      await _recorder.setSystemEnabled(v);
-      state = state.copyWith(systemEnabled: v, systemPending: false);
+      await _recorder.setSystemMode(
+        mode,
+        processLoopbackPid: mode == SystemAudioMode.processOnly
+            ? state.processSourcePid
+            : null,
+      );
+      state = state.copyWith(systemMode: mode, systemPending: false);
     } catch (e) {
       state = state.copyWith(
         systemPending: false,
-        error: 'Failed to toggle system audio: $e',
+        error: 'Failed to switch system audio mode: $e',
       );
     }
   }
@@ -573,10 +652,29 @@ class RecordingController extends StateNotifier<RecordingState> {
   void _resetSession() {
     _recordingStartedAt = null;
     state = RecordingState(
-      // Preserve capability flag across sessions — it doesn't change at
-      // runtime and re-probing would waste a round trip.
+      // Preserve capability flags across sessions — they don't change
+      // at runtime and re-probing would waste a round trip.
       systemAudioSupported: state.systemAudioSupported,
+      processLoopbackSupported: state.processLoopbackSupported,
     );
+  }
+
+  /// Decode the on-the-wire system mode string used by the mini IPC.
+  /// Returns null for unrecognized values so the caller can no-op safely.
+  static SystemAudioMode? _systemModeFromIpc(Object? raw) {
+    if (raw is! String) return null;
+    switch (raw) {
+      case 'off':
+        return SystemAudioMode.off;
+      case 'allSystem':
+      case 'all':
+        return SystemAudioMode.allSystem;
+      case 'processOnly':
+      case 'process':
+        return SystemAudioMode.processOnly;
+      default:
+        return null;
+    }
   }
 
   @override

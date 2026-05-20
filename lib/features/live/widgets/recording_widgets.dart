@@ -7,6 +7,7 @@ import '../../../widgets/folder_chip.dart';
 import '../../../widgets/mono_eyebrow.dart';
 import '../../../widgets/speakr_icons.dart';
 import '../../../widgets/tag_chip.dart';
+import '../recording_state.dart' show SystemAudioMode;
 
 class LiveIndicator extends StatefulWidget {
   const LiveIndicator({super.key, required this.paused});
@@ -202,12 +203,15 @@ class MetadataCard extends StatelessWidget {
     required this.onToggleTag,
     required this.onToggleEdit,
     required this.micEnabled,
-    required this.systemEnabled,
+    required this.systemMode,
     required this.systemAudioSupported,
+    required this.processLoopbackSupported,
     required this.micPending,
     required this.systemPending,
     required this.onMicChanged,
-    required this.onSystemChanged,
+    required this.onSystemModeChanged,
+    this.processSourceName,
+    this.processSourcePid,
     this.tags = const <Tag>[],
     this.folders = const <Folder>[],
     this.folderId,
@@ -223,12 +227,21 @@ class MetadataCard extends StatelessWidget {
   final ValueChanged<String> onToggleTag;
   final VoidCallback onToggleEdit;
   final bool micEnabled;
-  final bool systemEnabled;
+  final SystemAudioMode systemMode;
   final bool systemAudioSupported;
+  final bool processLoopbackSupported;
   final bool micPending;
   final bool systemPending;
   final ValueChanged<bool> onMicChanged;
-  final ValueChanged<bool> onSystemChanged;
+  final ValueChanged<SystemAudioMode> onSystemModeChanged;
+  /// When non-null, the System-audio pill *subtitle* mentions this name
+  /// (the trigger process). The third "this app" segment additionally
+  /// requires [processSourcePid] — without a captured PID the controller
+  /// can't honor a switch to processOnly mode, so the pill collapses to
+  /// two segments to keep the visible options and the action guard in
+  /// sync.
+  final String? processSourceName;
+  final int? processSourcePid;
   final List<Tag> tags;
   final List<Folder> folders;
   final int? folderId;
@@ -265,32 +278,54 @@ class MetadataCard extends StatelessWidget {
         children: [
           Padding(
             padding: EdgeInsets.fromLTRB(hPad, vPad, hPad, vPad),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const MonoEyebrow('Capture', size: 9),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _SourceChip(
-                      icon: SpeakrIcon.mic,
+                const SizedBox(height: 10),
+                PillSourceCard<bool>(
+                  label: 'Microphone',
+                  sub: micEnabled
+                      ? 'Capturing voice'
+                      : 'Not capturing voice',
+                  value: micEnabled,
+                  pending: micPending,
+                  onChanged: onMicChanged,
+                  options: const [
+                    PillSourceOption(id: false, label: 'Off'),
+                    PillSourceOption(
+                      id: true,
                       label: 'Mic',
-                      on: micEnabled,
-                      pending: micPending,
-                      onTap: () => onMicChanged(!micEnabled),
+                      icon: SpeakrIcon.mic,
                     ),
-                    if (systemAudioSupported) ...[
-                      const SizedBox(width: 6),
-                      _SourceChip(
-                        icon: SpeakrIcon.speaker,
-                        label: 'System',
-                        on: systemEnabled,
-                        pending: systemPending,
-                        onTap: () => onSystemChanged(!systemEnabled),
-                      ),
-                    ],
                   ],
                 ),
+                if (systemAudioSupported) ...[
+                  const SizedBox(height: 8),
+                  PillSourceCard<SystemAudioMode>(
+                    label: 'System audio',
+                    sub: _systemAudioSubtitle(systemMode, processSourceName),
+                    value: systemMode,
+                    pending: systemPending,
+                    onChanged: onSystemModeChanged,
+                    options: [
+                      const PillSourceOption(
+                          id: SystemAudioMode.off, label: 'Off'),
+                      const PillSourceOption(
+                        id: SystemAudioMode.allSystem,
+                        label: 'System',
+                        icon: SpeakrIcon.speaker,
+                      ),
+                      if (processSourceName != null &&
+                          processSourcePid != null &&
+                          processLoopbackSupported)
+                        PillSourceOption(
+                          id: SystemAudioMode.processOnly,
+                          label: processSourceName!,
+                        ),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),
@@ -548,64 +583,223 @@ class _StepperButton extends StatelessWidget {
   }
 }
 
-class _SourceChip extends StatelessWidget {
-  const _SourceChip({
-    required this.icon,
-    required this.label,
-    required this.on,
-    required this.pending,
-    required this.onTap,
-  });
-  final SpeakrIcon icon;
+/// One segment inside [PillSourceCard]'s segmented control.
+class PillSourceOption<T> {
+  const PillSourceOption({required this.id, required this.label, this.icon});
+  final T id;
   final String label;
-  final bool on;
+  final SpeakrIcon? icon;
+}
+
+/// Segmented capture-source toggle modeled after `desktop-more.jsx:407`
+/// ("Shared capture-source card"). Renders a header (status pip + label
+/// + subtext) above a 2- or 3-segment radio-style control. The card
+/// gains a white background and border whenever the active option is
+/// not the "off" option (i.e. [value] != [options.first.id]); the
+/// inactive state is flat and dimmed.
+class PillSourceCard<T> extends StatelessWidget {
+  const PillSourceCard({
+    super.key,
+    required this.label,
+    required this.sub,
+    required this.value,
+    required this.options,
+    required this.onChanged,
+    this.pending = false,
+  });
+
+  final String label;
+  final String sub;
+  final T value;
+  final List<PillSourceOption<T>> options;
+  final ValueChanged<T> onChanged;
   final bool pending;
-  final VoidCallback onTap;
+
+  static const _onPip = Color(0xFF3A8A5A);
+
+  bool get _on => options.isNotEmpty && value != options.first.id;
 
   @override
   Widget build(BuildContext context) {
-    final fg = on ? SpeakrColors.bg : SpeakrColors.muted;
-    return GestureDetector(
-      onTap: pending ? null : onTap,
-      behavior: HitTestBehavior.opaque,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.fromLTRB(8, 5, 10, 5),
+    final on = _on;
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 150),
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+      decoration: BoxDecoration(
+        color: on ? Colors.white : Colors.transparent,
+        border: Border.all(
+          color: on ? SpeakrColors.line : Colors.transparent,
+        ),
+        borderRadius: BorderRadius.circular(5),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Opacity(
+            opacity: on ? 1.0 : 0.55,
+            child: Row(
+              children: [
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: on ? _onPip : SpeakrColors.line,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        label,
+                        style: SpeakrText.sans(
+                          size: 13,
+                          weight: FontWeight.w500,
+                          color: SpeakrColors.ink,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        sub,
+                        style: SpeakrText.sans(
+                            size: 11, color: SpeakrColors.muted),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+                if (pending) ...[
+                  const SizedBox(width: 6),
+                  const SizedBox(
+                    width: 12,
+                    height: 12,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 1.4,
+                      color: SpeakrColors.muted,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+          _Segments<T>(
+            value: value,
+            options: options,
+            onChanged: pending ? null : onChanged,
+            label: label,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Segments<T> extends StatelessWidget {
+  const _Segments({
+    required this.value,
+    required this.options,
+    required this.onChanged,
+    required this.label,
+  });
+  final T value;
+  final List<PillSourceOption<T>> options;
+  final ValueChanged<T>? onChanged;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      label: label,
+      container: true,
+      child: Container(
+        height: 30,
+        padding: const EdgeInsets.all(2),
         decoration: BoxDecoration(
-          color: on ? SpeakrColors.ink : Colors.transparent,
+          color: SpeakrColors.bg,
+          border: Border.all(color: SpeakrColors.line),
           borderRadius: BorderRadius.circular(100),
-          border: Border.all(color: on ? SpeakrColors.ink : SpeakrColors.line),
         ),
         child: Row(
-          mainAxisSize: MainAxisSize.min,
           children: [
-            if (pending)
-              SizedBox(
-                width: 12,
-                height: 12,
-                child: CircularProgressIndicator(
-                  strokeWidth: 1.5,
-                  color: fg,
-                ),
-              )
-            else
-              Opacity(
-                opacity: on ? 1.0 : 0.7,
-                child: SpeakrIconView(icon, size: 16, color: fg),
-              ),
-            const SizedBox(width: 6),
-            Text(
-              label.toUpperCase(),
-              style: SpeakrText.mono(
-                size: 10,
-                color: fg,
-                letterSpacing: 1.2,
-              ),
-            ),
+            for (final opt in options)
+              Expanded(child: _Segment<T>(
+                option: opt,
+                active: opt.id == value,
+                onTap: onChanged == null ? null : () => onChanged!(opt.id),
+              )),
           ],
         ),
       ),
     );
+  }
+}
+
+class _Segment<T> extends StatelessWidget {
+  const _Segment({
+    required this.option,
+    required this.active,
+    required this.onTap,
+  });
+  final PillSourceOption<T> option;
+  final bool active;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final fg = active ? SpeakrColors.bg : SpeakrColors.ink2;
+    return Semantics(
+      selected: active,
+      button: true,
+      child: Material(
+        color: active ? SpeakrColors.ink : Colors.transparent,
+        borderRadius: BorderRadius.circular(100),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(100),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 6),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (option.icon != null) ...[
+                  SpeakrIconView(option.icon!, size: 12, color: fg),
+                  const SizedBox(width: 5),
+                ],
+                Flexible(
+                  child: Text(
+                    option.label.toUpperCase(),
+                    overflow: TextOverflow.ellipsis,
+                    style: SpeakrText.mono(
+                      size: 10,
+                      color: fg,
+                      letterSpacing: 1,
+                      weight: active ? FontWeight.w500 : FontWeight.w400,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+String _systemAudioSubtitle(SystemAudioMode mode, String? processSourceName) {
+  switch (mode) {
+    case SystemAudioMode.off:
+      return 'Not capturing app audio';
+    case SystemAudioMode.allSystem:
+      return 'All apps · system mix';
+    case SystemAudioMode.processOnly:
+      return processSourceName != null
+          ? '$processSourceName only'
+          : 'Process-only';
   }
 }
 

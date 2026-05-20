@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:record/record.dart';
 
+import '../auto_record/auto_record_settings.dart';
 import 'live_audio_recorder.dart';
 
 /// Mic-only fallback used on iOS and the web. Wraps the existing
@@ -16,6 +17,9 @@ class RecordPluginAudioRecorder implements LiveAudioRecorder {
 
   @override
   bool get supportsSystemAudio => false;
+
+  @override
+  bool get supportsProcessLoopback => false;
 
   @override
   bool get supportsLiveMicToggle => false;
@@ -54,12 +58,21 @@ class RecordPluginAudioRecorder implements LiveAudioRecorder {
   Future<bool> requestSystemPermission() async => false;
 
   @override
+  Future<List<int>> findProcessPids({
+    String? exePath,
+    required String matchKey,
+    required AllowlistKind kind,
+  }) async =>
+      const <int>[];
+
+  @override
   Future<void> start({
     required String path,
     required bool micEnabled,
-    required bool systemEnabled,
+    required SystemAudioMode systemMode,
+    int? processLoopbackPid,
   }) async {
-    if (systemEnabled) {
+    if (systemMode != SystemAudioMode.off) {
       throw UnsupportedError(
           'System audio capture is not supported on this platform.');
     }
@@ -95,8 +108,11 @@ class RecordPluginAudioRecorder implements LiveAudioRecorder {
   }
 
   @override
-  Future<void> setSystemEnabled(bool enabled) async {
-    if (enabled) {
+  Future<void> setSystemMode(
+    SystemAudioMode mode, {
+    int? processLoopbackPid,
+  }) async {
+    if (mode != SystemAudioMode.off) {
       throw UnsupportedError(
           'System audio capture is not supported on this platform.');
     }
