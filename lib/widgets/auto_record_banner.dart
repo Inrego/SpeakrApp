@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../routing/router.dart';
 import '../services/auto_record/auto_record_bootstrap.dart';
 import '../services/auto_record/auto_record_coordinator.dart';
 import '../theme/colors.dart';
@@ -31,12 +32,17 @@ class _AutoRecordPromptListenerState
 
   Future<void> _show(StopPromptRequest req) async {
     if (_open || !mounted) return;
+    // This widget is mounted in MaterialApp.builder — *above* the
+    // Navigator — so its own `context` has no Navigator ancestor.
+    // Route the dialog through the router's navigatorKey instead.
+    final navCtx = speakrNavigatorKey.currentContext;
+    if (navCtx == null) return;
     final coord = ref.read(autoRecordCoordinatorProvider);
     coord?.notePromptShown();
     _open = true;
     try {
       final keep = await showDialog<bool>(
-        context: context,
+        context: navCtx,
         barrierDismissible: false,
         builder: (_) => _StopPromptDialog(req: req),
       );
@@ -61,8 +67,8 @@ class _StopPromptDialog extends StatelessWidget {
       title: Text('Stop recording?', style: SpeakrText.serif(size: 20)),
       content: Text(
         'Speakr has been auto-recording ${req.triggerLabel} for '
-        '${_formatElapsed(req.elapsed)}. The mic was released and audio '
-        'has been quiet. Stop and upload now?',
+        '${_formatElapsed(req.elapsed)}. The mic and audio output have '
+        'been idle. Stop and upload now?',
         style: SpeakrText.sans(size: 14, color: SpeakrColors.ink2),
       ),
       actions: [

@@ -59,6 +59,12 @@ class FakeRecordingController extends StateNotifier<RecordingState> {
     startCallCount++;
     lastStartMicEnabled = micEnabled;
     lastStartSystemEnabled = systemEnabled;
+    // Mirror the real RecordingController: the first thing it does is
+    // `state = state.copyWith(error: null)` — an intermediate state change
+    // with started:false. The coordinator must NOT mistake this for
+    // "session ended" and wipe its auto-session state. Without this
+    // intermediate step the test wouldn't catch the bug.
+    state = state.copyWith(error: null);
     state = state.copyWith(
       started: true,
       micEnabled: micEnabled ?? state.micEnabled,
@@ -520,6 +526,181 @@ void main() {
     ]);
     await Future<void>.delayed(const Duration(milliseconds: 20));
     expect(appliedTagIds, [11, 22]);
+  });
+
+  group('stop-prompt', () {
+    Future<void> startAutoSession() async {
+      await store.write(const AutoRecordSettings(
+        enabled: true,
+        // 0 s window → the very first observation where both conditions
+        // are inactive fires the prompt, no real-time wait needed.
+        silenceSeconds: 0,
+        allowlist: [
+          AllowlistEntry(
+            key: 'Teams.exe',
+            displayName: 'Teams',
+            kind: AllowlistKind.exeBasename,
+          ),
+        ],
+      ));
+      mic.emit([
+        _u(key: 'Teams.exe', kind: AllowlistKind.exeBasename, inUse: true),
+      ]);
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      expect(coord.isAutoSession, isTrue,
+          reason: 'auto-record must be running for stop-prompt tests');
+    }
+
+    test('fires when both mic and audio go idle simultaneously', () async {
+      await startAutoSession();
+      final emitted = <StopPromptRequest>[];
+      final sub = coord.prompts.listen(emitted.add);
+
+      // Trigger releases mic.
+      mic.emit([
+        _u(key: 'Teams.exe', kind: AllowlistKind.exeBasename, inUse: false),
+      ]);
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      // Audio is silent.
+      meter.ctrl.add(0.0);
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+
+      expect(emitted, hasLength(1));
+      expect(emitted.single.triggerLabel, 'Teams');
+      await sub.cancel();
+    });
+
+    test('does not fire when only audio is silent (mic still in use)',
+        () async {
+      await startAutoSession();
+      final emitted = <StopPromptRequest>[];
+      final sub = coord.prompts.listen(emitted.add);
+
+      // Mic still active — no release event. Just emit silence.
+      meter.ctrl.add(0.0);
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+
+      expect(emitted, isEmpty);
+      await sub.cancel();
+    });
+
+    test('does not fire when only mic is released (audio still playing)',
+        () async {
+      await startAutoSession();
+      final emitted = <StopPromptRequest>[];
+      final sub = coord.prompts.listen(emitted.add);
+
+      mic.emit([
+        _u(key: 'Teams.exe', kind: AllowlistKind.exeBasename, inUse: false),
+      ]);
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      // Audio still loud.
+      meter.ctrl.add(0.5);
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+
+      expect(emitted, isEmpty);
+      await sub.cancel();
+    });
+
+    test(
+        'after "Keep recording", does not re-fire while inactivity continues',
+        () async {
+      await startAutoSession();
+      final emitted = <StopPromptRequest>[];
+      final sub = coord.prompts.listen(emitted.add);
+
+      // Fire first prompt.
+      mic.emit([
+        _u(key: 'Teams.exe', kind: AllowlistKind.exeBasename, inUse: false),
+      ]);
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      meter.ctrl.add(0.0);
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      expect(emitted, hasLength(1));
+
+      // User picks "Keep recording".
+      coord.notePromptDismissed(keepRecording: true);
+
+      // Continued silence + still-released mic should NOT re-prompt.
+      mic.emit([
+        _u(key: 'Teams.exe', kind: AllowlistKind.exeBasename, inUse: false),
+      ]);
+      meter.ctrl.add(0.0);
+      meter.ctrl.add(0.0);
+      meter.ctrl.add(0.0);
+      await Future<void>.delayed(const Duration(milliseconds: 30));
+
+      expect(emitted, hasLength(1),
+          reason: 'no re-prompt until activity resumes');
+      await sub.cancel();
+    });
+
+    test('re-arms after audio resumes and goes idle again', () async {
+      await startAutoSession();
+      final emitted = <StopPromptRequest>[];
+      final sub = coord.prompts.listen(emitted.add);
+
+      // First prompt.
+      mic.emit([
+        _u(key: 'Teams.exe', kind: AllowlistKind.exeBasename, inUse: false),
+      ]);
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      meter.ctrl.add(0.0);
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      expect(emitted, hasLength(1));
+
+      coord.notePromptDismissed(keepRecording: true);
+
+      // Audio resumes — clears wait-for-reactivation.
+      meter.ctrl.add(0.4);
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      // Mic must be released again (notePromptDismissed nulled it).
+      mic.emit([
+        _u(key: 'Teams.exe', kind: AllowlistKind.exeBasename, inUse: false),
+      ]);
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      // Audio goes silent again.
+      meter.ctrl.add(0.0);
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+
+      expect(emitted, hasLength(2),
+          reason: 'prompt re-fires after activity resumed then went idle');
+      await sub.cancel();
+    });
+
+    test('re-arms after trigger re-acquires mic and releases again',
+        () async {
+      await startAutoSession();
+      final emitted = <StopPromptRequest>[];
+      final sub = coord.prompts.listen(emitted.add);
+
+      // First prompt.
+      mic.emit([
+        _u(key: 'Teams.exe', kind: AllowlistKind.exeBasename, inUse: false),
+      ]);
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      meter.ctrl.add(0.0);
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      expect(emitted, hasLength(1));
+
+      coord.notePromptDismissed(keepRecording: true);
+
+      // Trigger re-acquires mic — clears wait-for-reactivation.
+      mic.emit([
+        _u(key: 'Teams.exe', kind: AllowlistKind.exeBasename, inUse: true),
+      ]);
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      // Releases again.
+      mic.emit([
+        _u(key: 'Teams.exe', kind: AllowlistKind.exeBasename, inUse: false),
+      ]);
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      meter.ctrl.add(0.0);
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+
+      expect(emitted, hasLength(2));
+      await sub.cancel();
+    });
   });
 
   test('does not apply metadata if startRecording fails to start', () async {
