@@ -18,7 +18,7 @@ class MiniIpc {
   static const cmdToggleTag = 'cmd.toggleTag';
   static const cmdSetFolder = 'cmd.setFolder';
   static const cmdSetMicEnabled = 'cmd.setMicEnabled';
-  static const cmdSetSystemEnabled = 'cmd.setSystemEnabled';
+  static const cmdSetSystemMode = 'cmd.setSystemMode';
   static const cmdBeginDrag = 'cmd.beginDrag';
   static const cmdShowMain = 'cmd.showMain';
 

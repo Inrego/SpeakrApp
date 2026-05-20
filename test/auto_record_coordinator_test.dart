@@ -52,13 +52,22 @@ class FakeRecordingController extends StateNotifier<RecordingState> {
   bool stoppedCalled = false;
   bool cancelCalled = false;
   bool? lastStartMicEnabled;
-  bool? lastStartSystemEnabled;
+  SystemAudioMode? lastStartSystemMode;
+  String? lastStartProcessSourceName;
+  int? lastStartProcessSourcePid;
 
-  Future<void> start({bool? micEnabled, bool? systemEnabled}) async {
+  Future<void> start({
+    bool? micEnabled,
+    SystemAudioMode? systemMode,
+    String? processSourceName,
+    int? processSourcePid,
+  }) async {
     startedCalled = true;
     startCallCount++;
     lastStartMicEnabled = micEnabled;
-    lastStartSystemEnabled = systemEnabled;
+    lastStartSystemMode = systemMode;
+    lastStartProcessSourceName = processSourceName;
+    lastStartProcessSourcePid = processSourcePid;
     // Mirror the real RecordingController: the first thing it does is
     // `state = state.copyWith(error: null)` — an intermediate state change
     // with started:false. The coordinator must NOT mistake this for
@@ -68,7 +77,9 @@ class FakeRecordingController extends StateNotifier<RecordingState> {
     state = state.copyWith(
       started: true,
       micEnabled: micEnabled ?? state.micEnabled,
-      systemEnabled: systemEnabled ?? state.systemEnabled,
+      systemMode: systemMode ?? state.systemMode,
+      processSourceName: processSourceName ?? state.processSourceName,
+      processSourcePid: processSourcePid ?? state.processSourcePid,
     );
   }
 
@@ -425,7 +436,9 @@ void main() {
     ]);
     await Future<void>.delayed(const Duration(milliseconds: 20));
     expect(rec.lastStartMicEnabled, isFalse);
-    expect(rec.lastStartSystemEnabled, isTrue);
+    expect(rec.lastStartSystemMode, SystemAudioMode.allSystem);
+    expect(rec.lastStartProcessSourceName, 'Teams');
+    expect(rec.lastStartProcessSourcePid, isNull);
   });
 
   test('falls back to source defaults when entry has no override', () async {
@@ -446,7 +459,87 @@ void main() {
     ]);
     await Future<void>.delayed(const Duration(milliseconds: 20));
     expect(rec.lastStartMicEnabled, isFalse);
-    expect(rec.lastStartSystemEnabled, isTrue);
+    expect(rec.lastStartSystemMode, SystemAudioMode.allSystem);
+  });
+
+  test('processOnly scope forwards resolved PID to startRecording', () async {
+    await store.write(const AutoRecordSettings(
+      enabled: true,
+      defaultMicEnabled: true,
+      defaultSystemEnabled: true,
+      defaultSystemScope: SystemAudioScope.processOnly,
+      allowlist: [
+        AllowlistEntry(
+          key: 'Teams.exe',
+          displayName: 'Microsoft Teams',
+          kind: AllowlistKind.exeBasename,
+        ),
+      ],
+    ));
+    // Replace the setUp coordinator with one that has a process-lookup
+    // stub returning a deterministic PID.
+    await coord.dispose();
+    coord = AutoRecordCoordinator(
+      micMonitor: mic,
+      outputMeter: meter,
+      recording: rec,
+      startRecording: rec.start,
+      stopAndUpload: rec.stopAndUpload,
+      cancelRecording: rec.cancel,
+      store: store,
+      onSettingsChanged: () {},
+      findProcessPids: ({exePath, required matchKey, required kind}) async =>
+          const [7777],
+      applyTriggerMetadata: (
+          {required speakers, required tagIds, required folderId}) {},
+    );
+    coord.start();
+    mic.emit([
+      _u(key: 'Teams.exe', kind: AllowlistKind.exeBasename, inUse: true),
+    ]);
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+    expect(rec.lastStartSystemMode, SystemAudioMode.processOnly);
+    expect(rec.lastStartProcessSourceName, 'Microsoft Teams');
+    expect(rec.lastStartProcessSourcePid, 7777);
+  });
+
+  test('processOnly scope downgrades to allSystem when no PID found',
+      () async {
+    await store.write(const AutoRecordSettings(
+      enabled: true,
+      defaultMicEnabled: true,
+      defaultSystemEnabled: true,
+      defaultSystemScope: SystemAudioScope.processOnly,
+      allowlist: [
+        AllowlistEntry(
+          key: 'Ghost.exe',
+          displayName: 'Ghost',
+          kind: AllowlistKind.exeBasename,
+        ),
+      ],
+    ));
+    await coord.dispose();
+    coord = AutoRecordCoordinator(
+      micMonitor: mic,
+      outputMeter: meter,
+      recording: rec,
+      startRecording: rec.start,
+      stopAndUpload: rec.stopAndUpload,
+      cancelRecording: rec.cancel,
+      store: store,
+      onSettingsChanged: () {},
+      findProcessPids: ({exePath, required matchKey, required kind}) async =>
+          const <int>[],
+      applyTriggerMetadata: (
+          {required speakers, required tagIds, required folderId}) {},
+    );
+    coord.start();
+    mic.emit([
+      _u(key: 'Ghost.exe', kind: AllowlistKind.exeBasename, inUse: true),
+    ]);
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+    expect(rec.lastStartSystemMode, SystemAudioMode.allSystem);
+    expect(rec.lastStartProcessSourcePid, isNull);
   });
 
   test('applies per-app speakers override when entry has one', () async {
@@ -757,7 +850,12 @@ void main() {
 class _FailingRecordingController extends StateNotifier<RecordingState> {
   _FailingRecordingController() : super(const RecordingState());
 
-  Future<void> start({bool? micEnabled, bool? systemEnabled}) async {
+  Future<void> start({
+    bool? micEnabled,
+    SystemAudioMode? systemMode,
+    String? processSourceName,
+    int? processSourcePid,
+  }) async {
     // Simulate failure: don't flip `started`.
   }
 

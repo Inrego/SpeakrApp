@@ -1,15 +1,28 @@
+import '../auto_record/auto_record_settings.dart';
+import '../../features/live/recording_state.dart' show SystemAudioMode;
+
+export '../../features/live/recording_state.dart' show SystemAudioMode;
+
 /// Abstraction over the per-platform recording pipeline used by the
 /// live-recording session.
 ///
 /// The Flutter `record` plugin only supports mic and can't change source
-/// mid-stream, which doesn't match Speakr's "mic / system / both, switchable
-/// during recording" UX. On Windows and Android we ship native pipelines
-/// (WASAPI loopback / MediaProjection AudioPlaybackCapture) behind this
-/// interface; iOS and web fall back to a mic-only wrapper over `record`.
+/// mid-stream, which doesn't match Speakr's "mic / system / process,
+/// switchable during recording" UX. On Windows and Android we ship native
+/// pipelines (WASAPI loopback / MediaProjection AudioPlaybackCapture)
+/// behind this interface; iOS and web fall back to a mic-only wrapper
+/// over `record`.
 abstract class LiveAudioRecorder {
   /// Whether the host platform can capture system (loopback) audio in
   /// addition to mic. UI must hide / disable the system toggle when false.
   bool get supportsSystemAudio;
+
+  /// Whether the host platform can capture audio from a specific
+  /// process tree (Windows ≥ build 20348 via
+  /// `ActivateAudioInterfaceAsync` + `PROCESS_LOOPBACK`). When false,
+  /// only [SystemAudioMode.off] / [SystemAudioMode.allSystem] are valid;
+  /// requests for [SystemAudioMode.processOnly] degrade to `allSystem`.
+  bool get supportsProcessLoopback;
 
   /// Linear audio level [0.0, 1.0] of the captured mix, emitted ~20 Hz
   /// while a recording is active. Implementations should clamp samples
@@ -39,13 +52,29 @@ abstract class LiveAudioRecorder {
   /// it's a no-op (returns true). On unsupported platforms returns false.
   Future<bool> requestSystemPermission();
 
-  /// Begin a new recording. Both source flags determine whether the
-  /// corresponding stream is initially mixed in; sources can later be
-  /// flipped via `setMicEnabled` / `setSystemEnabled` without stopping.
+  /// Resolve candidate PIDs for a watched process, sorted from most
+  /// specific to least specific. Used by the auto-record coordinator
+  /// when an [AllowlistEntry] with [SystemAudioScope.processOnly]
+  /// triggers a session — the native side tries each PID in order
+  /// when activating the process-loopback client.
+  ///
+  /// Always returns an empty list on platforms without process-loopback
+  /// support.
+  Future<List<int>> findProcessPids({
+    String? exePath,
+    required String matchKey,
+    required AllowlistKind kind,
+  });
+
+  /// Begin a new recording. [systemMode] decides whether the system
+  /// source is included and, if so, whether it's an all-system mix or
+  /// scoped to a process tree (in which case [processLoopbackPid] is
+  /// the target root PID). The mic flag controls the secondary source.
   Future<void> start({
     required String path,
     required bool micEnabled,
-    required bool systemEnabled,
+    required SystemAudioMode systemMode,
+    int? processLoopbackPid,
   });
 
   /// Pause/resume the encoder. While paused, no frames (silence or audio)
@@ -59,11 +88,17 @@ abstract class LiveAudioRecorder {
   /// the encoded file stays continuous.
   Future<void> setMicEnabled(bool enabled);
 
-  /// Toggle the system-audio source. Effective immediately; while
-  /// disabled, the mixer substitutes zero-filled PCM blocks for the
-  /// system stream. Throws `UnsupportedError` on platforms where
-  /// [supportsSystemAudio] is false.
-  Future<void> setSystemEnabled(bool enabled);
+  /// Change the system-audio source mode mid-recording. When [mode] is
+  /// [SystemAudioMode.processOnly], [processLoopbackPid] must be a valid
+  /// candidate root PID (resolve via [findProcessPids] first).
+  ///
+  /// Throws [UnsupportedError] when the recorder lacks the requested
+  /// capability ([SystemAudioMode.processOnly] without process-loopback
+  /// support, or any non-`off` mode on a recorder without system audio).
+  Future<void> setSystemMode(
+    SystemAudioMode mode, {
+    int? processLoopbackPid,
+  });
 
   /// Finalise the recording and return the file path, or `null` if the
   /// recording could not be saved (in which case any partial file has

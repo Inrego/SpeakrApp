@@ -10,6 +10,8 @@ import '../../api/models.dart';
 import '../../api/providers.dart';
 import '../../api/speakr_api.dart';
 import '../../services/auto_record/auto_record_providers.dart';
+import '../../services/auto_record/auto_record_settings.dart'
+    show SystemAudioScope;
 import '../../services/auto_start/auto_start_providers.dart';
 import '../../services/credentials_store.dart';
 import '../../services/preferences/time_format_preference.dart';
@@ -750,6 +752,55 @@ class _RecordingSection extends ConsumerWidget {
                   )
                 : null,
           ),
+        ),
+        Consumer(
+          builder: (context, ref, _) {
+            if (settings == null || !settings.defaultSystemEnabled) {
+              return const SizedBox.shrink();
+            }
+            final processSupported =
+                ref.watch(processLoopbackSupportedProvider).value ?? false;
+            if (!processSupported) return const SizedBox.shrink();
+            final isProcessOnly = settings.defaultSystemScope ==
+                SystemAudioScope.processOnly;
+            return _Field(
+              label: 'Default system-audio scope',
+              hint:
+                  "All-system mixes every app's output. Trigger-only captures "
+                  'only the auto-record trigger app and its children. Used '
+                  'when an app has no per-app override.',
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Material(
+                  color: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    side: const BorderSide(color: SpeakrColors.line),
+                    borderRadius: BorderRadius.circular(5),
+                  ),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(5),
+                    onTap: () => controller.setDefaultSystemScope(
+                      isProcessOnly
+                          ? SystemAudioScope.allSystem
+                          : SystemAudioScope.processOnly,
+                    ),
+                    child: Container(
+                      height: 34,
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        isProcessOnly ? 'Trigger app only' : 'All system',
+                        style: SpeakrText.sans(
+                          size: 12,
+                          color: SpeakrColors.ink,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
         ),
         _Field(
           label: 'Auto-summarize',

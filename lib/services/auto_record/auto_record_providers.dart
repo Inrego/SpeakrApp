@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../audio/live_audio_recorder_factory.dart';
 import 'auto_record_settings.dart';
 import 'auto_record_settings_store.dart';
 import 'mic_monitor.dart';
@@ -36,6 +37,19 @@ final outputMeterProvider = Provider<OutputMeter>((ref) {
   final meter = createOutputMeter();
   ref.onDispose(meter.dispose);
   return meter;
+});
+
+/// Whether the recorder on this device can capture audio from a
+/// specific process tree (Windows ≥ build 20348). Settings screens
+/// gate the "Only this app's audio" option on this — when false,
+/// per-app sheets show only the all-system choice.
+final processLoopbackSupportedProvider = FutureProvider<bool>((ref) async {
+  final recorder = await LiveAudioRecorderFactory.createAsync();
+  try {
+    return recorder.supportsProcessLoopback;
+  } finally {
+    await recorder.dispose();
+  }
 });
 
 /// Imperative writer used by the settings screen. Reads through
@@ -87,6 +101,8 @@ class AutoRecordSettingsController {
     bool clearMic = false,
     bool? systemEnabled,
     bool clearSystem = false,
+    SystemAudioScope? systemScope,
+    bool clearSystemScope = false,
   }) async {
     final s = await _read();
     final next = <AllowlistEntry>[
@@ -99,6 +115,9 @@ class AutoRecordSettingsController {
             micEnabled: clearMic ? null : (micEnabled ?? e.micEnabled),
             systemEnabled:
                 clearSystem ? null : (systemEnabled ?? e.systemEnabled),
+            systemScope: clearSystemScope
+                ? null
+                : (systemScope ?? e.systemScope),
           )
         else
           e,
@@ -139,6 +158,11 @@ class AutoRecordSettingsController {
   Future<void> setDefaultSystemEnabled(bool v) async {
     final s = await _read();
     await _write(s.copyWith(defaultSystemEnabled: v));
+  }
+
+  Future<void> setDefaultSystemScope(SystemAudioScope scope) async {
+    final s = await _read();
+    await _write(s.copyWith(defaultSystemScope: scope));
   }
 
   Future<void> clearRecentlySeen() async {

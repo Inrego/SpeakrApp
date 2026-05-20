@@ -6,8 +6,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../features/library/library_controller.dart';
 import '../../features/live/live_controller.dart';
+import '../../features/live/recording_state.dart' show SystemAudioMode;
 import 'auto_record_coordinator.dart';
 import 'auto_record_providers.dart';
+import 'auto_record_settings.dart' show AllowlistKind;
 
 /// Singleton entry point for the auto-record subsystem. Constructed
 /// once in [main] (Windows-only) and disposed when the process exits.
@@ -47,10 +49,27 @@ class AutoRecordBootstrap {
         micMonitor: monitor,
         outputMeter: meter,
         recording: recording,
-        startRecording: ({bool? micEnabled, bool? systemEnabled}) =>
+        startRecording: ({
+          bool? micEnabled,
+          SystemAudioMode? systemMode,
+          String? processSourceName,
+          int? processSourcePid,
+        }) =>
             recording.start(
           micEnabled: micEnabled,
-          systemEnabled: systemEnabled,
+          systemMode: systemMode,
+          processSourceName: processSourceName,
+          processSourcePid: processSourcePid,
+        ),
+        findProcessPids: ({
+          String? exePath,
+          required String matchKey,
+          required AllowlistKind kind,
+        }) =>
+            recording.findProcessPids(
+          exePath: exePath,
+          matchKey: matchKey,
+          kind: kind,
         ),
         stopAndUpload: recording.stopAndUpload,
         cancelRecording: recording.cancel,

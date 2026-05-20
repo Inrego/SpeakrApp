@@ -12,6 +12,31 @@ enum AllowlistKind {
   packagedPrefix,
 }
 
+/// Per-app and global scope for system-audio capture.
+///
+/// * [allSystem] — mix every app's audio (today's behavior; the recorder
+///   uses WASAPI loopback against the default render endpoint).
+/// * [processOnly] — only audio from the trigger process tree is mixed.
+///   Requires Windows build ≥ 20348 (Server 2022 / Windows 11);
+///   silently degrades to [allSystem] on older Windows when chosen as
+///   a per-app preference, with a one-time warning on the live screen.
+enum SystemAudioScope { allSystem, processOnly }
+
+SystemAudioScope? _scopeFromJson(Object? raw) {
+  if (raw is! String) return null;
+  switch (raw) {
+    case 'all':
+      return SystemAudioScope.allSystem;
+    case 'process':
+      return SystemAudioScope.processOnly;
+    default:
+      return null;
+  }
+}
+
+String _scopeToJson(SystemAudioScope scope) =>
+    scope == SystemAudioScope.processOnly ? 'process' : 'all';
+
 @immutable
 class AllowlistEntry {
   const AllowlistEntry({
@@ -23,6 +48,7 @@ class AllowlistEntry {
     this.folderId,
     this.micEnabled,
     this.systemEnabled,
+    this.systemScope,
   });
 
   /// The match value: an exe basename or an MSIX family prefix. Stored
@@ -54,6 +80,11 @@ class AllowlistEntry {
   /// `null` means use [AutoRecordSettings.defaultSystemEnabled].
   final bool? systemEnabled;
 
+  /// Per-app override for the system-audio scope (all vs. process-only).
+  /// `null` means use [AutoRecordSettings.defaultSystemScope]. Only
+  /// honored when [systemEnabled] resolves to true.
+  final SystemAudioScope? systemScope;
+
   AllowlistEntry copyWith({
     String? key,
     String? displayName,
@@ -63,6 +94,7 @@ class AllowlistEntry {
     Object? folderId = _sentinel,
     Object? micEnabled = _sentinel,
     Object? systemEnabled = _sentinel,
+    Object? systemScope = _sentinel,
   }) {
     return AllowlistEntry(
       key: key ?? this.key,
@@ -77,6 +109,9 @@ class AllowlistEntry {
       systemEnabled: identical(systemEnabled, _sentinel)
           ? this.systemEnabled
           : systemEnabled as bool?,
+      systemScope: identical(systemScope, _sentinel)
+          ? this.systemScope
+          : systemScope as SystemAudioScope?,
     );
   }
 
@@ -90,6 +125,7 @@ class AllowlistEntry {
         // Preserve explicit `false` overrides — drop only when `null`.
         if (micEnabled != null) 'micEnabled': micEnabled,
         if (systemEnabled != null) 'systemEnabled': systemEnabled,
+        if (systemScope != null) 'systemScope': _scopeToJson(systemScope!),
       };
 
   factory AllowlistEntry.fromJson(Map<String, dynamic> json) {
@@ -110,6 +146,7 @@ class AllowlistEntry {
       folderId: (json['folderId'] as num?)?.toInt(),
       micEnabled: json['micEnabled'] as bool?,
       systemEnabled: json['systemEnabled'] as bool?,
+      systemScope: _scopeFromJson(json['systemScope']),
     );
   }
 
@@ -180,6 +217,7 @@ class AutoRecordSettings {
     this.defaultFolderId,
     this.defaultMicEnabled = true,
     this.defaultSystemEnabled = false,
+    this.defaultSystemScope = SystemAudioScope.allSystem,
   });
 
   final bool enabled;
@@ -207,6 +245,10 @@ class AutoRecordSettings {
   /// is true (Windows, Android API 29+).
   final bool defaultSystemEnabled;
 
+  /// Default scope for system-audio capture when enabled. New entries
+  /// that don't override [AllowlistEntry.systemScope] fall back to this.
+  final SystemAudioScope defaultSystemScope;
+
   AutoRecordSettings copyWith({
     bool? enabled,
     List<AllowlistEntry>? allowlist,
@@ -218,6 +260,7 @@ class AutoRecordSettings {
     Object? defaultFolderId = _sentinel,
     bool? defaultMicEnabled,
     bool? defaultSystemEnabled,
+    SystemAudioScope? defaultSystemScope,
   }) {
     return AutoRecordSettings(
       enabled: enabled ?? this.enabled,
@@ -232,6 +275,7 @@ class AutoRecordSettings {
           : defaultFolderId as int?,
       defaultMicEnabled: defaultMicEnabled ?? this.defaultMicEnabled,
       defaultSystemEnabled: defaultSystemEnabled ?? this.defaultSystemEnabled,
+      defaultSystemScope: defaultSystemScope ?? this.defaultSystemScope,
     );
   }
 
@@ -248,6 +292,7 @@ class AutoRecordSettings {
         // defaults round-trip correctly.
         'defaultMicEnabled': defaultMicEnabled,
         'defaultSystemEnabled': defaultSystemEnabled,
+        'defaultSystemScope': _scopeToJson(defaultSystemScope),
       };
 
   factory AutoRecordSettings.fromJson(Map<String, dynamic> json) {
@@ -271,6 +316,8 @@ class AutoRecordSettings {
       defaultFolderId: (json['defaultFolderId'] as num?)?.toInt(),
       defaultMicEnabled: json['defaultMicEnabled'] as bool? ?? true,
       defaultSystemEnabled: json['defaultSystemEnabled'] as bool? ?? false,
+      defaultSystemScope: _scopeFromJson(json['defaultSystemScope']) ??
+          SystemAudioScope.allSystem,
     );
   }
 }
