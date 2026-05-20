@@ -67,9 +67,11 @@ void MiniWindowNative::HandleMethodCall(
     return;
   }
   if (method == "focusMain") {
-    // Restore if minimized, then bring the main HWND to the foreground.
-    // ShowWindow(SW_RESTORE) is a no-op when the window isn't minimized.
+    // Main window may be hidden (close-to-tray) or minimized. SW_SHOW
+    // brings a hidden window back; SW_RESTORE unminimizes. Mirrors
+    // BringWindowToForegroundImpl in flutter_window.cpp.
     if (main_hwnd_ != nullptr) {
+      ::ShowWindow(main_hwnd_, SW_SHOW);
       if (::IsIconic(main_hwnd_)) {
         ::ShowWindow(main_hwnd_, SW_RESTORE);
       }
