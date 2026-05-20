@@ -4,7 +4,8 @@ import 'package:go_router/go_router.dart';
 
 import '../features/live/live_controller.dart';
 import '../features/live/recording_state.dart';
-import '../routing/router.dart';
+import '../features/live/widgets/discard_sheet.dart';
+import '../routing/router.dart' show routerProvider;
 import '../services/auto_record/auto_record_bootstrap.dart';
 import '../theme/colors.dart';
 import '../theme/typography.dart';
@@ -12,10 +13,15 @@ import 'mono_eyebrow.dart';
 import 'speakr_icons.dart';
 
 /// Spotify-style mini-player pinned at the bottom of every screen while a
-/// recording is active. Tapping the bar re-opens `/live`. The bar is hidden
-/// when the user is already on `/live` (the full UI is already visible).
+/// recording is active. Tapping the timer/eyebrow region re-opens `/live`;
+/// the four trailing buttons (discard, pause, stop, expand) are siblings
+/// of the tap target and handle their own actions. Hidden on `/live`
+/// itself (the full UI is already visible there).
 ///
-/// Wraps [child] so it can be inserted once at the app root in `app.dart`.
+/// Visual language mirrors the Windows always-on-top mini pill:
+/// `SpeakrColors.ink` pill with rounded corners, 6 px pulsing dot, mono
+/// timer with tabular figures, hairline dividers, and stratified button
+/// fills (ghost 8 % white, 16 % white, orange stop).
 class RecordingMiniPlayer extends ConsumerWidget {
   const RecordingMiniPlayer({super.key, required this.child});
 
@@ -62,6 +68,8 @@ class RecordingMiniPlayer extends ConsumerWidget {
             );
           },
         ),
+        // Drawn last so the scrim + sheet sit above the bar.
+        const Positioned.fill(child: DiscardOverlay()),
       ],
     );
   }
@@ -84,76 +92,151 @@ class _Bar extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final controller = ref.read(recordingControllerProvider.notifier);
     final coord = ref.read(autoRecordCoordinatorProvider);
+    final paused = state.paused;
+    final uploading = state.uploading;
 
     final eyebrow = isAutoSession
         ? 'AUTO-RECORDING · ${triggerLabel ?? 'Recording'}'
-        : (state.paused ? 'PAUSED' : 'RECORDING');
+        : (paused ? 'PAUSED' : 'RECORDING');
 
-    return Material(
-      color: Colors.transparent,
-      child: Container(
-        margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        decoration: BoxDecoration(
-          color: SpeakrColors.ink,
-          borderRadius: BorderRadius.circular(8),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x40000000),
-              blurRadius: 18,
-              offset: Offset(0, 8),
-            ),
-          ],
-        ),
-        child: InkWell(
-          onTap: () => router.go('/live'),
-          borderRadius: BorderRadius.circular(8),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(14, 8, 6, 8),
-            child: Row(
-              children: [
-                _PulsingDot(paused: state.paused),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      MonoEyebrow(
-                        eyebrow,
-                        size: 9,
-                        color: SpeakrColors.recordingDot,
+    void handleDiscard() {
+      // Arm the global discard provider; the DiscardOverlay mounted in
+      // RecordingMiniPlayer renders the scrim + sheet above the bar.
+      ref.read(discardArmedProvider.notifier).state = true;
+    }
+
+    Future<void> handleStop() async {
+      if (uploading) return;
+      if (isAutoSession && coord != null) {
+        await coord.stopAutoSession();
+      } else {
+        await controller.stopAndUpload();
+      }
+    }
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+      decoration: BoxDecoration(
+        color: SpeakrColors.ink,
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x40000000),
+            blurRadius: 18,
+            offset: Offset(0, 8),
+          ),
+        ],
+      ),
+      child: SizedBox(
+        height: 56,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 14, 0),
+          child: Row(
+            children: [
+              Expanded(
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(20),
+                    onTap: () => router.go('/live'),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 6),
+                      child: Row(
+                        children: [
+                          _PulsingDot(paused: paused),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                MonoEyebrow(
+                                  eyebrow,
+                                  size: 9,
+                                  color: SpeakrColors.recordingDot,
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  state.formattedElapsed,
+                                  style: SpeakrText.mono(
+                                    size: 14,
+                                    color: paused
+                                        ? SpeakrColors.bg.withValues(alpha: 0.55)
+                                        : SpeakrColors.bg,
+                                    letterSpacing: 0.4,
+                                  ).copyWith(
+                                    fontFeatures: const [
+                                      FontFeature.tabularFigures(),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        state.formattedElapsed,
-                        style: SpeakrText.serif(
-                          size: 15,
-                          color: SpeakrColors.bg,
-                          height: 1,
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
-                _BarIconButton(
-                  icon: state.paused ? SpeakrIcon.play : SpeakrIcon.pause,
-                  onTap: state.uploading ? null : controller.togglePause,
+              ),
+              const SizedBox(width: 9),
+              const _Hairline(),
+              const SizedBox(width: 9),
+              _PillButton(
+                background: const Color(0x14FFFFFF), // ~8% white — ghost
+                onTap: uploading ? null : handleDiscard,
+                child: SpeakrIconView(
+                  SpeakrIcon.trash,
+                  size: 14,
+                  color: SpeakrColors.bg.withValues(alpha: 0.7),
                 ),
-                const SizedBox(width: 2),
-                _BarIconButton(
-                  icon: SpeakrIcon.stop,
-                  busy: state.uploading,
-                  onTap: state.uploading
-                      ? null
-                      : () async {
-                          if (isAutoSession && coord != null) {
-                            await coord.stopAutoSession();
-                          } else {
-                            await controller.stopAndUpload();
-                          }
-                        },
+              ),
+              const SizedBox(width: 9),
+              _PillButton(
+                background: const Color(0x29FFFFFF), // ~16% white — primary
+                onTap: uploading ? null : controller.togglePause,
+                child: SpeakrIconView(
+                  paused ? SpeakrIcon.play : SpeakrIcon.pause,
+                  size: 12,
+                  color: SpeakrColors.bg,
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(width: 9),
+              _PillButton(
+                background:
+                    SpeakrColors.recordingDot.withValues(alpha: 0.95),
+                onTap: uploading ? null : handleStop,
+                child: uploading
+                    ? const SizedBox(
+                        width: 12,
+                        height: 12,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 1.6,
+                          color: SpeakrColors.bg,
+                        ),
+                      )
+                    : Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: SpeakrColors.bg,
+                          borderRadius: BorderRadius.circular(1.5),
+                        ),
+                      ),
+              ),
+              const SizedBox(width: 9),
+              const _Hairline(),
+              const SizedBox(width: 9),
+              _PillButton(
+                background: const Color(0x14FFFFFF),
+                onTap: () => router.go('/live'),
+                child: SpeakrIconView(
+                  SpeakrIcon.expand,
+                  size: 13,
+                  color: SpeakrColors.bg.withValues(alpha: 0.85),
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -161,42 +244,61 @@ class _Bar extends ConsumerWidget {
   }
 }
 
-class _BarIconButton extends StatelessWidget {
-  const _BarIconButton({
-    required this.icon,
-    this.onTap,
-    this.busy = false,
+/// 26 px circular button used on the dark pill. [background] is the inner
+/// fill (e.g. 8 % white for ghost, orange for stop). [onTap] = null
+/// renders the button at half-opacity and disables interaction. Mirrors
+/// the mini window's `_PillButton`.
+class _PillButton extends StatelessWidget {
+  const _PillButton({
+    required this.background,
+    required this.onTap,
+    required this.child,
   });
 
-  final SpeakrIcon icon;
+  final Color background;
   final VoidCallback? onTap;
-  final bool busy;
+  final Widget child;
 
   @override
   Widget build(BuildContext context) {
-    return InkResponse(
-      onTap: onTap,
-      radius: 22,
-      child: SizedBox(
-        width: 36,
-        height: 36,
-        child: Center(
-          child: busy
-              ? const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: SpeakrColors.bg,
-                  ),
-                )
-              : SpeakrIconView(icon, size: 18, color: SpeakrColors.bg),
+    final enabled = onTap != null;
+    return Opacity(
+      opacity: enabled ? 1.0 : 0.4,
+      child: Material(
+        color: background,
+        shape: const CircleBorder(),
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: onTap,
+          child: SizedBox(
+            width: 26,
+            height: 26,
+            child: Center(child: child),
+          ),
         ),
       ),
     );
   }
 }
 
+/// 1 × 16 px white-at-24 % vertical hairline matching the mini pill's
+/// divider between the timer cluster and the control cluster.
+class _Hairline extends StatelessWidget {
+  const _Hairline();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 1,
+      height: 16,
+      color: const Color(0x3DFFFFFF),
+    );
+  }
+}
+
+/// Pulsing recording dot: 6 px circle, orange while recording (fades
+/// 1.0 ↔ 0.35 every 1.4 s), grey and static while paused. Matches the
+/// mini window dot exactly.
 class _PulsingDot extends StatefulWidget {
   const _PulsingDot({required this.paused});
 
@@ -210,8 +312,11 @@ class _PulsingDotState extends State<_PulsingDot>
     with SingleTickerProviderStateMixin {
   late final AnimationController _ctrl = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 1500),
+    duration: const Duration(milliseconds: 1400),
   )..repeat(reverse: true);
+
+  late final Animation<double> _opacity =
+      Tween(begin: 1.0, end: 0.35).animate(_ctrl);
 
   @override
   void dispose() {
@@ -221,18 +326,26 @@ class _PulsingDotState extends State<_PulsingDot>
 
   @override
   Widget build(BuildContext context) {
-    final dot = Container(
-      width: 8,
-      height: 8,
-      decoration: const BoxDecoration(
-        color: SpeakrColors.recordingDot,
-        shape: BoxShape.circle,
-      ),
-    );
-    if (widget.paused) return dot;
+    if (widget.paused) {
+      return Container(
+        width: 6,
+        height: 6,
+        decoration: const BoxDecoration(
+          color: SpeakrColors.muted,
+          shape: BoxShape.circle,
+        ),
+      );
+    }
     return FadeTransition(
-      opacity: Tween(begin: 1.0, end: 0.4).animate(_ctrl),
-      child: dot,
+      opacity: _opacity,
+      child: Container(
+        width: 6,
+        height: 6,
+        decoration: const BoxDecoration(
+          color: SpeakrColors.recordingDot,
+          shape: BoxShape.circle,
+        ),
+      ),
     );
   }
 }
