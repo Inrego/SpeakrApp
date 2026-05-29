@@ -1,8 +1,8 @@
-package dk.renescott.speakr_app
+package com.inrego.speakr_app
 
 import androidx.lifecycle.lifecycleScope
-import dk.renescott.speakr_app.audio.ProjectionConsentBridge
-import dk.renescott.speakr_app.audio.SpeakrAudioRecorder
+import com.inrego.speakr_app.audio.ProjectionConsentBridge
+import com.inrego.speakr_app.audio.SpeakrAudioRecorder
 import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel

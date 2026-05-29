@@ -89,11 +89,11 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "dk.renescott" "\0"
+            VALUE "CompanyName", "com.inrego" "\0"
             VALUE "FileDescription", "speakr_app" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
             VALUE "InternalName", "speakr_app" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2026 dk.renescott. All rights reserved." "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 com.inrego. All rights reserved." "\0"
             VALUE "OriginalFilename", "speakr_app.exe" "\0"
             VALUE "ProductName", "speakr_app" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"

@@ -1,4 +1,4 @@
-package dk.renescott.speakr_app
+package com.inrego.speakr_app
 
 import android.content.BroadcastReceiver
 import android.content.Context
