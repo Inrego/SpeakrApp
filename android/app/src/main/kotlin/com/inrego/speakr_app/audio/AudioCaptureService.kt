@@ -1,4 +1,4 @@
-package dk.renescott.speakr_app.audio
+package com.inrego.speakr_app.audio
 
 import android.app.Notification
 import android.app.NotificationChannel
