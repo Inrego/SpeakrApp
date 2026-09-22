@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../../theme/colors.dart';
 import '../../../theme/typography.dart';
@@ -69,8 +68,7 @@ class SummaryTab extends ConsumerWidget {
   MarkdownStyleSheet _markdownStyles(BuildContext context) {
     final base = MarkdownStyleSheet.fromTheme(Theme.of(context));
     return base.copyWith(
-      p: GoogleFonts.sourceSerif4(
-          fontSize: 15.5, height: 1.55, color: SpeakrColors.ink),
+      p: SpeakrText.serif(size: 15.5, height: 1.55, color: SpeakrColors.ink),
       h1: SpeakrText.serif(size: 26, height: 1.2, weight: FontWeight.w500),
       h2: SpeakrText.serif(size: 20, height: 1.3, weight: FontWeight.w500),
       h3: SpeakrText.serif(size: 17, height: 1.3, weight: FontWeight.w600),

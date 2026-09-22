@@ -5,7 +5,6 @@ import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:just_audio_media_kit/just_audio_media_kit.dart';
 import 'package:workmanager/workmanager.dart';
 
@@ -56,7 +55,6 @@ Future<void> main(List<String> args) async {
     if (!kIsWeb && (Platform.isWindows || Platform.isLinux)) {
       JustAudioMediaKit.ensureInitialized();
     }
-    GoogleFonts.config.allowRuntimeFetching = true;
 
     if (!kIsWeb && Platform.isAndroid) {
       await Workmanager().initialize(autoUploadCallbackDispatcher);
