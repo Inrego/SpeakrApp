@@ -19,8 +19,15 @@ repository:
   **deletes source files from the user's watched folders** after upload, plus
   files shorter than a user-set minimum duration (`auto_upload_worker.dart`).
   Both are disclosed in `privacy-policy.md` (sections "Recording other apps'
-  audio" and "Auto-upload, All files access, and deletion of your files") and
+  audio" and "Auto-upload, folder access, and deletion of your files") and
   the answers below reflect them.
+- On Android the watched folders are reached through a **Storage Access
+  Framework tree grant** per folder the user picked — not All files access.
+  `MANAGE_EXTERNAL_STORAGE` is being removed (the code change is in a separate
+  PR; until it merges, builds from `main` still request it). No answer in this
+  form depended on All files access: the scope of what auto-upload reads and
+  deletes — the user-chosen folders — is the same either way, only the
+  permission mechanism narrows.
 
 > **Revision 2026-09-22 — what changed in this draft, and why.** The policy
 > was corrected to disclose system-audio capture, delete-after-upload of files
@@ -91,8 +98,9 @@ caveat note at the bottom).
 - **Deletion from the device:** after a successful upload the app deletes the
   source file from the watched folder, and deletes files shorter than a
   user-set minimum duration without uploading them. This is not a form field,
-  but it is in the policy and in the All-files-access declaration, so the
-  free text should say it too (see Section E).
+  but it is in the policy, so the free text should say it too (see Section E).
+  On Android the delete happens through the user's SAF folder grant; there is
+  no All-files-access declaration to keep it consistent with.
 
 ### "Other" user-generated content — meeting metadata
 

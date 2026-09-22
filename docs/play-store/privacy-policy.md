@@ -81,7 +81,15 @@ you whether to stop and upload the recording or keep going. Auto-record is off
 by default and records nothing until you add at least one application to its
 list.
 
-## Auto-upload, All files access, and deletion of your files
+## Auto-upload, folder access, and deletion of your files
+
+> **Maintainer note (not published):** the Android bullet below describes the
+> Storage Access Framework design (persisted `ACTION_OPEN_DOCUMENT_TREE`
+> grant per watched folder). The code change that removes
+> `MANAGE_EXTERNAL_STORAGE` and adopts SAF lands in a separate PR; until it
+> merges, a build from `main` still requests All files access. The bullet is
+> worded so it stays true of those builds too ("Earlier builds ... did request
+> All files access"). Do not reword it to claim the permission is already gone.
 
 The auto-upload feature watches **folders you choose** on your device, for
 example the output folder of a call-recorder or voice-recorder app. The app
@@ -98,12 +106,19 @@ filling up.
 - If a file cannot be deleted after upload, it stays on the device and the app
   shows an error for it in Auto-upload settings. Files are never deleted
   before the server has confirmed the upload.
-- On **Android** this is why the app requests **All files access**
-  (`MANAGE_EXTERNAL_STORAGE`): recorder apps write to arbitrary folders, and
-  Android offers no other way to delete a file another app created without a
-  system prompt for every single file, which cannot be answered while uploads
-  run unattended in the background. The app reads only the folders you picked;
-  it does not browse, index, or upload anything else on your storage.
+- On **Android** you pick each watched folder in Android's own folder picker
+  (the Storage Access Framework). Android then grants the app access to
+  **that folder and its subfolders only**, and the app keeps that grant so it
+  can scan, read, and delete files there in the background without asking you
+  again for each file. The grant does not extend to any other part of your
+  storage: the app cannot see, browse, index, or upload anything outside the
+  folders you picked, and you can take the access away at any time by removing
+  the folder in Auto-upload settings or by uninstalling the app. The app does
+  **not** use Android's "All files access" (`MANAGE_EXTERNAL_STORAGE`)
+  permission. Earlier builds of the Android app did request All files access
+  for this feature; that permission is being removed, and if a build you have
+  still asks for it, it is used only for the watched-folder scan and delete
+  described here and for nothing else.
 - On **Windows** the same watch, upload, and delete behaviour applies to the
   folders you pick; no special permission is involved.
 
@@ -148,10 +163,12 @@ the microphone.
 - **Capture other apps' audio (Android media projection)** — to record system
   audio alongside the microphone, as described above. Requested per session
   through Android's own consent dialog.
-- **Audio media access / storage** — to read audio files you choose to upload
-  and to scan the folders you watch for auto-upload.
-- **All files access (Android)** — to delete recordings from watched folders
-  after they have been uploaded, as described above.
+- **Audio media access / storage** — to read audio files you choose to upload.
+- **Access to folders you pick (Android)** — a per-folder grant from
+  Android's folder picker, used to scan the folders you watch for auto-upload
+  and to delete recordings from them after they have been uploaded, as
+  described above. It covers only the folders you chose. The app does not
+  request All files access.
 - **Phone state (Android)** — to trigger an auto-upload scan after a phone call
   ends, so call recordings can be picked up without opening the app. Call
   contents, phone numbers, and call-log details are **not** read or

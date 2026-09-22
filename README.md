@@ -57,15 +57,18 @@ The desktop app ships in two forms on each release:
 If you sideload the APK, Android will ask for a few permissions that deserve an
 explanation:
 
-- **All files access** (`MANAGE_EXTERNAL_STORAGE`) — only used by **auto-upload**.
-  You point Speakr at folders written by your call recorder or voice recorder; it
-  uploads new recordings to your own Speakr server and then **deletes the local
-  copy** so the phone does not fill up. Those folders sit outside the shared media
-  collection, and Android will not let one app delete another app's file through
-  MediaStore or the Storage Access Framework without a system confirmation dialog
-  per file — which nobody can tap while an upload runs in the background. Speakr
-  touches only the folders you picked; it does not browse or upload anything else.
-  Leave auto-upload off and you never need to grant it.
+- **Access to folders you pick** — only used by **auto-upload**. You point
+  Speakr at folders written by your call recorder or voice recorder using
+  Android's own folder picker (the Storage Access Framework); Speakr keeps that
+  per-folder grant, uploads new recordings to your own Speakr server and then
+  **deletes the local copy** so the phone does not fill up. The grant covers
+  only the folders you picked, so Speakr cannot browse or upload anything else.
+  Leave auto-upload off and you never grant it.
+  *Earlier builds requested **All files access** (`MANAGE_EXTERNAL_STORAGE`) for
+  this instead. That permission is being removed — the migration to the folder
+  picker lands in a separate PR — and a SAF folder grant deletes other apps'
+  files in that folder without any per-file prompt, so All files access was never
+  actually needed.*
 - **Phone state** (`READ_PHONE_STATE`) — used purely as a timing signal: when a
   call ends, Speakr schedules one scan of your watched folders so a fresh call
   recording gets picked up. No call log, no phone number, no caller identity — the
