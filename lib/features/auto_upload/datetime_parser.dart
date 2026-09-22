@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:intl/intl.dart';
 
 import 'auto_upload_settings.dart';
@@ -274,15 +272,18 @@ DateTime? _safeDateTime(
   return dt;
 }
 
-/// Returns the best available timestamp for [file]: the parsed filename if
-/// parsing is configured and matches, otherwise the file's mtime (which
-/// always works locally).
-DateTime resolveDateTime(File file, FolderUploadConfig settings) {
+/// Returns the best available timestamp for a file: the parsed filename if
+/// parsing is configured and matches, otherwise [modified] (the file's
+/// mtime, which always works locally).
+DateTime resolveDateTime(
+  String basename,
+  DateTime modified,
+  FolderUploadConfig settings,
+) {
   final preset = activePreset(settings);
   if (preset != null) {
-    final basename = file.path.split(RegExp(r'[\\/]')).last;
     final parsed = parseFromFilename(basename, preset);
     if (parsed != null) return parsed;
   }
-  return file.statSync().modified;
+  return modified;
 }

@@ -1,0 +1,26 @@
+name: speakr_saf
+description: >-
+  In-repo Android Storage Access Framework bridge for Speakr's auto-upload
+  feature. Not published; depended on by the app via a path dependency.
+version: 0.1.0
+publish_to: "none"
+
+environment:
+  sdk: ^3.11.0
+  flutter: ">=3.3.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+# This lives as a plugin package (rather than a MethodChannel wired from
+# MainActivity) on purpose: the workmanager plugin spins up a separate
+# FlutterEngine for background scans, and only plugins listed in
+# GeneratedPluginRegistrant are registered in that engine. MainActivity's
+# configureFlutterEngine never runs there.
+flutter:
+  plugin:
+    platforms:
+      android:
+        package: com.inrego.speakr_saf
+        pluginClass: SpeakrSafPlugin

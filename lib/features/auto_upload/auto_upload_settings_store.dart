@@ -270,6 +270,56 @@ class AutoUploadSettingsStore {
     if (current == null) return false;
     return stored == current || stored.startsWith('$current:');
   }
+
+  // ── Key migration ─────────────────────────────────────────────────────────
+  /// Rewrites per-file keys in both the error map and the uploaded-file
+  /// guard. Used when an Android folder moves from a legacy raw path to a
+  /// Storage Access Framework tree: entries keyed by
+  /// `<oldFolderPath>/<name>` become keyed by the document URI for `<name>`
+  /// so the user keeps their error badges and, more importantly, the
+  /// "already uploaded, do not upload again" markers.
+  ///
+  /// [oldToNew] maps the full old key to the full new key. Keys not in the
+  /// map are left alone.
+  Future<void> remapFileKeys(Map<String, String> oldToNew) async {
+    if (oldToNew.isEmpty) return;
+    final errors = readFileErrors();
+    if (errors.isNotEmpty) {
+      await _writeFileErrors({
+        for (final e in errors.entries) oldToNew[e.key] ?? e.key: e.value,
+      });
+    }
+    final uploaded = readUploadedFiles();
+    if (uploaded.isNotEmpty) {
+      await _writeUploadedFiles({
+        for (final e in uploaded.entries) oldToNew[e.key] ?? e.key: e.value,
+      });
+    }
+  }
+
+  /// Builds the [remapFileKeys] input for a legacy folder: every stored
+  /// key whose directory is [oldFolderPath] and whose basename appears in
+  /// [newKeysByName] is mapped to the corresponding new key.
+  Map<String, String> legacyKeyRemap(
+    String oldFolderPath,
+    Map<String, String> newKeysByName,
+  ) {
+    final normalizedDir = oldFolderPath.replaceAll('\\', '/').replaceAll(
+          RegExp(r'/+$'),
+          '',
+        );
+    final out = <String, String>{};
+    for (final key in {...readFileErrors().keys, ...readUploadedFiles().keys}) {
+      final normalized = key.replaceAll('\\', '/');
+      final slash = normalized.lastIndexOf('/');
+      if (slash <= 0) continue;
+      if (normalized.substring(0, slash) != normalizedDir) continue;
+      final name = normalized.substring(slash + 1);
+      final next = newKeysByName[name];
+      if (next != null) out[key] = next;
+    }
+    return out;
+  }
 }
 
 class AutoUploadLock {

@@ -140,7 +140,7 @@ List<LibraryItem> _applySort(List<LibraryItem> items, _SortMode mode) {
           return (i.recording.title ?? '').toLowerCase();
         }
         return (i is PendingLibraryItem
-                ? i.pending.file.path.split(RegExp(r'[\\/]')).last
+                ? i.pending.file.name
                 : '')
             .toLowerCase();
       }
@@ -637,7 +637,7 @@ mixin _PendingActionsMixin<T extends ConsumerStatefulWidget>
             style: SpeakrText.serif(size: 20),
           ),
           content: Text(
-            '${pendingFile.file.path.split(RegExp(r"[\\/]")).last}\n\n'
+            '${pendingFile.file.name}\n\n'
             'The file will be uploaded to your Speakr server and removed '
             'from this device.',
             style: SpeakrText.sans(size: 13, color: SpeakrColors.ink2),
@@ -662,8 +662,8 @@ mixin _PendingActionsMixin<T extends ConsumerStatefulWidget>
       final store = await AutoUploadSettingsStore.open();
       final fileStillExists = await pendingFile.file.exists();
       if (!fileStillExists) {
-        await store.clearFileError(pendingFile.file.path);
-        await store.clearUploadedFile(pendingFile.file.path);
+        await store.clearFileError(pendingFile.file.key);
+        await store.clearUploadedFile(pendingFile.file.key);
       }
       ref.invalidate(pendingFilesProvider);
       ref.invalidate(pendingFileErrorsProvider);
@@ -737,8 +737,8 @@ mixin _PendingActionsMixin<T extends ConsumerStatefulWidget>
       return;
     }
     final store = await AutoUploadSettingsStore.open();
-    await store.clearFileError(pendingFile.file.path);
-    await store.clearUploadedFile(pendingFile.file.path);
+    await store.clearFileError(pendingFile.file.key);
+    await store.clearUploadedFile(pendingFile.file.key);
     if (!mounted) return;
     ref.invalidate(pendingFilesProvider);
     ref.invalidate(pendingFileErrorsProvider);
@@ -768,11 +768,11 @@ class _PendingListRowState extends ConsumerState<_PendingListRow>
 
   @override
   Widget build(BuildContext context) {
-    final name = widget.pending.file.path.split(RegExp(r'[\\/]')).last;
+    final name = widget.pending.file.name;
     final errors =
         ref.watch(pendingFileErrorsProvider).asData?.value ??
         const <String, String>{};
-    final scanError = errors[widget.pending.file.path];
+    final scanError = errors[widget.pending.file.key];
     final onTap = _tapHandler(scanError: scanError);
     final tappable = onTap != null;
 
@@ -1206,11 +1206,11 @@ class _PendingGridCardState extends ConsumerState<_PendingGridCard>
 
   @override
   Widget build(BuildContext context) {
-    final name = widget.pending.file.path.split(RegExp(r'[\\/]')).last;
+    final name = widget.pending.file.name;
     final errors =
         ref.watch(pendingFileErrorsProvider).asData?.value ??
         const <String, String>{};
-    final scanError = errors[widget.pending.file.path];
+    final scanError = errors[widget.pending.file.key];
     final hasError = scanError != null;
     final onTap = _tapHandler(scanError: scanError);
     final tappable = onTap != null;
