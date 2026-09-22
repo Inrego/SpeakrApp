@@ -95,8 +95,8 @@ REQUIREMENTS
 
 • A reachable Speakr server (REST API v1) and an API token from it.
 • Microphone permission for live recording.
-• Audio/storage access to read files you want to upload, and — for auto-upload
-  only — access to the folders you pick.
+• For auto-upload only: access to the folders you pick, granted through your
+  device's own folder picker. Speakr requests no other storage access.
 
 Speakr is cross-platform: Android, iOS, and Windows desktop. (iOS builds are
 not produced in this project's CI.)
@@ -131,10 +131,12 @@ not produced in this project's CI.)
 
 Google Play **requires** a privacy policy URL for this app because it requests
 sensitive permissions (microphone, phone state, capturing other apps' audio
-through media projection) and handles user-generated content (audio). All files
-access is **not** among them: Android auto-upload uses a per-folder Storage
-Access Framework grant, and `MANAGE_EXTERNAL_STORAGE` is being removed (the code
-change is in a separate PR; see `permissions-declaration.md` §1).
+through media projection) and handles user-generated content (audio). Storage
+permissions are **not** among them: Android auto-upload uses a per-folder
+Storage Access Framework grant, `MANAGE_EXTERNAL_STORAGE` **was removed** in #4,
+and the permission audit (#7) removed `READ_MEDIA_AUDIO` and
+`READ_EXTERNAL_STORAGE` as well — the app now declares **no storage permission
+of any kind** (see `permissions-declaration.md` §1 and §8).
 
 The policy exists: source of truth `privacy-policy.md`, published from
 `site/privacy-policy.html` at

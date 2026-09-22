@@ -89,7 +89,7 @@ clean and all 76 tests pass.
 **What:** The Android app permits plain-HTTP traffic app-wide.
 
 **Evidence:**
-- `android/app/src/main/AndroidManifest.xml:23` —
+- `android/app/src/main/AndroidManifest.xml:38` —
   `android:usesCleartextTraffic="true"` on `<application>`.
 
 **Affects:** Security posture and Play review. This is **justified** for Speakr
@@ -102,6 +102,17 @@ untrusted networks.
 document the rationale in the Play data-safety notes and README. Optionally tighten
 later with a `network_security_config.xml` that allows cleartext only for
 user-configured hosts rather than globally.
+
+**Data Safety consequence — decided 2026-09-22.** Because plain HTTP is a
+deliberate, supported path and not an oversight, Play's all-or-nothing
+**"Is all of the user data encrypted in transit?"** question is answered
+**No**. HTTPS does work whenever the user's server has TLS, but answering Yes
+would be untrue in a legally binding form. The cost is a "Data isn't encrypted
+in transit" line on the store listing, which is honest for a LAN-first
+self-hosted client. Flipping it to Yes would require enforcing HTTPS — which
+would cut off exactly the LAN users this setting exists for. Recorded in
+[`play-store/SUBMISSION-RUNBOOK.md`](play-store/SUBMISSION-RUNBOOK.md) §4.1 and
+[`play-store/data-safety.md`](play-store/data-safety.md) Section A.
 
 ---
 
@@ -142,6 +153,8 @@ Two more corrections to what the earlier entry and its Console copy leaned on:
 - `READ_MEDIA_AUDIO` alone not seeing arbitrary folders is true, but a SAF tree
   grant covers whatever folder the user picks regardless of media collection
   membership, so it argues for SAF rather than for All files access.
+  (`READ_MEDIA_AUDIO` was itself removed later the same day by the permission
+  audit — see the cross-cutting notes below.)
 
 **Delivered by the SAF migration (#4, merged 2026-09-22):**
 - The user picks each watched folder with the system picker
@@ -291,6 +304,17 @@ becomes available.
   apps' audio draws extra scrutiny). The ready-to-paste Console copy is in
   [`play-store/permissions-declaration.md`](play-store/permissions-declaration.md);
   the raw inventory is `android/app/src/main/AndroidManifest.xml`.
+- **Play reviewer access, decided 2026-09-22.** The reviewer cannot supply a
+  Speakr server, so `tools/mock-server` is run locally behind a temporary
+  `cloudflared tunnel --url http://localhost:8420` quick tunnel for the review
+  window, and torn down after approval. The reviewer gets the
+  `trycloudflare.com` URL plus the demo token `speakr-demo-token`. **Known
+  weakness:** a quick-tunnel hostname is randomly regenerated on every restart,
+  so if the tunnel drops mid-review the App access field must be edited with the
+  new URL — a dead URL fails the review outright. Steps, paste text and the risk
+  in full: [`play-store/SUBMISSION-RUNBOOK.md`](play-store/SUBMISSION-RUNBOOK.md)
+  §2. The reviewer-runs-it-themselves alternative is retained only as a fallback
+  (runbook Appendix A) and is not submitted.
 - **Permission audit, 2026-09-22 (follow-up to the SAF migration).** Every
   declared permission was re-checked against the code and against the *merged*
   manifest from a real `flutter build apk` (`build/app/outputs/logs/manifest-merger-debug-report.txt`).
@@ -299,8 +323,11 @@ becomes available.
   the app has no single-file picker on Android; `FOREGROUND_SERVICE_DATA_SYNC` —
   no `dataSync` service exists and WorkManager runs non-expedited; and
   `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` — never requested anywhere in the code.
-  The app now declares **eleven** permissions, of which three
-  (`ACCESS_NETWORK_STATE` and the `androidx.core` dynamic-receiver permission are
-  dependency-contributed) it does not list itself. `permissions-declaration.md`
-  §4 (`dataSync`) and §6 (battery) are now moot and should not be submitted;
-  that file has not been rewritten.
+  The app's own manifest now declares **nine** permissions; the *merged*
+  manifest carries **eleven**, the two extras being `ACCESS_NETWORK_STATE` (from
+  `androidx.work` / `androidx.media3`) and the signature-level
+  `com.inrego.speakr_app.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION` (from
+  `androidx.core`), neither of which the app lists itself and neither of which
+  needs a declaration. `permissions-declaration.md` §4 (`dataSync`) and §6
+  (battery) have since been **withdrawn in place** — struck with the reason and
+  the date, alongside the already-withdrawn §1 — and must not be submitted.

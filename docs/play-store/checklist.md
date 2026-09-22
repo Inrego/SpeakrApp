@@ -1,6 +1,12 @@
 # Google Play — Publishing Checklist
 
 A pre-flight list to get Speakr (`com.inrego.speakr_app`) onto the Play Store.
+**To actually fill the Console, work from
+[`SUBMISSION-RUNBOOK.md`](SUBMISSION-RUNBOOK.md)** — it carries the paste-ready
+answers, including the two settled decisions (App access via a temporary
+Cloudflare Tunnel; encryption in transit answered **No**). This file is the
+inventory and the status board behind it.
+
 Items marked **BLOCKER** must be done before the app can be submitted. Items
 marked **REVIEW RISK** can be submitted but may trigger extra review or
 rejection — read the permissions section carefully. The ready-to-paste Console
@@ -33,8 +39,8 @@ review, settings/connection screen.
 
 | Form | Required? | Status | Notes |
 |---|---|---|---|
-| **Privacy policy URL** | **BLOCKER** | TODO (pending Pages) | Policy text is in `privacy-policy.md`; the published copy is `site/privacy-policy.html`, deployed by `.github/workflows/pages.yml`. Pending URL: **https://inrego.github.io/SpeakrApp/privacy-policy.html** — goes live once GitHub Pages is enabled for the repo (Settings → Pages → Source: GitHub Actions). Not done until that URL resolves; then enter it in Console. See `listing.md` and `data-safety.md`. |
-| **Data Safety form** | **BLOCKER** | DRAFTED | First-draft answers in `data-safety.md`. Review and submit in Console. |
+| **Privacy policy URL** | **BLOCKER** | **DONE** (still to enter in Console) | Policy text is in `privacy-policy.md`; the published copy is `site/privacy-policy.html`, deployed by `.github/workflows/pages.yml`. **https://inrego.github.io/SpeakrApp/privacy-policy.html is live and returns HTTP 200.** Paste it into App content → Privacy policy (`SUBMISSION-RUNBOOK.md` §3.1). See `listing.md` and `data-safety.md`. |
+| **Data Safety form** | **BLOCKER** | **ANSWERS SETTLED** | Paste-ready answers in `SUBMISSION-RUNBOOK.md` §4; the reasoning is in `data-safety.md`. The last open question — "is all data encrypted in transit?" — is settled **No** (2026-09-22), because cleartext HTTP to self-hosted LAN servers is deliberate. Review and submit in Console. |
 | **Content rating questionnaire** | **BLOCKER** | TODO | Complete the IARC questionnaire. Expected outcome: **Everyone** — no violence, no sexual content, no gambling. The app does let users record/upload their own audio (user-generated content) but to their own private server, not a public/social feed; answer the UGC questions accordingly (no public sharing within the app). |
 | **Target audience & content** | **BLOCKER** | TODO | Target audience: adults (18+) / general; **do NOT** mark as designed for children — the sensitive permissions and self-hosting requirement make this clearly not a kids' app. This keeps you out of the Families policy / Designed for Families program. |
 | **News app declaration** | Required answer | TODO | Answer **No** (not a news app). |
@@ -43,7 +49,7 @@ review, settings/connection screen.
 | **Financial features declaration** | Required answer | TODO | Answer **No** (no financial features). |
 | **Health apps declaration** | Required answer | TODO | Answer **No** (records audio but is not a health app). |
 | **Ads declaration** | **BLOCKER** | TODO | Answer **No ads** — verified: no ad SDKs in `pubspec.yaml`. |
-| **App access (login required)** | **BLOCKER** | TODO | The app requires a Speakr server URL + API token to do anything useful. Play reviewers cannot supply these, so you **must provide test credentials / a demo server** OR detailed instructions in the "App access" → "All or some functionality is restricted" section, otherwise the review will fail because the reviewer can't get past the connection screen. **This is a common rejection cause — fill it in.** |
+| **App access (login required)** | **BLOCKER** | **APPROACH SETTLED**, still to fill | The app requires a Speakr server URL + API token to do anything useful, and a reviewer cannot supply either. **Decided 2026-09-22:** run `tools/mock-server` locally behind a temporary `cloudflared tunnel --url` quick tunnel for the review window, give the reviewer that `trycloudflare.com` URL plus `speakr-demo-token`, and tear it down after approval. Full steps and paste text: `SUBMISSION-RUNBOOK.md` §2. **Read §2.4 first — the tunnel URL changes on every restart, and a dead URL fails the review.** |
 
 ---
 
@@ -63,9 +69,14 @@ review, settings/connection screen.
 
 ## 4. SENSITIVE / RESTRICTED PERMISSIONS — read before submitting
 
-These come straight from `android/app/src/main/AndroidManifest.xml`. Each row
-notes the likely Play requirement. The former rejection risk — All files
-access — is being removed from the app; see the first entry.
+These come straight from `android/app/src/main/AndroidManifest.xml`, which
+declares **nine** permissions as of 2026-09-22. Each row notes the likely Play
+requirement. The former rejection risk — All files access — **was removed** from
+the app in #4; see the first entry. Four more permissions were removed in the
+permission audit (#7): `READ_MEDIA_AUDIO`, `READ_EXTERNAL_STORAGE`,
+`FOREGROUND_SERVICE_DATA_SYNC` and `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`. Rows
+for removed permissions are kept, marked 🟢 REMOVED, so the record of what was
+once declared stays readable — **none of them needs a Console declaration.**
 
 ### 🟢 `MANAGE_EXTERNAL_STORAGE` — "All files access" — REMOVED, migrated to SAF
 
@@ -79,11 +90,12 @@ access — is being removed from the app; see the first entry.
   [`../RELEASE_READINESS.md`](../RELEASE_READINESS.md) item (c) and the
   withdrawn justification in
   [`permissions-declaration.md`](permissions-declaration.md) §1.
-- **Code status:** the removal ships in a **separate PR**. Until it merges the
-  manifest still declares the permission (line 13) and
-  `lib/features/auto_upload/auto_upload_settings_screen.dart` still requests it.
-  **Do not upload an AAB built before that PR** — the Console detects the
-  permission in the bundle and blocks the release until a declaration is filed.
+- **Code status: shipped.** The removal merged in **#4** on 2026-09-22. The
+  manifest no longer declares the permission and
+  `lib/features/auto_upload/auto_upload_settings_screen.dart` no longer requests
+  it. What remains is build provenance: **do not upload an AAB built before #4**
+  — the Console reads the bundle, not the repo, and will block the release until
+  a declaration is filed that we deliberately do not provide. Rebuild instead.
 - **Play requirement after the migration:** none. A SAF grant is a per-folder
   URI permission, not a manifest permission, and needs no Console form.
 
@@ -113,10 +125,10 @@ access — is being removed from the app; see the first entry.
   scrutiny and needs a clear use-case description (capturing system/other-app
   audio during a recording session that the user explicitly starts).
 - **Status:** must be declared — not an automatic reject if justified. Copy is
-  in [`permissions-declaration.md`](permissions-declaration.md) §2–§4; **§4
-  (`dataSync`) is now moot** and should not be submitted. `microphone` and
-  `mediaProjection` are two types on the **one** service
-  `.audio.AudioCaptureService`.
+  in [`permissions-declaration.md`](permissions-declaration.md) §2–§3 (or
+  `SUBMISSION-RUNBOOK.md` §5.2–§5.3). **§4 (`dataSync`) is WITHDRAWN** and must
+  not be submitted. `microphone` and `mediaProjection` are two types on the
+  **one** service `.audio.AudioCaptureService`.
 
 ### 🟠 `READ_PHONE_STATE` — sensitive permission declaration
 
@@ -130,11 +142,16 @@ access — is being removed from the app; see the first entry.
 
 ### 🟡 `android:usesCleartextTraffic="true"` — security note (MEDIUM)
 
-- Manifest line 23. Allows plain HTTP, justified because Speakr is self-hosted
-  and may run on `http://` LAN addresses. The **pre-launch report** and security
-  reviewers will flag this. Document the rationale in the Data Safety notes and
-  in your review notes; it is allowed but noted. Reviewer-note copy:
-  [`permissions-declaration.md`](permissions-declaration.md) §7.
+- `AndroidManifest.xml:38`. Allows plain HTTP, justified because Speakr is
+  self-hosted and may run on `http://` LAN addresses. The **pre-launch report**
+  and security reviewers will flag this; that is expected and not a blocker.
+  Document the rationale in the Data Safety notes and in your review notes.
+  Reviewer-note copy: [`permissions-declaration.md`](permissions-declaration.md)
+  §7.
+- **This setting is why Data safety answers "encrypted in transit" = No**
+  (settled 2026-09-22). Because plain HTTP is an intended, supported path, the
+  all-or-nothing box cannot honestly be ticked. See `SUBMISSION-RUNBOOK.md`
+  §4.1.
 
 ### 🟢 `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` — REMOVED 2026-09-22
 
@@ -142,9 +159,9 @@ access — is being removed from the app; see the first entry.
   no `Permission.ignoreBatteryOptimizations` call and no
   `ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` intent anywhere in `lib/` or
   `android/`. It was dead weight from the initial commit.
-- **Removed from the manifest in the permission audit.** Nothing to declare;
-  [`permissions-declaration.md`](permissions-declaration.md) §6 is moot and
-  should not be submitted.
+- **Removed from the manifest in the permission audit (#7).** Nothing to
+  declare; [`permissions-declaration.md`](permissions-declaration.md) §6 is
+  **WITHDRAWN** and must not be submitted.
 
 ### 🟢 Standard / low risk
 
@@ -173,16 +190,23 @@ access — is being removed from the app; see the first entry.
       above the minimum; OK).
 - [ ] AAB is signed and uploads without "debug-signed" errors (CI release
       keystore is wired; verify the production build, not a debug build).
-- [ ] App opens to the connection screen and the **App access** form gives the
-      reviewer working test credentials or a demo Speakr server.
-- [ ] Privacy policy URL is live and reachable.
-- [ ] Data Safety answers match actual behavior (see `data-safety.md`).
+- [ ] Mock server + `cloudflared` quick tunnel running, and the **App access**
+      form carries the live `trycloudflare.com` URL and `speakr-demo-token`
+      (`SUBMISSION-RUNBOOK.md` §2). Re-check the URL on the day you submit and
+      daily while the review is open — it changes if the tunnel restarts.
+- [x] Privacy policy URL is live and reachable —
+      **https://inrego.github.io/SpeakrApp/privacy-policy.html**, HTTP 200.
+- [ ] Data Safety answers match actual behavior, with **encrypted in transit =
+      No** (settled 2026-09-22; see `data-safety.md` Section A).
 - [x] Decision recorded on `MANAGE_EXTERNAL_STORAGE` — **removed, migrated to
       SAF**, 2026-09-22 (supersedes the same-day "declare and defend"). History:
       [`../RELEASE_READINESS.md`](../RELEASE_READINESS.md) item (c).
-- [ ] SAF migration PR merged, and the AAB being uploaded was built from a
-      commit that includes it (`MANAGE_EXTERNAL_STORAGE` absent from the
-      merged manifest — check the Console's permissions list on upload).
+- [x] SAF migration PR merged (**#4**, 2026-09-22) and the permission audit
+      merged (**#7**, same day).
+- [ ] The AAB being uploaded was built from a commit at or after **#7** — none
+      of `MANAGE_EXTERNAL_STORAGE`, `READ_MEDIA_AUDIO`, `READ_EXTERNAL_STORAGE`,
+      `FOREGROUND_SERVICE_DATA_SYNC`, `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`
+      may appear in the Console's permissions list on upload.
 - [x] Screenshots + feature graphic **produced** (§1) — still to be uploaded
       in the Console.
 - [ ] Content rating questionnaire submitted (expect Everyone).
@@ -191,19 +215,29 @@ access — is being removed from the app; see the first entry.
 
 ## 6. Follow-ups requiring your input (cannot be done from the repo)
 
-1. **Write & host the privacy policy** → paste URL into Console. (BLOCKER)
+1. ~~**Write & host the privacy policy**~~ **Done 2026-09-22** — live at
+   **https://inrego.github.io/SpeakrApp/privacy-policy.html** (HTTP 200).
+   Remaining: paste the URL into the Console.
 2. ~~**Capture screenshots** (`docs/screenshots/mobile.png` + more) and the
    **feature graphic**.~~ **Done 2026-09-22** — see §1. Screenshots were
    captured against the local mock server, so no real recordings appear in the
    listing.
-3. **Provide reviewer test access** (demo server + token, or instructions) in
-   the App access form. (BLOCKER) — [`tools/mock-server`](../../tools/mock-server/README.md)
-   is built to be hosted for exactly this: stand it up behind TLS and give the
-   reviewer the URL plus the demo token `speakr-demo-token`.
+3. **Provide reviewer test access** in the App access form. (BLOCKER)
+   **Approach decided 2026-09-22:** run
+   [`tools/mock-server`](../../tools/mock-server/README.md) locally and expose it
+   with a temporary `cloudflared tunnel --url http://localhost:8420` quick
+   tunnel; give the reviewer the `trycloudflare.com` URL plus the demo token
+   `speakr-demo-token`; tear both down after approval. Steps and paste text:
+   `SUBMISSION-RUNBOOK.md` §2. The reviewer-runs-it-themselves variant is a
+   documented fallback only (runbook Appendix A) and should not be submitted.
 4. ~~Decide the `MANAGE_EXTERNAL_STORAGE` strategy for the Play build.~~ **Done
-   2026-09-22 — remove it and migrate to SAF** (the same-day "declare and
-   defend" decision is superseded). Remaining: merge the SAF migration PR
-   before building the Play AAB. Nothing to paste and no video to record.
+   2026-09-22 — removed and migrated to SAF** (the same-day "declare and
+   defend" decision is superseded). The SAF migration merged in #4. Nothing to
+   paste and no video to record; just build the Play AAB from #7 or later.
 5. **Enroll in Play App Signing** and upload the production AAB.
 6. Complete every "App content" form (rating, target audience, ads, news,
    financial, health, government).
+7. ~~Decide how the reviewer reaches a server, and how to answer "encrypted in
+   transit".~~ **Both done 2026-09-22** — Cloudflare Tunnel (item 3) and **No**
+   (the Data Safety row in §2). No open decisions remain in the submission
+   docs.

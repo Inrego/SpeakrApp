@@ -1,8 +1,19 @@
-# Google Play — Data Safety Form (first draft)
+# Google Play — Data Safety Form
 
-This is a **draft** answer set for the Play Console **Data safety** section
-(App content → Data safety). Review every answer before submitting — you are
-legally responsible for its accuracy.
+The reasoning behind the Play Console **Data safety** answers
+(App content → Data safety). The answers themselves, in paste-ready form, are in
+[`SUBMISSION-RUNBOOK.md`](SUBMISSION-RUNBOOK.md) §4 — **that file is what you
+fill the Console from; this one is why.** The two are reconciled as of
+2026-09-22; if they ever disagree, the runbook is the submission and this file
+is the bug.
+
+Review every answer before submitting — you are legally responsible for its
+accuracy.
+
+> **Settled 2026-09-22 — "Is all of the user data encrypted in transit?" is
+> answered NO.** This was the one genuinely open question in this document and
+> it is now closed; see Section A and Section D. Every "CONFIRM WITH USER"
+> marker on that question has been removed, because it has been confirmed.
 
 These answers reflect what the app's code actually does, verified against the
 repository:
@@ -23,11 +34,17 @@ repository:
   the answers below reflect them.
 - On Android the watched folders are reached through a **Storage Access
   Framework tree grant** per folder the user picked — not All files access.
-  `MANAGE_EXTERNAL_STORAGE` is being removed (the code change is in a separate
-  PR; until it merges, builds from `main` still request it). No answer in this
-  form depended on All files access: the scope of what auto-upload reads and
-  deletes — the user-chosen folders — is the same either way, only the
-  permission mechanism narrows.
+  `MANAGE_EXTERNAL_STORAGE` **was removed** in the SAF migration (#4, merged
+  2026-09-22) and is absent from the manifest. The permission audit (#7, same
+  day) then removed `READ_MEDIA_AUDIO` and `READ_EXTERNAL_STORAGE` as well, so
+  the app now declares **no storage permission of any kind** on Android. No
+  answer in this form depended on any of them: the scope of what auto-upload
+  reads and deletes — the user-chosen folders — is unchanged; only the
+  permission mechanism narrowed.
+- The app has **no single-file picker on Android** (`file_picker` is used only
+  for `getDirectoryPath()`). Audio reaches the server from exactly two places:
+  the in-app live recorder, and auto-upload from folders the user granted. Do
+  not describe a "pick a file to upload" flow in any Android-facing text.
 
 > **Revision 2026-09-22 — what changed in this draft, and why.** The policy
 > was corrected to disclose system-audio capture, delete-after-upload of files
@@ -63,7 +80,7 @@ repository:
 | Question | Draft answer | Rationale |
 |---|---|---|
 | Does your app collect or share any of the required user data types? | **Yes** | Audio + metadata are transmitted to the user's server; that counts as "collected". |
-| Is all of the user data encrypted in transit? | **See note** | The app supports HTTPS, but `usesCleartextTraffic="true"` allows HTTP to self-hosted/LAN servers. **You must decide how to answer.** Safest honest answer: data is encrypted in transit **only if the user's server uses HTTPS**; the app does not force TLS. Google's checkbox is all-or-nothing — if HTTP is possible, you arguably **cannot** check "all encrypted in transit". Recommend leaving it **unchecked** and explaining in review notes, OR enforce HTTPS in a future build. **CONFIRM WITH USER.** |
+| Is all of the user data encrypted in transit? | **No** — settled 2026-09-22 | `android:usesCleartextTraffic="true"` (`AndroidManifest.xml:38`) is **deliberate**, so users can reach self-hosted `http://` servers on their own LAN. HTTPS does work, and is what happens whenever the user's server has TLS — but Google's checkbox is all-or-nothing, and because plain HTTP is a supported and intended path, **Yes** would be untrue. Answer **No** and explain the self-hosted model in the free text (Section E) and the review notes. The cost is a "Data isn't encrypted in transit" line on the store listing, which is honest for a LAN-first self-hosted client. The only thing that could flip this to Yes is enforcing HTTPS in a future build — which would cut off exactly the LAN users the setting exists for. |
 | Do you provide a way for users to request that their data is deleted? | **Yes (qualified)** | The developer holds no data; deletion happens on the user's own server/device. Explain in the policy. |
 
 ---
@@ -182,7 +199,7 @@ Based on the code, the app does **NOT** collect or transmit any of:
 
 | Question | Draft answer | Note |
 |---|---|---|
-| Is data encrypted in transit? | **Conditional** | Only if the user's server uses HTTPS; cleartext HTTP is permitted for LAN/self-hosted. See Section A note — recommend honest "not guaranteed". **CONFIRM.** |
+| Is data encrypted in transit? | **No** | The settled answer (Section A). Cleartext HTTP is a supported path for self-hosted LAN servers, so the all-or-nothing box cannot honestly be ticked. Matches `SUBMISSION-RUNBOOK.md` §4.1 and §4.5. |
 | Can users request data deletion? | **Yes** | On their own server/device; no developer-held data. |
 | Committed to Play Families Policy? | **No / N/A** | Not a children's app. |
 | Independent security review? | **No** | None performed. |
@@ -209,11 +226,12 @@ Based on the code, the app does **NOT** collect or transmit any of:
 
 ## Items to CONFIRM before submitting (do not guess on the form)
 
-1. **Encryption in transit** — the app allows cleartext HTTP
-   (`usesCleartextTraffic="true"`) for self-hosted/LAN servers. Decide whether
-   to (a) answer "not all data is encrypted in transit" honestly, or
-   (b) enforce HTTPS in a future build so you can truthfully check the box.
-   **This is the single most important answer to get right.**
+1. ~~**Encryption in transit**~~ — **SETTLED 2026-09-22: answer No.** The app
+   allows cleartext HTTP (`usesCleartextTraffic="true"`) for self-hosted LAN
+   servers by design, so the all-or-nothing "all data encrypted in transit" box
+   cannot be ticked truthfully. Option (b) — enforcing HTTPS in a future build —
+   was rejected because it would cut off the LAN users the setting exists for.
+   Nothing left to confirm; see Section A.
 2. **"Shared" vs. "Collected"** — this draft treats the user's own server as the
    user's designated destination (Collected, not Shared with a third party).
    Re-read Play's current definition of "third party"; if Google considers the
@@ -223,8 +241,9 @@ Based on the code, the app does **NOT** collect or transmit any of:
 3. **Transcripts/summaries** — confirm whether server-generated content fetched
    back to the app needs to be declared as a collected data type, per Play's
    latest definitions.
-4. **Privacy policy URL** — the policy text is final in `privacy-policy.md`
-   and published as `site/privacy-policy.html` (generated; CI checks the two
-   match). The URL goes live once GitHub Pages is enabled — see
-   `checklist.md`. The Data Safety answers above were reconciled against the
+4. ~~**Privacy policy URL**~~ — **DONE.** The policy text is final in
+   `privacy-policy.md` and published as `site/privacy-policy.html` (generated;
+   CI checks the two match).
+   **https://inrego.github.io/SpeakrApp/privacy-policy.html is live and returns
+   HTTP 200.** The Data Safety answers above were reconciled against the
    2026-09-22 policy text; re-check them if the policy changes again.

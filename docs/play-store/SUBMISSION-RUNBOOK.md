@@ -17,13 +17,26 @@ this is the answers.
 - ⚠️ **NAMING UNVERIFIED** — I am confident the form exists and what it asks,
   but not of Google's exact current wording/path. Read the screen, don't
   pattern-match my label.
-- 🔒 **DECISION** — you must choose; I give a recommendation and the trade-off.
+- 🔒 **DECIDED** — a choice that was open in an earlier revision and has since
+  been settled. The answer given is the answer; the reasoning is kept so you
+  can defend it.
 - ⏳ **AFTER AAB** — the form does not exist (or is not enforced) until a bundle
   has been uploaded. Skip on the first pass; see §6.
 
-**Verified against the repo at `main` = `11c9e82`** (PRs #3, #4, #5 merged).
-`MANAGE_EXTERNAL_STORAGE` is **not** in `android/app/src/main/AndroidManifest.xml`.
-`https://inrego.github.io/SpeakrApp/privacy-policy.html` returns **HTTP 200**.
+**Verified against the repo at `main` = `54b8f58`** (PRs #3–#7 merged).
+`android/app/src/main/AndroidManifest.xml` declares exactly nine permissions:
+`INTERNET`, `RECORD_AUDIO`, `FOREGROUND_SERVICE`,
+`FOREGROUND_SERVICE_MICROPHONE`, `FOREGROUND_SERVICE_MEDIA_PROJECTION`,
+`WAKE_LOCK`, `READ_PHONE_STATE`, `RECEIVE_BOOT_COMPLETED`, `POST_NOTIFICATIONS`.
+`MANAGE_EXTERNAL_STORAGE`, `READ_MEDIA_AUDIO`, `READ_EXTERNAL_STORAGE`,
+`FOREGROUND_SERVICE_DATA_SYNC` and `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` are
+**all absent** — the first was dropped in #4, the other four in the permission
+audit (#7). `https://inrego.github.io/SpeakrApp/privacy-policy.html` returns
+**HTTP 200**.
+
+**Both decisions this runbook used to leave open are now settled:** App access
+uses a temporary Cloudflare Tunnel (§2), and "Data is encrypted in transit" is
+answered **No** (§4.1).
 
 ---
 
@@ -31,8 +44,9 @@ this is the answers.
 
 | Check | Why |
 | --- | --- |
-| The AAB you upload is built from a commit **at or after #4** (SAF migration). | An older bundle still carries `MANAGE_EXTERNAL_STORAGE`; the Console detects it in the bundle and demands an All-files-access declaration that this runbook deliberately does not provide. `main` is clean today. |
-| Re-read `android/app/src/main/AndroidManifest.xml` immediately before filling §4 (permissions). | A separate permission-audit is in flight and may change the declared set (notably `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`). **The manifest is the source of truth for which declaration forms you will be asked to fill — not this runbook, and not `permissions-declaration.md`.** |
+| The AAB you upload is built from a commit **at or after #7** (permission audit; #4 was the SAF migration). | An older bundle still carries permissions the app no longer declares — `MANAGE_EXTERNAL_STORAGE` before #4, and `READ_MEDIA_AUDIO` / `READ_EXTERNAL_STORAGE` / `FOREGROUND_SERVICE_DATA_SYNC` / `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` before #7. The Console reads the bundle, not the repo, and will demand declarations this runbook deliberately does not provide. `main` is clean today. |
+| Re-read `android/app/src/main/AndroidManifest.xml` immediately before filling §5 (permission declarations). | The permission audit has **landed** (#7) and this runbook matches it: nine declared permissions, two foreground-service types. The manifest nevertheless stays the source of truth for which declaration forms you will be asked to fill — not this runbook, and not `permissions-declaration.md`. If the Console asks for a form §5 does not cover, stop and check the manifest. |
+| Start the mock server and the Cloudflare Tunnel (§2.2) before you open the App access form. | The text you paste contains the tunnel's URL, which does not exist until `cloudflared` is running. |
 | Keystore backed up, passwords recorded. | Losing the upload key blocks every future update. The four CI secrets are `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`. |
 | Confirm the AAB is **not** debug-signed. | `android/app/build.gradle.kts` silently falls back to the debug signing config when `android/key.properties` is absent. CI has a guard step that fails the job if a signing secret is missing; a local build has no such guard. |
 
@@ -133,8 +147,8 @@ REQUIREMENTS
 
 • A reachable Speakr server (REST API v1) and an API token from it.
 • Microphone permission for live recording.
-• Audio/storage access to read files you want to upload, and — for auto-upload
-  only — access to the folders you pick.
+• For auto-upload only: access to the folders you pick, granted through your
+  device's own folder picker. Speakr requests no other storage access.
 
 Speakr is cross-platform: Android, iOS, and Windows desktop. (iOS builds are
 not produced in this project's CI.)
@@ -208,13 +222,67 @@ verify without connecting" paragraph) first.
 Because Speakr has no username/password, put the **Server URL** in the username
 field and the **API Token** in the password field, and say so in the text.
 
-### 2.1 🔒 DECISION — which variant to submit
+### 2.1 Settled: the reviewer connects over a temporary Cloudflare Tunnel
 
-You have said you do not want to host the mock server publicly. Both variants
-are written out. Read §2.4 before choosing: **Variant B is materially likely to
-fail review**, and my recommendation is Variant A.
+**Decided 2026-09-22.** You run `tools/mock-server` on your own machine and
+expose it for the length of the review with a throwaway
+`cloudflared tunnel --url` quick tunnel. The reviewer types one URL and one
+token and is in. Nothing is hosted permanently, nothing is left standing after
+approval, and there is no VM or certificate to maintain.
 
-### 2.2 Variant A — hosted mock server (RECOMMENDED)
+The alternative — telling the reviewer to install the Dart SDK, clone the repo
+and run the server on their own machine — is **not** submitted. It is kept in
+[Appendix A](#appendix-a--fallback-reviewer-runs-the-server-themselves) only in
+case the tunnel route becomes impossible; read §2.4 there before you reach for
+it.
+
+Do §2.2 (stand the tunnel up) **before** §2.3 (paste), because the paste text
+contains the URL the tunnel hands you.
+
+### 2.2 Stand the tunnel up
+
+Two processes, both on your own machine, both left running for the review.
+
+**Step 1 — start the mock server.** From the repo root:
+
+```bash
+dart run tools/mock-server/bin/speakr_mock_server.dart --port 8420
+```
+
+It binds `0.0.0.0:8420`, holds everything in memory, writes nothing to disk and
+seeds six invented recordings. There is no state to protect and nothing secret
+in it.
+
+**Step 2 — start the quick tunnel.** In a second terminal:
+
+```bash
+cloudflared tunnel --url http://localhost:8420
+```
+
+`cloudflared` prints a banner containing a URL of the form
+`https://<random-words>.trycloudflare.com`. That is the public URL. A quick
+tunnel needs **no Cloudflare account, no domain and no DNS record** — it is
+anonymous and free, and it terminates TLS for you, so the reviewer's connection
+is HTTPS end to end even though the mock server itself speaks plain HTTP on
+localhost.
+
+**Step 3 — verify it before you paste it.** From any machine:
+
+```bash
+curl -s -o /dev/null -w '%{http_code}
+'   -H 'X-API-Token: speakr-demo-token'   https://<random-words>.trycloudflare.com/api/v1/recordings
+```
+
+Expect `200`. If you get anything else, fix it now — a URL that 404s or times
+out in the App access field is a guaranteed rejection.
+
+**Step 4 — paste §2.3 into the Console**, substituting the real URL everywhere
+`https://<random-words>.trycloudflare.com` appears (it appears twice: the
+username field and the instructions body).
+
+**Step 5 — leave both processes running** until the review completes. See §2.4.
+
+### 2.3 What to paste into App access
 
 Entry name:
 
@@ -222,13 +290,13 @@ Entry name:
 Speakr demo server
 ```
 
-Username field:
+Username field (the app has no username; the Server URL goes here):
 
 ```
-https://<your-public-host>
+https://<random-words>.trycloudflare.com
 ```
 
-Password field:
+Password field (the app has no password; the API token goes here):
 
 ```
 speakr-demo-token
@@ -238,114 +306,83 @@ Any other instructions:
 
 ```
 Speakr is a client for a Speakr transcription server that the user hosts
-themselves. The app has no accounts and no developer-operated backend; it needs
-a server URL and an API token, which act as the credentials.
+themselves. The app has no accounts and no developer-operated backend. A server
+URL and an API token are the credentials, so they are given in the username and
+password fields above.
 
 To get in:
 1. Launch the app. Tap "Next" twice through the two intro screens.
 2. On the third screen ("Let's connect to your Speakr"), enter:
-   Server URL: https://<your-public-host>
+   Server URL: https://<random-words>.trycloudflare.com
    API Token:  speakr-demo-token
 3. Tap "Connect". The library screen opens with six demo recordings.
 
-The server above is a demo instance seeded with fictional data, provided for
-this review. All app functionality is reachable from the library screen:
-tap a recording for its summary, transcript and speaker review; the "+" action
-opens the live recorder; Settings holds the connection and auto-upload options.
+What to try from there:
+- Tap any recording to see its AI summary, its speaker-attributed transcript,
+  its metadata, and the speaker-renaming screen.
+- The "+" action on the library screen opens the live recorder. Android will
+  ask for microphone permission, and — only if you switch the system-audio
+  source on — for its own screen-capture consent (the app captures audio only,
+  never screen content).
+- Settings holds the server connection and the auto-upload options.
+
+The server above is a demo instance seeded with entirely fictional data, stood
+up for this review only. Without a reachable Speakr server the app cannot get
+past the connection screen; that is the app's purpose, not a paywall or a
+hidden feature.
+
+If the URL above stops responding, please contact rss@khd.dk and a working URL
+will be supplied within a few hours.
 ```
 
-**What hosting takes** (so you can price the decision):
+The last paragraph is not boilerplate — it is there because of §2.4. Keep it.
 
-```bash
-dart compile exe tools/mock-server/bin/speakr_mock_server.dart -o speakr-mock-server
-./speakr-mock-server --port 8420
-```
+### 2.4 The risk you are accepting: the URL is ephemeral
 
-Single static binary, no dependencies beyond the Dart SDK at compile time, no
-state on disk, in-memory only, restart resets it. Put it behind any
-TLS-terminating proxy — Caddy, nginx, or a Cloudflare Tunnel (a tunnel needs no
-public IP and no certificate work). Realistically: 30–60 minutes once, plus
-keeping a small VM or tunnel alive for the review window and for every future
-update review. There is nothing secret in it; the data is invented.
+**This is the main weakness of this approach, and it is worth reading twice.**
 
-### 2.3 Variant B — no hosted server, reviewer runs it themselves
+A `trycloudflare.com` quick tunnel URL is **randomly generated per tunnel
+process**. It is not reserved and it does not come back. If `cloudflared`
+exits — you reboot, the laptop sleeps, the network drops, the process is
+killed, or Cloudflare recycles it — then restarting gives you a **different**
+hostname, and the URL sitting in the Play Console immediately points at
+nothing.
 
-Entry name:
+A reviewer who hits a dead URL sees an app that cannot get past its connection
+screen. That is precisely the rejection this section exists to prevent, so a
+dropped tunnel does not degrade the submission gracefully — it fails it.
 
-```
-Speakr demo server (reviewer-run)
-```
+What this obliges you to do:
 
-Username field:
+- **Keep both processes alive for the whole review window.** Reviews commonly
+  take a few days; a first submission can take longer. Run them somewhere that
+  will not sleep or reboot, and do not close the terminals.
+- **Check the URL daily** while the review is open, with the `curl` from §2.2
+  step 3.
+- **If the tunnel drops, you must update the App access field**, not just
+  restart the tunnel. Restart `cloudflared`, take the new URL, and edit **both**
+  the username field and the two occurrences inside the instructions text, then
+  save. Editing App access does not by itself restart the review, but a
+  reviewer who tried the dead URL in the meantime may already have failed you.
+- **If you are rejected for inability to access the app**, check whether the
+  tunnel was up at the time before you change anything else. A dead tunnel is
+  the most likely cause and the cheapest to fix.
 
-```
-http://10.0.2.2:8420
-```
+If that daily obligation is unacceptable, the honest upgrade is a stable host —
+the same binary behind a named Cloudflare Tunnel, Caddy or nginx on any small
+VM — which costs setup time once and removes the ephemerality entirely. That is
+a bigger change than this runbook assumes, so it is your call; the quick tunnel
+is what is decided today.
 
-Password field:
+### 2.5 Tear-down, after approval
 
-```
-speakr-demo-token
-```
+Stop `cloudflared`, then stop the mock server. The quick-tunnel hostname
+evaporates with the process; there is nothing to deregister and no account to
+clean up. Nothing was stored on disk.
 
-Any other instructions:
-
-```
-Speakr is a client for a Speakr transcription server that the user hosts
-themselves. There are no accounts; a server URL and an API token are the
-credentials. A demo server is included in the app's public source repository
-and can be run locally on the review machine.
-
-Setup (once, ~5 minutes, on the machine running the emulator):
-1. Install the Dart SDK 3.11 or later (https://dart.dev/get-dart).
-2. git clone https://github.com/Inrego/SpeakrApp
-3. cd SpeakrApp && dart run tools/mock-server/bin/speakr_mock_server.dart
-   It listens on 0.0.0.0:8420 and prints nothing further. Leave it running.
-
-In the app:
-4. Launch the app. Tap "Next" twice through the two intro screens.
-5. On the third screen ("Let's connect to your Speakr"), enter:
-   Server URL: http://10.0.2.2:8420   (Android emulator reaches the host at
-   10.0.2.2. On a physical device on the same network use
-   http://<host-LAN-IP>:8420 instead.)
-   API Token:  speakr-demo-token
-6. Tap "Connect". The library screen opens with six demo recordings.
-
-Without a server the app cannot proceed past that connection screen; this is
-the app's entire purpose, not a paywall or a hidden feature.
-```
-
-⚠️ Verify the clone URL before pasting. The repo must be **public** at review
-time or step 2 fails outright.
-
-### 2.4 Honest assessment of Variant B
-
-Plainly: **I expect Variant B to fail review, and I would not bet on it.**
-
-- It asks a reviewer to install a language SDK, clone a git repo, and run a
-  server process on their own machine. Play review is a high-throughput process;
-  instructions that require developer tooling on the reviewer's host are outside
-  what the App access field is designed for.
-- It assumes the reviewer uses an emulator on a machine they control, and that
-  `10.0.2.2` applies. If review runs on a physical device farm, `10.0.2.2` is
-  wrong and the LAN-IP fallback is unreachable from their network.
-- There is **no prebuilt mock-server binary published anywhere today** — I
-  checked `.github/workflows/release.yml`, which builds only the AAB and the
-  universal APK. So "download and run" is not currently an option; it is
-  "install Dart and build it".
-- The likely outcome is a rejection citing inability to access app
-  functionality. That costs a review cycle (days), and repeated access
-  rejections are worse than a single delay.
-
-**A middle option, if the objection to Variant A is running infrastructure
-indefinitely:** stand the mock server up behind a Cloudflare Tunnel only for the
-review window, submit, and take it down after approval — then bring it back for
-each update review. This keeps the reviewer's path to one screen of typing while
-your exposure is a few days at a time of an invented-data endpoint. It is what
-`tools/mock-server/README.md` was built for (its stated job #2 is exactly this).
-
-If you still want Variant B, submit it — but plan for the rejection and have
-Variant A ready to swap in.
+**Bring it back for every future update review** — each new submission gets a
+new random hostname, so §2.2 and §2.3 run again from scratch each time, and the
+App access field must be re-pasted with the new URL.
 
 ---
 
@@ -496,7 +533,7 @@ here is the failure mode that gets apps pulled later.
 | Question | Answer | Why |
 | --- | --- | --- |
 | Does your app collect or share any of the required user data types? | **Yes** | Audio and metadata are transmitted off the device to the user's server. |
-| Is all of the user data collected by your app encrypted in transit? | 🔒 **DECISION — recommended: No** | `android:usesCleartextTraffic="true"` (`AndroidManifest.xml`) permits plain HTTP, which many self-hosted LAN servers use. The checkbox is all-or-nothing: if HTTP is possible, you cannot truthfully claim all data is encrypted. Answering **Yes** is a false statement in a legally binding form. The cost of **No** is a "Data isn't encrypted in transit" line on your store listing — which is honest for a LAN-first self-hosted client, and which the free text in §4.4 explains. *The only way to flip this to Yes is to enforce HTTPS in a future build.* |
+| Is all of the user data collected by your app encrypted in transit? | 🔒 **DECIDED — No** | **Settled 2026-09-22; answer No.** `android:usesCleartextTraffic="true"` (`AndroidManifest.xml:38`) is deliberate, so users can reach self-hosted `http://` servers on their own LAN. HTTPS does work — and is what happens whenever the user's server has TLS — but the checkbox is all-or-nothing, and because plain HTTP is a supported, intended path, **Yes** would be an untrue statement in a legally binding form. The cost of **No** is a "Data isn't encrypted in transit" line on the store listing, which is honest for a LAN-first self-hosted client and which the free text in §4.6 explains. *The only thing that could flip this to Yes is enforcing HTTPS in a future build, which would break LAN users.* |
 | Do you provide a way for users to request that their data is deleted? | **Yes** | The developer holds no data; the user deletes on their own server, or by uninstalling. Documented in the privacy policy. |
 
 ### 4.2 Data types — which to select
@@ -608,7 +645,7 @@ Three notes worth having ready:
 
 | Question | Answer | Why |
 | --- | --- | --- |
-| Is data encrypted in transit? | **No** (per the §4.1 decision) | Cleartext HTTP is permitted for LAN self-hosted servers. |
+| Is data encrypted in transit? | **No** (the settled §4.1 answer) | Cleartext HTTP is a supported path for self-hosted LAN servers, so the all-or-nothing box cannot honestly be ticked. |
 | Do you provide a way for users to request data deletion? | **Yes** | On their own server or device; no developer-held data. |
 | Have you committed to follow the Play Families Policy? | **No / N/A** | Not a children's app (§3.4). |
 | Has your app been independently validated against a global security standard? | **No** | No review has been performed. |
@@ -646,11 +683,13 @@ office LAN with no TLS certificate.
 ⏳ **These forms are driven by what the Console detects in an uploaded bundle.**
 Expect them to be absent or greyed out until an AAB is in a track (§6).
 
-> **Before filling any of these, re-read `android/app/src/main/AndroidManifest.xml`.**
-> A permission audit is in flight and the declared set may have changed since
-> this runbook was written. The Console will ask about exactly what is in the
-> bundle you uploaded — no more, no less. If the Console asks for a form that is
-> not covered below, stop and check the manifest rather than improvising.
+> **The permission audit has landed (#7) and this section matches the shipping
+> manifest.** Exactly two foreground-service types are declared —
+> `microphone` and `mediaProjection`, both on the one service
+> `.audio.AudioCaptureService` — plus the sensitive `READ_PHONE_STATE`. The
+> Console will ask about exactly what is in the bundle you uploaded, no more and
+> no less. If it asks for a form not covered below, stop and re-read
+> `android/app/src/main/AndroidManifest.xml` rather than improvising.
 
 **Where:** App content → **Sensitive app permissions** and App content →
 **Foreground service permissions** ⚠️ NAMING UNVERIFIED — these have been a
@@ -741,30 +780,24 @@ capture, including that other call participants may be recorded, under
 a follow-up question. The two facts that carry it: per-session system consent
 dialog, and audio-only (no `VirtualDisplay`).
 
-### 5.4 Foreground service — Data sync
+### 5.4 ~~Foreground service — Data sync~~ — WITHDRAWN 2026-09-22
 
-**Where:** App content → Foreground service permissions → **Data sync**
+**Do not fill in a Data sync foreground-service declaration.**
+`android.permission.FOREGROUND_SERVICE_DATA_SYNC` was **removed from the
+manifest in the permission audit (#7) on 2026-09-22** and is absent at `main`.
 
-**Type:** `android.permission.FOREGROUND_SERVICE_DATA_SYNC`.
+**Why it went:** the app declares no service with
+`foregroundServiceType="dataSync"` — the only app-declared service is
+`.audio.AudioCaptureService` (`mediaProjection|microphone`). WorkManager runs
+the auto-upload job as ordinary, non-expedited work (`lib/main.dart`, no
+`outOfQuotaPolicy`), so `androidx.work`'s `SystemForegroundService` is never
+started and carries no `foregroundServiceType` in the merged manifest. The
+permission backed a code path that does not exist.
 
-**Enter:**
-
-```
-Auto-upload transfers audio files from folders the user selected to the user's
-own Speakr server. The work is scheduled with Android's WorkManager — a
-periodic job plus a one-shot job enqueued when a phone call ends — and a
-recording can be a long file over a slow uplink, so WorkManager may need to run
-the transfer as a data-sync foreground service to finish it without being
-killed mid-upload. The notification tells the user an upload is in progress.
-The only network destination is the server URL the user configured; nothing is
-synced anywhere else.
-```
-
-**If the form asks which service uses this type:** name **WorkManager's
-`androidx.work.impl.foreground.SystemForegroundService`**. The app declares no
-`dataSync` service of its own — the only app-declared service is
-`.audio.AudioCaptureService` (`mediaProjection|microphone`). WorkManager merges
-its own service into the manifest and sets the type at runtime.
+**If the Console asks for this form anyway, your AAB predates #7 — rebuild, do
+not fill the form.** The previously drafted justification text is withdrawn, not
+merely unused: submitting it would justify a foreground-service type the app
+does not run.
 
 ### 5.5 `READ_PHONE_STATE`
 
@@ -792,20 +825,22 @@ the manifest — and it does not record calls itself.
 (off-hook → idle enqueues a WorkManager one-shot) and the receiver registration
 in `AndroidManifest.xml`.
 
-### 5.6 `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` — 🔒 CHECK THE MANIFEST FIRST
+### 5.6 ~~`REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`~~ — WITHDRAWN 2026-09-22
 
-**Do not paste a justification for this until you have confirmed what the
-shipping manifest declares.** As of `main` the permission is still declared but
-nothing in `lib/` or `android/` requests it — there is no
+**Nothing to declare. Skip this item.**
+`android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` was **removed from
+the manifest in the permission audit (#7) on 2026-09-22** and is absent at
+`main`.
+
+**Why it went:** nothing in the app ever requested it — no
 `Permission.ignoreBatteryOptimizations` call and no
-`ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` intent. The permission-audit work
-in flight may remove it.
+`ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` intent anywhere in `lib/` or
+`android/`. It was dead weight carried from the initial commit, and Play
+discourages requesting it directly in any case. Removing it deleted a policy
+question for free.
 
-- If the audit **removes it**: nothing to declare. Skip this item.
-- If it **stays and a user-tapped request is wired**: justification text is in
-  `permissions-declaration.md` §6 — but read that section's warning first.
-- If it **stays unwired**: you would be justifying a permission the app never
-  uses. Fix the code or drop the permission rather than writing around it.
+The justification text that once sat in `permissions-declaration.md` §6 is
+**withdrawn** — it described a user-tapped exemption flow the app never had.
 
 ### 5.7 Cleartext traffic — review note, not a form
 
@@ -858,8 +893,10 @@ Console read the manifest, which is what unlocks the ⏳ items.
 | `versionCode` | GitHub Actions run number — must be strictly higher than any previous upload |
 | Universal APK | **do not upload** — it is for direct GitHub download only |
 
-Watch the Console's permissions summary on upload: `MANAGE_EXTERNAL_STORAGE`
-must **not** appear. If it does, the bundle predates PR #4 — rebuild.
+Watch the Console's permissions summary on upload: none of the five removed
+permissions (§8.4) may appear. `MANAGE_EXTERNAL_STORAGE` means the bundle
+predates PR #4; any of the other four means it predates PR #7. Either way —
+rebuild, do not fill the form it asks for.
 
 ### 6.3 Release notes and review notes
 
@@ -893,7 +930,7 @@ bundle is in a track.
 
 | Item | Why it waits |
 | --- | --- |
-| **Foreground service permissions** declarations (§5.2–5.4) | The Console derives the list of FGS types from the uploaded bundle's manifest. |
+| **Foreground service permissions** declarations (§5.2–5.3 — microphone and media projection only) | The Console derives the list of FGS types from the uploaded bundle's manifest. |
 | **Sensitive app permissions** — `READ_PHONE_STATE` (§5.5) | Same: surfaced from the detected permission set. |
 | **Pre-launch report** | Generated by running the uploaded bundle on Google's device farm. Expect cleartext and permission notes. |
 | **Play App Signing** enrolment (§6.1) | Settled at the first release you create. |
@@ -925,56 +962,166 @@ folders the user chose — is identical under SAF; only the permission mechanism
 narrowed. Audio was already declared Collected. The migration narrows the
 *mechanism*, not the *scope*, so every §4 answer stands.
 
-### 8.3 Stale text in the other docs in this folder
+### 8.3 Stale text in the other docs — all cleared 2026-09-22
 
-These were written before PR #4 merged and now contradict the code. They do not
-affect anything in this runbook, but do not copy from them:
+The eight passages listed here were written before PR #4 merged and contradicted
+the code. **They have all been corrected in place**; the list is kept so you can
+see what changed and check the work.
 
-1. **`permissions-declaration.md` §1** — "The code change ... lands in a
-   **separate PR**. Until it merges, `AndroidManifest.xml:13` still declares the
-   permission." Merged in #4; the manifest is clean. The same section's line
-   numbers for the manifest are also now shifted.
-2. **`permissions-declaration.md` §8** — the "sequencing" risk it describes is
-   resolved; `main` is safe to build from.
-3. **`checklist.md` §2, Privacy policy row** — "TODO (pending Pages)" and
-   "Pending URL". The URL is **live (HTTP 200)**.
-4. **`checklist.md` §4, `MANAGE_EXTERNAL_STORAGE` entry** — "the removal ships
-   in a separate PR ... Do not upload an AAB built before that PR". Shipped.
-5. **`checklist.md` §5 / §6** — the unchecked "SAF migration PR merged" box and
-   follow-up item 1 ("Write & host the privacy policy") are both done.
-6. **`data-safety.md`, intro bullet 5** — "`MANAGE_EXTERNAL_STORAGE` is being
-   removed (the code change is in a separate PR; until it merges, builds from
-   `main` still request it)". Removed.
-7. **`data-safety.md`, confirm-item 4** — "The URL goes live once GitHub Pages
-   is enabled". It is live.
-8. **`listing.md`, Privacy policy URL section** — "`MANAGE_EXTERNAL_STORAGE` is
-   being removed (the code change is in a separate PR)". Removed.
+| # | Passage | Resolution |
+| --- | --- | --- |
+| 1 | `permissions-declaration.md` §1 — "the code change … lands in a **separate PR**. Until it merges, `AndroidManifest.xml:13` still declares the permission." | Fixed. The intro now records #4 as merged, and every manifest line reference in that file was re-pointed at the current file. |
+| 2 | `permissions-declaration.md` §8 — the unresolved "sequencing" risk. | Fixed. §8 now states that `main` is safe to build from, and that all five removed permissions are gone. |
+| 3 | `checklist.md` §2, Privacy policy row — "TODO (pending Pages)", "Pending URL". | Fixed. The row is **DONE** and the URL is recorded as live (HTTP 200). |
+| 4 | `checklist.md` §4, `MANAGE_EXTERNAL_STORAGE` entry — "the removal ships in a separate PR … Do not upload an AAB built before that PR". | Fixed. Rewritten as shipped in #4, with the AAB caveat kept as a build-provenance check rather than a pending code change. |
+| 5 | `checklist.md` §5 / §6 — unchecked "SAF migration PR merged" box and follow-up 1 ("Write & host the privacy policy"). | Fixed. Both are now ticked and struck respectively. |
+| 6 | `data-safety.md`, intro bullet 5 — "`MANAGE_EXTERNAL_STORAGE` is being removed (the code change is in a separate PR …)". | Fixed. The bullet now records the removal as shipped, and adds that the permission audit removed the last two storage permissions as well. |
+| 7 | `data-safety.md`, confirm-item 4 — "The URL goes live once GitHub Pages is enabled". | Fixed. Recorded as live. |
+| 8 | `listing.md`, Privacy policy URL section — "`MANAGE_EXTERNAL_STORAGE` is being removed (the code change is in a separate PR)". | Fixed. Rewritten as removed, with the SAF model described in the present tense. |
 
-Separately, and **not** a SAF issue: `permissions-declaration.md` §6 and
-`checklist.md` §4 both flag that `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` is
-declared but never requested. That is still true at `main` and is being handled
-by the permission audit — see §5.6.
+Two further stale passages were found beyond that list and fixed at the same
+time:
+
+- **`listing.md` and §1.3 above, REQUIREMENTS bullet** — "Audio/storage access
+  to read files you want to upload" described a storage permission the app no
+  longer declares on Android. Rewritten.
+- **`RELEASE_READINESS.md`, permission-audit note** — the merged-manifest
+  permission arithmetic did not add up, and the note said
+  `permissions-declaration.md` "has not been rewritten". Both corrected.
+
+### 8.4 What the permission audit (#7) made stale, and what it changed
+
+Four permissions were removed on 2026-09-22 after every declared permission was
+re-checked against the code and against the merged manifest from a real
+`flutter build apk`:
+
+| Removed | Why it was unreachable |
+| --- | --- |
+| `READ_MEDIA_AUDIO` | All Android audio I/O goes through the SAF tree grant. The app has **no single-file picker on Android** — `file_picker` is used only for `getDirectoryPath()`. |
+| `READ_EXTERNAL_STORAGE` (`maxSdkVersion 32`) | Same. No storage permission of any kind is left. |
+| `FOREGROUND_SERVICE_DATA_SYNC` | No `dataSync` service exists; WorkManager runs non-expedited (§5.4). |
+| `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` | Never requested anywhere in the code (§5.6). |
+
+**What this changes for you:** two Console declaration forms disappear (§5.4,
+§5.6). Nothing in §4 (Data safety) moves — the audit narrowed *which permissions
+back* the auto-upload behaviour, not what the app reads, transmits or deletes.
+Audio was already declared Collected and stays so.
+
+**One thing to watch at upload:** the Console's permission summary should list
+nine app permissions plus `ACCESS_NETWORK_STATE` and the `androidx.core`
+dynamic-receiver permission, which dependencies contribute. If it lists any of
+the five removed permissions, your AAB predates #7 — rebuild.
 
 ---
 
 ## §9 — Final pre-submit sweep
 
-- [ ] AAB built from a commit at or after PR #4; `MANAGE_EXTERNAL_STORAGE`
-      absent from the Console's permission list on upload.
+- [ ] AAB built from a commit at or after PR #7; `MANAGE_EXTERNAL_STORAGE`,
+      `READ_MEDIA_AUDIO`, `READ_EXTERNAL_STORAGE`,
+      `FOREGROUND_SERVICE_DATA_SYNC` and
+      `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` all absent from the Console's
+      permission list on upload.
 - [ ] AAB is release-signed, not debug-signed.
 - [ ] `versionCode` higher than any previous upload.
 - [ ] Privacy policy URL entered and still resolving.
-- [ ] App access filled with a path a reviewer can actually walk (§2 — read
-      §2.4 before you settle on Variant B).
-- [ ] Data safety answers match §4, including the encryption-in-transit
-      decision you made.
+- [ ] Mock server **and** `cloudflared` running; the tunnel URL returns HTTP 200
+      to the §2.2 `curl` (re-check on the day you submit).
+- [ ] App access filled with the live tunnel URL — pasted in **both** the
+      username field and the two places inside the instructions text (§2.3).
+- [ ] Calendar reminder set to re-check the tunnel URL daily while the review is
+      open (§2.4). A dead URL fails the review.
+- [ ] Data safety answers match §4, with encryption in transit answered **No**
+      (§4.1).
 - [ ] Content rating questionnaire submitted; outcome is **Everyone**.
 - [ ] Target audience is **18 and over** only.
 - [ ] News / COVID-19 / Government / Financial / Health / Ads all answered.
-- [ ] Foreground service declarations filled for every type the uploaded bundle
-      actually declares — re-checked against `AndroidManifest.xml`, not against
-      this document.
+- [ ] Foreground service declarations filled for **microphone** and
+      **media projection** only — and re-checked against `AndroidManifest.xml`,
+      not against this document. There is no Data sync declaration to file
+      (§5.4) and no battery-optimisation item (§5.6).
+- [ ] Console permission summary on upload shows none of the five removed
+      permissions (§8.4).
 - [ ] `READ_PHONE_STATE` justification submitted.
 - [ ] Review notes carry the cleartext explanation.
 - [ ] Listing text, graphics and 5 screenshots uploaded.
 - [ ] Countries and Free pricing set.
+- [ ] After approval: `cloudflared` and the mock server stopped (§2.5).
+
+---
+
+## Appendix A — FALLBACK: reviewer runs the server themselves
+
+**Do not submit this.** The decided route is the Cloudflare Tunnel in §2. This
+appendix is kept only so that, if the tunnel route becomes impossible, you are
+not rewriting the text under time pressure — and so the reasons it was rejected
+stay on the record.
+
+### A.1 The entry, if you ever have to use it
+
+Entry name:
+
+```
+Speakr demo server (reviewer-run)
+```
+
+Username field:
+
+```
+http://10.0.2.2:8420
+```
+
+Password field:
+
+```
+speakr-demo-token
+```
+
+Any other instructions:
+
+```
+Speakr is a client for a Speakr transcription server that the user hosts
+themselves. There are no accounts; a server URL and an API token are the
+credentials. A demo server is included in the app's public source repository
+and can be run locally on the review machine.
+
+Setup (once, ~5 minutes, on the machine running the emulator):
+1. Install the Dart SDK 3.11 or later (https://dart.dev/get-dart).
+2. git clone https://github.com/Inrego/SpeakrApp
+3. cd SpeakrApp && dart run tools/mock-server/bin/speakr_mock_server.dart
+   It listens on 0.0.0.0:8420 and prints nothing further. Leave it running.
+
+In the app:
+4. Launch the app. Tap "Next" twice through the two intro screens.
+5. On the third screen ("Let's connect to your Speakr"), enter:
+   Server URL: http://10.0.2.2:8420   (Android emulator reaches the host at
+   10.0.2.2. On a physical device on the same network use
+   http://<host-LAN-IP>:8420 instead.)
+   API Token:  speakr-demo-token
+6. Tap "Connect". The library screen opens with six demo recordings.
+
+Without a server the app cannot proceed past that connection screen; this is
+the app's entire purpose, not a paywall or a hidden feature.
+```
+
+Verify the clone URL before pasting. The repo must be **public** at review time
+or step 2 fails outright.
+
+### A.2 Why it was not chosen
+
+- It asks a reviewer to install a language SDK, clone a git repo, and run a
+  server process on their own machine. Play review is a high-throughput
+  process; instructions that require developer tooling on the reviewer's host
+  are outside what the App access field is designed for.
+- It assumes the reviewer uses an emulator on a machine they control, and that
+  `10.0.2.2` applies. If review runs on a physical device farm, `10.0.2.2` is
+  wrong and the LAN-IP fallback is unreachable from their network.
+- There is **no prebuilt mock-server binary published anywhere today** —
+  `.github/workflows/release.yml` builds only the AAB and the universal APK. So
+  "download and run" is not an option; it is "install Dart and build it".
+- The likely outcome is a rejection citing inability to access app
+  functionality. That costs a review cycle (days), and repeated access
+  rejections are worse than a single delay.
+
+The tunnel in §2 keeps the reviewer's path to one screen of typing, which is
+why it won. Its cost — an ephemeral URL you must babysit (§2.4) — is smaller
+than a probable rejection.
