@@ -344,7 +344,7 @@ class _PendingTileState extends ConsumerState<_PendingTile> {
             style: SpeakrText.serif(size: 20),
           ),
           content: Text(
-            '${widget.pending.file.path.split(RegExp(r"[\\/]")).last}\n\n'
+            '${widget.pending.file.name}\n\n'
             'The file will be uploaded to your Speakr server and removed '
             'from this device.',
             style: SpeakrText.sans(size: 13, color: SpeakrColors.ink2),
@@ -372,8 +372,8 @@ class _PendingTileState extends ConsumerState<_PendingTile> {
       final store = await AutoUploadSettingsStore.open();
       final fileStillExists = await widget.pending.file.exists();
       if (!fileStillExists) {
-        await store.clearFileError(widget.pending.file.path);
-        await store.clearUploadedFile(widget.pending.file.path);
+        await store.clearFileError(widget.pending.file.key);
+        await store.clearUploadedFile(widget.pending.file.key);
       }
       ref.invalidate(pendingFilesProvider);
       ref.invalidate(pendingFileErrorsProvider);
@@ -452,8 +452,8 @@ class _PendingTileState extends ConsumerState<_PendingTile> {
       return;
     }
     final store = await AutoUploadSettingsStore.open();
-    await store.clearFileError(widget.pending.file.path);
-    await store.clearUploadedFile(widget.pending.file.path);
+    await store.clearFileError(widget.pending.file.key);
+    await store.clearUploadedFile(widget.pending.file.key);
     if (!mounted) return;
     ref.invalidate(pendingFilesProvider);
     ref.invalidate(pendingFileErrorsProvider);
@@ -462,11 +462,11 @@ class _PendingTileState extends ConsumerState<_PendingTile> {
   @override
   Widget build(BuildContext context) {
     final p = widget.pending;
-    final name = p.file.path.split(RegExp(r'[\\/]')).last;
+    final name = p.file.name;
     final errors =
         ref.watch(pendingFileErrorsProvider).asData?.value ??
         const <String, String>{};
-    final scanError = errors[p.file.path];
+    final scanError = errors[p.file.key];
     final hasError = scanError != null;
 
     void Function()? onTap;

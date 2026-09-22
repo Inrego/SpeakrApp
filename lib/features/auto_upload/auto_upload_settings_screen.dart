@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:speakr_saf/speakr_saf.dart';
 
 import '../../services/preferences/time_format_preference.dart';
 import '../../services/preferences/time_format_providers.dart';
@@ -61,11 +62,19 @@ class _AutoUploadSettingsScreenState
   }
 
   Future<void> _addFolder() async {
-    final picked = await FilePicker.getDirectoryPath();
-    if (picked == null || picked.isEmpty) return;
-    final entry = await ref
-        .read(folderConfigsControllerProvider)
-        .addFolder(picked);
+    final controller = ref.read(folderConfigsControllerProvider);
+    final FolderUploadConfig entry;
+    if (Platform.isAndroid) {
+      // Storage Access Framework: the picker result is a persisted tree
+      // grant, which is what the worker enumerates and deletes through.
+      final tree = await SpeakrSaf.pickTree();
+      if (tree == null) return;
+      entry = await controller.addFolder(null, tree: tree);
+    } else {
+      final picked = await FilePicker.getDirectoryPath();
+      if (picked == null || picked.isEmpty) return;
+      entry = await controller.addFolder(picked);
+    }
     if (!mounted) return;
     _openEditor(entry.id);
   }
@@ -149,17 +158,7 @@ class _AutoUploadSettingsScreenState
                 SettingsGroup(
                   label: 'Folders',
                   children: [
-                    for (final c in configs)
-                      SettingsRow(
-                        label: _folderLabel(c),
-                        subtitle: c.folderPath,
-                        value: c.enabled ? 'On' : 'Off',
-                        valueColor: c.enabled
-                            ? SpeakrColors.ok
-                            : SpeakrColors.muted,
-                        mono: false,
-                        onTap: () => _openEditor(c.id),
-                      ),
+                    for (final c in configs) _FolderListRow(c, _openEditor),
                     SettingsRow(
                       label: 'Add folder…',
                       trailing: const Icon(
@@ -215,11 +214,50 @@ class _AutoUploadSettingsScreenState
     );
   }
 
-  String _folderLabel(FolderUploadConfig c) {
-    if (!c.hasFolder) return 'New folder (no path set)';
-    final parts = c.folderPath!.split(RegExp(r'[\\/]'));
-    final last = parts.where((s) => s.isNotEmpty).toList();
-    return last.isEmpty ? c.folderPath! : last.last;
+}
+
+String _folderLabel(FolderUploadConfig c) {
+  if (!c.hasFolder) return 'New folder (no path set)';
+  final path = c.folderPath ?? c.treeUri!;
+  final parts = path.split(RegExp(r'[\\/]'));
+  final last = parts.where((s) => s.isNotEmpty).toList();
+  return last.isEmpty ? path : last.last;
+}
+
+/// One watched folder in the list. On Android the trailing value flips to
+/// "Needs access" when the entry has no usable tree grant (legacy raw
+/// path, or a grant the user revoked) so the problem is visible before
+/// the user wonders why nothing uploads.
+class _FolderListRow extends ConsumerWidget {
+  const _FolderListRow(this.config, this.onOpen);
+  final FolderUploadConfig config;
+  final void Function(String id) onOpen;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final access = !config.hasFolder ||
+        (ref.watch(folderAccessProvider(config.treeUri)).asData?.value ??
+            true);
+    final String value;
+    final Color color;
+    if (!access) {
+      value = 'Needs access';
+      color = SpeakrColors.danger;
+    } else if (config.enabled) {
+      value = 'On';
+      color = SpeakrColors.ok;
+    } else {
+      value = 'Off';
+      color = SpeakrColors.muted;
+    }
+    return SettingsRow(
+      label: _folderLabel(config),
+      subtitle: config.folderPath,
+      value: value,
+      valueColor: color,
+      mono: false,
+      onTap: () => onOpen(config.id),
+    );
   }
 }
 
@@ -236,12 +274,17 @@ class FolderUploadEditScreen extends ConsumerStatefulWidget {
 
 class _FolderUploadEditScreenState
     extends ConsumerState<FolderUploadEditScreen> {
-  Future<void> _pickFolder() async {
+  Future<void> _pickFolder({FolderUploadConfig? current}) async {
+    final controller = ref.read(folderConfigsControllerProvider);
+    if (Platform.isAndroid) {
+      final tree = await SpeakrSaf.pickTree(initialUri: current?.treeUri);
+      if (tree == null) return;
+      await controller.setFolderTree(widget.configId, tree);
+      return;
+    }
     final picked = await FilePicker.getDirectoryPath();
     if (picked == null || picked.isEmpty) return;
-    await ref
-        .read(folderConfigsControllerProvider)
-        .setFolder(widget.configId, picked);
+    await controller.setFolder(widget.configId, picked);
   }
 
   Future<void> _typeFolder(FolderUploadConfig current) async {
@@ -256,7 +299,7 @@ class _FolderUploadEditScreenState
           autofocus: true,
           style: SpeakrText.mono(size: 13, color: SpeakrColors.ink),
           decoration: const InputDecoration(
-            hintText: '/storage/emulated/0/Recordings/Call',
+            hintText: r'C:\Users\you\Recordings',
           ),
         ),
         actions: [
@@ -375,7 +418,13 @@ class _FolderUploadEditScreenState
                     ],
                   ),
                 ),
-                if (Platform.isAndroid) const _PermissionsBanner(),
+                if (Platform.isAndroid) ...[
+                  const _PermissionsBanner(),
+                  _FolderAccessBanner(
+                    config: config,
+                    onReselect: () => _pickFolder(current: config),
+                  ),
+                ],
                 SettingsGroup(
                   label: 'Watcher',
                   children: [
@@ -393,17 +442,20 @@ class _FolderUploadEditScreenState
                           : config.folderPath!.split(RegExp(r'[\\/]')).last,
                       subtitle: config.folderPath,
                       mono: false,
-                      onTap: _pickFolder,
+                      onTap: () => _pickFolder(current: config),
                     ),
-                    SettingsRow(
-                      label: 'Type folder path manually',
-                      trailing: const Icon(
-                        Icons.edit_outlined,
-                        size: 18,
-                        color: SpeakrColors.muted,
+                    // A typed path has no Storage Access Framework grant
+                    // behind it, so this only exists off Android.
+                    if (!Platform.isAndroid)
+                      SettingsRow(
+                        label: 'Type folder path manually',
+                        trailing: const Icon(
+                          Icons.edit_outlined,
+                          size: 18,
+                          color: SpeakrColors.muted,
+                        ),
+                        onTap: () => _typeFolder(config),
                       ),
-                      onTap: () => _typeFolder(config),
-                    ),
                   ],
                 ),
                 SettingsGroup(
@@ -688,7 +740,6 @@ class _PermissionsBannerState extends State<_PermissionsBanner> {
     final wanted = <Permission>[
       Permission.phone,
       Permission.audio,
-      Permission.manageExternalStorage,
       Permission.notification,
     ];
     final missing = <Permission>[];
@@ -762,15 +813,77 @@ class _PermissionsBannerState extends State<_PermissionsBanner> {
     if (missing.contains(Permission.audio)) {
       parts.add('Audio files — to read recordings on the device.');
     }
-    if (missing.contains(Permission.manageExternalStorage)) {
-      parts.add(
-        'All files access — to delete recordings after successful upload.',
-      );
-    }
     if (missing.contains(Permission.notification)) {
       parts.add('Notifications — required for background uploads.');
     }
     return parts.join(' ');
+  }
+}
+
+// ── Folder access banner ──────────────────────────────────────────────────────
+
+/// Android only. Shown on the folder editor when the entry has no usable
+/// Storage Access Framework grant: either it predates the migration and
+/// still carries only a raw path, or the user revoked the grant (Settings
+/// > Apps, or a clear-data). Re-selecting the folder re-takes the grant and
+/// migrates the per-file bookkeeping.
+class _FolderAccessBanner extends ConsumerWidget {
+  const _FolderAccessBanner({required this.config, required this.onReselect});
+  final FolderUploadConfig config;
+  final VoidCallback onReselect;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (!config.hasFolder) return const SizedBox.shrink();
+    final access = ref.watch(folderAccessProvider(config.treeUri));
+    if (access.asData?.value != false) return const SizedBox.shrink();
+    final legacy = config.treeUri == null;
+    return Container(
+      margin: const EdgeInsets.fromLTRB(24, 4, 24, 14),
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF6E0),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: const Color(0xFFE8C97A)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Folder access needed',
+            style: SpeakrText.sans(
+              size: 13,
+              weight: FontWeight.w600,
+              color: SpeakrColors.ink,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            legacy
+                ? 'Speakr now reads this folder through Android\'s folder '
+                    'picker instead of "All files access". Re-select the '
+                    'folder once to keep auto-upload running; your upload '
+                    'history is kept.'
+                : 'Speakr no longer has permission to read this folder. '
+                    'Re-select it to grant access again.',
+            style: SpeakrText.sans(
+              size: 12,
+              color: SpeakrColors.ink2,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton(
+              onPressed: onReselect,
+              style: TextButton.styleFrom(padding: EdgeInsets.zero),
+              child: const Text('Re-select folder'),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

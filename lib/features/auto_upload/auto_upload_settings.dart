@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 /// Plain immutable value object for one folder watched by auto-upload.
 /// A list of these is persisted via [AutoUploadSettingsStore] as a JSON
 /// array in SharedPreferences.
@@ -9,6 +11,7 @@ class FolderUploadConfig {
     required this.id,
     this.enabled = false,
     this.folderPath,
+    this.treeUri,
     this.parsePresetId,
     this.customRegex,
     this.customCaptureGroup,
@@ -23,11 +26,12 @@ class FolderUploadConfig {
 
   /// Mints a fresh entry with a locally-unique id. Used by the UI when
   /// the user adds a new folder.
-  factory FolderUploadConfig.newEntry({String? folderPath}) {
+  factory FolderUploadConfig.newEntry({String? folderPath, String? treeUri}) {
     return FolderUploadConfig(
       id: DateTime.now().microsecondsSinceEpoch.toString(),
       enabled: true,
       folderPath: folderPath,
+      treeUri: treeUri,
     );
   }
 
@@ -36,6 +40,7 @@ class FolderUploadConfig {
       id: json['id'] as String,
       enabled: json['enabled'] as bool? ?? false,
       folderPath: json['folderPath'] as String?,
+      treeUri: json['treeUri'] as String?,
       parsePresetId: json['parsePresetId'] as String?,
       customRegex: json['customRegex'] as String?,
       customCaptureGroup: (json['customCaptureGroup'] as num?)?.toInt(),
@@ -52,7 +57,17 @@ class FolderUploadConfig {
 
   final String id;
   final bool enabled;
+
+  /// Human-readable location of the watched folder. On Windows this is the
+  /// real filesystem path the worker reads with `dart:io`. On Android it is
+  /// display-only: the worker operates on [treeUri] instead.
   final String? folderPath;
+
+  /// Android only: the persisted `ACTION_OPEN_DOCUMENT_TREE` grant the
+  /// worker enumerates, reads and deletes through. Null on Windows, and
+  /// null for Android entries saved before the Storage Access Framework
+  /// migration — those must be re-picked once (see [needsAndroidGrant]).
+  final String? treeUri;
 
   /// Identifier of a preset in [kDateTimePresets] or `'custom'`. `null`
   /// means filename parsing is off; the worker uses the file's mtime.
@@ -79,13 +94,21 @@ class FolderUploadConfig {
   /// auto-upload worker without being uploaded. `null` disables the check.
   final int? autoDeleteShorterThanSeconds;
 
-  bool get hasFolder => folderPath != null && folderPath!.isNotEmpty;
+  bool get hasFolder =>
+      (folderPath != null && folderPath!.isNotEmpty) || treeUri != null;
   bool get parsingEnabled => parsePresetId != null;
+
+  /// True for an Android entry that still carries only a legacy raw path
+  /// and no tree grant. The worker cannot read it; the UI asks the user to
+  /// re-select the folder.
+  bool get needsAndroidGrant =>
+      Platform.isAndroid && hasFolder && treeUri == null;
 
   Map<String, dynamic> toJson() => {
         'id': id,
         'enabled': enabled,
         if (folderPath != null) 'folderPath': folderPath,
+        if (treeUri != null) 'treeUri': treeUri,
         if (parsePresetId != null) 'parsePresetId': parsePresetId,
         if (customRegex != null) 'customRegex': customRegex,
         if (customCaptureGroup != null) 'customCaptureGroup': customCaptureGroup,
@@ -103,6 +126,7 @@ class FolderUploadConfig {
     String? id,
     bool? enabled,
     Object? folderPath = _sentinel,
+    Object? treeUri = _sentinel,
     Object? parsePresetId = _sentinel,
     Object? customRegex = _sentinel,
     Object? customCaptureGroup = _sentinel,
@@ -120,6 +144,7 @@ class FolderUploadConfig {
       folderPath: folderPath == _sentinel
           ? this.folderPath
           : folderPath as String?,
+      treeUri: treeUri == _sentinel ? this.treeUri : treeUri as String?,
       parsePresetId: parsePresetId == _sentinel
           ? this.parsePresetId
           : parsePresetId as String?,

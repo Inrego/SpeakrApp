@@ -55,6 +55,11 @@ dependencies:
   package_info_plus: ^9.0.1
   file_picker: ^11.0.2
   workmanager: ^0.9.0+3
+  # In-repo Android Storage Access Framework bridge (packages/speakr_saf).
+  # A plugin package rather than a MainActivity channel so it is also
+  # registered in the WorkManager background engine. No external deps.
+  speakr_saf:
+    path: packages/speakr_saf
   # Multi-window (Windows-only feature: always-on-top mini recorder).
   # Pinned at 0.2.x: 0.3.0 is a "rewritten" release that swaps the
   # by-window-id IPC for a named-channel API (WindowMethodChannel,
