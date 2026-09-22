@@ -53,10 +53,18 @@ produced by *other* apps, followed by deletion of the local copy.
 > outside the audio media collection, so `READ_MEDIA_AUDIO` alone does not even
 > let the app see the files, let alone remove them.
 >
+> The user can also set a minimum duration per folder; files shorter than that
+> (accidental or missed-call recordings) are deleted without being uploaded.
+> That rule is off unless the user sets a value. A file is never deleted before
+> the server has confirmed the upload; if deletion fails the file stays and the
+> app shows the error.
+>
 > The access is confined to that feature. The app does not browse, index, or
 > transmit anything outside the folders the user explicitly selected; it reads
 > the audio file, uploads it to the user's own server, deletes it, and stores
-> nothing else. There is no third-party backend and no advertising SDK.
+> nothing else. There is no third-party backend and no advertising SDK. This
+> behaviour is disclosed in the same words in the app's public privacy policy,
+> under "Auto-upload, All files access, and deletion of your files".
 
 **Evidence to cite if the reviewer asks (also listed in RELEASE_READINESS item (c)):**
 
@@ -68,6 +76,8 @@ produced by *other* apps, followed by deletion of the local copy.
 | Folder chosen by the user, not the app | `lib/features/auto_upload/auto_upload_settings_screen.dart:64,240` — `FilePicker.getDirectoryPath()` |
 | Plain-filesystem scan of that folder | `lib/features/auto_upload/auto_upload_worker.dart:76-81` — `listCandidateFiles()` → `Directory(folderPath).listSync(followLinks: false)` |
 | Delete of the local copy after a successful upload | `lib/features/auto_upload/auto_upload_worker.dart:396-415` (`deleteLocalAutoUploadFile`), called at `:482` |
+| Delete-without-upload below the user-set minimum duration | `lib/features/auto_upload/auto_upload_worker.dart:637-664` (`autoDeleteShorterThanSeconds`) |
+| Disclosed in the privacy policy | `docs/play-store/privacy-policy.md`, section "Auto-upload, All files access, and deletion of your files" (published at `site/privacy-policy.html`) |
 | Unattended trigger — periodic background job | `lib/main.dart:62-69` — WorkManager periodic task, 15-minute cadence |
 | Unattended trigger — end of a phone call | `android/app/src/main/kotlin/com/inrego/speakr_app/PhoneStateReceiver.kt` |
 
@@ -113,11 +123,15 @@ and paste the link.
 
 **Justification:**
 
-> This is used to capture device audio — the other side of a call or a video
-> meeting — alongside the microphone, so the transcript contains both speakers
-> rather than only the person holding the phone. Android exposes system audio
-> capture only through `MediaProjection`, so it is the only API that produces a
-> usable two-sided recording.
+> This is used to capture device audio — the other side of a video meeting or
+> VoIP call, or any media the device is playing — alongside the microphone, so
+> the transcript contains both sides rather than only the person holding the
+> phone. Android exposes system audio capture only through `MediaProjection`
+> (`AudioPlaybackCaptureConfiguration`), so it is the only API that produces a
+> usable two-sided recording. The capture is limited to what Android makes
+> available to that API: streams tagged `USAGE_MEDIA`, `USAGE_GAME`, and
+> `USAGE_UNKNOWN`. Apps that opt out of playback capture, and ordinary
+> telephony audio, are excluded by the platform.
 >
 > Capture is user-initiated per session and never persists. Each time the user
 > starts a system-audio recording, Android shows its own screen-capture consent
@@ -127,7 +141,9 @@ and paste the link.
 > The app captures audio only — it never reads, stores, or transmits screen
 > pixels. The captured audio goes to one destination: the user's own self-hosted
 > Speakr server, at a URL the user entered. It is not sent to me, to any
-> third-party service, or to any analytics or advertising SDK.
+> third-party service, or to any analytics or advertising SDK. The app's public
+> privacy policy discloses this capture, including that other call participants
+> may be recorded, under "Recording other apps' audio".
 
 *Correction against the earlier checklist wording:* the microphone and media
 projection types are two declarations for **one** service, `.audio.AudioCaptureService`,
