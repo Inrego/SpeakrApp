@@ -287,8 +287,20 @@ becomes available.
   closed that gap.
 - **Sensitive Android permissions beyond (c)** still need Play Console declarations
   even if not outright blockers: `READ_PHONE_STATE` (call-end trigger via
-  `PhoneStateReceiver`), `FOREGROUND_SERVICE_MEDIA_PROJECTION` (capturing other apps'
-  audio draws extra scrutiny), and `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`. The
-  ready-to-paste Console copy for every one of these is in
+  `PhoneStateReceiver`) and `FOREGROUND_SERVICE_MEDIA_PROJECTION` (capturing other
+  apps' audio draws extra scrutiny). The ready-to-paste Console copy is in
   [`play-store/permissions-declaration.md`](play-store/permissions-declaration.md);
   the raw inventory is `android/app/src/main/AndroidManifest.xml`.
+- **Permission audit, 2026-09-22 (follow-up to the SAF migration).** Every
+  declared permission was re-checked against the code and against the *merged*
+  manifest from a real `flutter build apk` (`build/app/outputs/logs/manifest-merger-debug-report.txt`).
+  Four were removed as unreachable: `READ_MEDIA_AUDIO` and `READ_EXTERNAL_STORAGE`
+  (maxSdkVersion 32) — all Android audio I/O goes through the SAF tree grant and
+  the app has no single-file picker on Android; `FOREGROUND_SERVICE_DATA_SYNC` —
+  no `dataSync` service exists and WorkManager runs non-expedited; and
+  `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` — never requested anywhere in the code.
+  The app now declares **eleven** permissions, of which three
+  (`ACCESS_NETWORK_STATE` and the `androidx.core` dynamic-receiver permission are
+  dependency-contributed) it does not list itself. `permissions-declaration.md`
+  §4 (`dataSync`) and §6 (battery) are now moot and should not be submitted;
+  that file has not been rewritten.
