@@ -64,34 +64,28 @@ review, settings/connection screen.
 ## 4. SENSITIVE / RESTRICTED PERMISSIONS — read before submitting
 
 These come straight from `android/app/src/main/AndroidManifest.xml`. Each row
-notes the likely Play requirement. The first one is a genuine rejection risk.
+notes the likely Play requirement. The former rejection risk — All files
+access — is being removed from the app; see the first entry.
 
-### 🟠 `MANAGE_EXTERNAL_STORAGE` — "All files access" — DECIDED: declare and defend
+### 🟢 `MANAGE_EXTERNAL_STORAGE` — "All files access" — REMOVED, migrated to SAF
 
-- **Decision (2026-09-22):** keep the permission and **submit the restricted
-  permission declaration** — option 3. Ready-to-paste Console copy, with the
-  file:line evidence a reviewer may ask for, is in
-  [`permissions-declaration.md`](permissions-declaration.md) §1. See
-  [`../RELEASE_READINESS.md`](../RELEASE_READINESS.md) item (c) for the recorded
-  decision and the accepted risk.
-- **Where:** manifest line 13; requested at runtime in
-  `lib/features/auto_upload/auto_upload_settings_screen.dart:691` (rationale shown
-  to the user at `:765-767`: "All files access — to delete recordings after
-  successful upload").
-- **Play requirement:** All-files access is a **restricted permission**. Google
-  Play allows it only for a narrow set of app categories (file managers, backup,
-  antivirus, document management, on-device file search, etc.). A
-  transcription/upload client is not on that list, so the declaration triggers a
-  permission-use review and **may be denied** — an accepted risk, not a solved
-  problem. The declaration form also asks for a demo video; see
-  [`permissions-declaration.md`](permissions-declaration.md) §1 for what to record.
-- **Fallbacks if the declaration is denied** (both still documented, neither
-  implemented):
-  1. Drop `MANAGE_EXTERNAL_STORAGE` and use scoped access — `READ_MEDIA_AUDIO` for
-     reading + SAF / `MediaStore.createDeleteRequest()` for per-file consented
-     deletion. Costs the unattended delete-after-upload flow.
-  2. Keep `MANAGE_EXTERNAL_STORAGE` **only** in the sideload/direct-download APK
-     and strip it from the Play AAB via a manifest placeholder or build flavor.
+- **Decision (2026-09-22, superseding the same-day "declare and defend"):**
+  the permission is **removed** and Android auto-upload moves to the Storage
+  Access Framework — the user picks each watched folder with
+  `ACTION_OPEN_DOCUMENT_TREE`, the app persists that grant and scans, reads,
+  and deletes within the tree without further prompts. **No restricted
+  permission declaration is submitted and no demo video is needed.** The
+  earlier decision rested on a false claim about SAF; the history is in
+  [`../RELEASE_READINESS.md`](../RELEASE_READINESS.md) item (c) and the
+  withdrawn justification in
+  [`permissions-declaration.md`](permissions-declaration.md) §1.
+- **Code status:** the removal ships in a **separate PR**. Until it merges the
+  manifest still declares the permission (line 13) and
+  `lib/features/auto_upload/auto_upload_settings_screen.dart` still requests it.
+  **Do not upload an AAB built before that PR** — the Console detects the
+  permission in the bundle and blocks the release until a declaration is filed.
+- **Play requirement after the migration:** none. A SAF grant is a per-folder
+  URI permission, not a manifest permission, and needs no Console form.
 
 ### 🟠 `RECORD_AUDIO` (microphone) — declaration + prominent disclosure
 
@@ -166,11 +160,12 @@ notes the likely Play requirement. The first one is a genuine rejection risk.
       reviewer working test credentials or a demo Speakr server.
 - [ ] Privacy policy URL is live and reachable.
 - [ ] Data Safety answers match actual behavior (see `data-safety.md`).
-- [x] Decision recorded on `MANAGE_EXTERNAL_STORAGE` — **declare and defend**,
-      2026-09-22. Declaration copy: [`permissions-declaration.md`](permissions-declaration.md);
-      rationale and accepted risk: [`../RELEASE_READINESS.md`](../RELEASE_READINESS.md) item (c).
-- [ ] Restricted-permission declaration form actually submitted in the Console
-      (paste §1, attach the demo video).
+- [x] Decision recorded on `MANAGE_EXTERNAL_STORAGE` — **removed, migrated to
+      SAF**, 2026-09-22 (supersedes the same-day "declare and defend"). History:
+      [`../RELEASE_READINESS.md`](../RELEASE_READINESS.md) item (c).
+- [ ] SAF migration PR merged, and the AAB being uploaded was built from a
+      commit that includes it (`MANAGE_EXTERNAL_STORAGE` absent from the
+      merged manifest — check the Console's permissions list on upload).
 - [x] Screenshots + feature graphic **produced** (§1) — still to be uploaded
       in the Console.
 - [ ] Content rating questionnaire submitted (expect Everyone).
@@ -189,9 +184,9 @@ notes the likely Play requirement. The first one is a genuine rejection risk.
    is built to be hosted for exactly this: stand it up behind TLS and give the
    reviewer the URL plus the demo token `speakr-demo-token`.
 4. ~~Decide the `MANAGE_EXTERNAL_STORAGE` strategy for the Play build.~~ **Done
-   2026-09-22 — declare and defend.** Remaining: paste
-   [`permissions-declaration.md`](permissions-declaration.md) §1 into the
-   restricted-permission declaration and record the demo video.
+   2026-09-22 — remove it and migrate to SAF** (the same-day "declare and
+   defend" decision is superseded). Remaining: merge the SAF migration PR
+   before building the Play AAB. Nothing to paste and no video to record.
 5. **Enroll in Play App Signing** and upload the production AAB.
 6. Complete every "App content" form (rating, target audience, ads, news,
    financial, health, government).

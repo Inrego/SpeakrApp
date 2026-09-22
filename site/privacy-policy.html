@@ -126,14 +126,14 @@
     On Windows you can turn on <strong>auto-record</strong>: you choose which applications should trigger it (for example a meeting app), and when one of those applications starts using your microphone, the app starts a recording automatically with the sources you configured for that application. When the application releases the microphone and the speakers go quiet, the app asks you whether to stop and upload the recording or keep going. Auto-record is off by default and records nothing until you add at least one application to its list.
   </p>
 
-  <h2>Auto-upload, All files access, and deletion of your files</h2>
+  <h2>Auto-upload, folder access, and deletion of your files</h2>
   <p>
     The auto-upload feature watches <strong>folders you choose</strong> on your device, for example the output folder of a call-recorder or voice-recorder app. The app periodically scans those folders, uploads each new audio file to your server, and then — by design — <strong>deletes the original file from your device</strong> once the upload has succeeded. These are files written by other apps, not by Speakr. Delete-after-upload is what keeps a device that records calls all day from filling up.
   </p>
   <ul>
     <li>If you set a <strong>minimum duration</strong> for a watched folder, audio files shorter than that are <strong>deleted without being uploaded</strong>. This is meant for the short accidental recordings (missed calls, pocket taps) a call recorder produces. It is off unless you set a value.</li>
     <li>If a file cannot be deleted after upload, it stays on the device and the app shows an error for it in Auto-upload settings. Files are never deleted before the server has confirmed the upload.</li>
-    <li>On <strong>Android</strong> this is why the app requests <strong>All files access</strong> (<code>MANAGE_EXTERNAL_STORAGE</code>): recorder apps write to arbitrary folders, and Android offers no other way to delete a file another app created without a system prompt for every single file, which cannot be answered while uploads run unattended in the background. The app reads only the folders you picked; it does not browse, index, or upload anything else on your storage.</li>
+    <li>On <strong>Android</strong> you pick each watched folder in Android's own folder picker (the Storage Access Framework). Android then grants the app access to <strong>that folder and its subfolders only</strong>, and the app keeps that grant so it can scan, read, and delete files there in the background without asking you again for each file. The grant does not extend to any other part of your storage: the app cannot see, browse, index, or upload anything outside the folders you picked, and you can take the access away at any time by removing the folder in Auto-upload settings or by uninstalling the app. The app does <strong>not</strong> use Android's &ldquo;All files access&rdquo; (<code>MANAGE_EXTERNAL_STORAGE</code>) permission. Earlier builds of the Android app did request All files access for this feature; that permission is being removed, and if a build you have still asks for it, it is used only for the watched-folder scan and delete described here and for nothing else.</li>
     <li>On <strong>Windows</strong> the same watch, upload, and delete behaviour applies to the folders you pick; no special permission is involved.</li>
   </ul>
 
@@ -159,8 +159,8 @@
   <ul>
     <li><strong>Microphone</strong> — to record audio for live recording.</li>
     <li><strong>Capture other apps' audio (Android media projection)</strong> — to record system audio alongside the microphone, as described above. Requested per session through Android's own consent dialog.</li>
-    <li><strong>Audio media access / storage</strong> — to read audio files you choose to upload and to scan the folders you watch for auto-upload.</li>
-    <li><strong>All files access (Android)</strong> — to delete recordings from watched folders after they have been uploaded, as described above.</li>
+    <li><strong>Audio media access / storage</strong> — to read audio files you choose to upload.</li>
+    <li><strong>Access to folders you pick (Android)</strong> — a per-folder grant from Android's folder picker, used to scan the folders you watch for auto-upload and to delete recordings from them after they have been uploaded, as described above. It covers only the folders you chose. The app does not request All files access.</li>
     <li><strong>Phone state (Android)</strong> — to trigger an auto-upload scan after a phone call ends, so call recordings can be picked up without opening the app. Call contents, phone numbers, and call-log details are <strong>not</strong> read or transmitted.</li>
     <li><strong>Foreground service / notifications</strong> — to keep recording and uploads running reliably while the app is in the background, and to show you that a recording is in progress.</li>
     <li><strong>Run after restart</strong> — on Android, so scheduled auto-upload scans resume after the device reboots; on Windows, an optional start-with-Windows setting you can turn on in the app.</li>

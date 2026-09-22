@@ -21,7 +21,7 @@ Severity legend: **BLOCKER** (fix before that channel can ship) · **HIGH** ·
 |---|------|----------|---------|
 | a | ~~Google Fonts fetched at runtime~~ | ~~**HIGH**~~ — **RESOLVED 2026-09-22** | First-launch UX (needs network) |
 | b | `android:usesCleartextTraffic="true"` | MEDIUM | Security posture / Play review note |
-| c | `MANAGE_EXTERNAL_STORAGE` (All files access) | **HIGH (Play)** — decision recorded 2026-09-22: declare and defend | Play approval |
+| c | `MANAGE_EXTERNAL_STORAGE` (All files access) | ~~**HIGH (Play)** — declare and defend (2026-09-22)~~ **SUPERSEDED 2026-09-22: permission removed, migrating to SAF** (code PR pending) | Play approval |
 | d | iOS unverified — no Mac in CI | MEDIUM | iOS release availability |
 | e | Linux not a target | LOW | Scope clarity |
 | f | Android debug-signing fallback | MEDIUM | Release-build integrity / Play upload |
@@ -105,52 +105,69 @@ user-configured hosts rather than globally.
 
 ---
 
-## (c) `MANAGE_EXTERNAL_STORAGE` / All files access — HIGH (Play track)
+## (c) `MANAGE_EXTERNAL_STORAGE` / All files access — SUPERSEDED (Play track)
 
-**Status: DECIDED — 2026-09-22.** Option 3, **declare and defend**, is the chosen
-route. `MANAGE_EXTERNAL_STORAGE` stays declared in the manifest and requested at
-runtime; nothing about the app's behaviour changes. The Play Console
-permissions-declaration copy is written and ready to paste:
-[`play-store/permissions-declaration.md`](play-store/permissions-declaration.md).
+**Status: SUPERSEDED — 2026-09-22.** The permission is being **removed** and
+Android auto-upload is migrating to the **Storage Access Framework (SAF)**. No
+restricted-permission declaration will be submitted. The code change (manifest,
+runtime request, worker) lands in a **separate PR**; until it merges the manifest
+still declares the permission (`android/app/src/main/AndroidManifest.xml:13`) and
+`lib/features/auto_upload/auto_upload_settings_screen.dart` still requests it, so
+**do not build the Play AAB from `main` until that PR is in.**
 
-**What:** The app declares and requests All-files-access. Google Play classifies
-`MANAGE_EXTERNAL_STORAGE` as a restricted permission limited to a narrow set of app
-categories (file managers, backup, antivirus, etc.), so shipping it requires the
-Play Console restricted-permission declaration plus a permission-use review.
+**Decision history — recorded as it happened, not as it should have gone:**
 
-**Why the permission is needed:** the auto-upload feature watches folders the user
-picks, uploads recordings written there by *other* apps (call recorders, voice
-recorders) to the user's own server, and then deletes the local copy so the device
-does not fill up. MediaStore/SAF cannot delete another app's file without a
-per-file system consent prompt, which cannot be answered by an unattended
-background upload triggered by a periodic job or by the end of a call.
+1. **2026-09-22, earlier the same day — "declare and defend" (option 3).** The
+   permission was to stay, with the Console declaration written and the denial
+   risk accepted. That decision rested on the claim that neither MediaStore
+   nor SAF can delete another app's file without the system asking the user
+   to confirm each individual deletion, so the unattended delete-after-upload
+   flow supposedly needed All files access.
+2. **2026-09-22, later — superseded.** The claim is **false for SAF**. The
+   confirm-each-deletion dialog is MediaStore's delete-request mechanism and
+   MediaStore's alone. A persisted `ACTION_OPEN_DOCUMENT_TREE` grant lets the app delete
+   other apps' files anywhere in the granted subtree with **no prompt at all**,
+   including from a WorkManager background worker with the screen off. With the
+   premise gone there was no reason left to carry a restricted permission that a
+   transcription client would likely be refused anyway. Fallback option 1 from
+   the earlier entry ("scope down to SAF — costs the unattended
+   delete-after-upload flow") was wrong for the same reason: SAF keeps that flow.
 
-**Evidence:**
-- Declared: `android/app/src/main/AndroidManifest.xml:13` —
-  `<uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"/>`.
-- Requested at runtime: `lib/features/auto_upload/auto_upload_settings_screen.dart:691`
-  — `Permission.manageExternalStorage`.
-- In-app rationale string: `lib/features/auto_upload/auto_upload_settings_screen.dart:765-767`
-  — *"All files access — to delete recordings after successful upload."*
-- Delete-after-upload: `lib/features/auto_upload/auto_upload_worker.dart:396-415`
-  (`deleteLocalAutoUploadFile`), called at `:482`.
+Two more corrections to what the earlier entry and its Console copy leaned on:
 
-**Affects:** Play Store approval only. The direct-download / sideload APK and the
-Windows builds are unaffected.
+- **`Android/data` was never an argument for the permission.** On Android 11+ a
+  recorder's private `Android/data/<pkg>/` output is unreachable by raw path
+  *even with* `MANAGE_EXTERNAL_STORAGE`, and SAF refuses to grant `Android/data`
+  / `Android/obb` trees. Recorders that write there are unreachable either way.
+- `READ_MEDIA_AUDIO` alone not seeing arbitrary folders is true, but a SAF tree
+  grant covers whatever folder the user picks regardless of media collection
+  membership, so it argues for SAF rather than for All files access.
 
-**Accepted risk (stated, not mitigated):** a transcription/upload client is not on
-Google's approved category list for All-files-access, so the declaration may be
-**denied**, which would block the Play track until the app is changed. The
-maintainer accepts that risk in exchange for keeping one build and one code path.
+**Target state (what the SAF PR delivers; verify against it when it lands):**
+- The user picks each watched folder with the system picker
+  (`ACTION_OPEN_DOCUMENT_TREE`); the app calls `takePersistableUriPermission`
+  and stores the tree URI instead of a filesystem path.
+- The worker enumerates, reads, and deletes via `DocumentsContract` /
+  `DocumentFile` under that URI. Delete-after-upload and the
+  minimum-duration delete keep working unattended.
+- Removing a folder in Auto-upload settings should release the persisted
+  grant (`releasePersistableUriPermission`).
+- `MANAGE_EXTERNAL_STORAGE` is gone from the manifest and from the runtime
+  request; the in-app rationale string "All files access — to delete
+  recordings after successful upload" goes with it.
 
-**Documented fallbacks if the declaration is denied:**
-1. **Scope down for Play:** replace All-files-access with `READ_MEDIA_AUDIO` +
-   Storage Access Framework / `MediaStore`, requesting per-file delete consent via
-   `MediaStore.createDeleteRequest`, and drop `MANAGE_EXTERNAL_STORAGE` from the AAB.
-   Costs the unattended delete-after-upload flow.
-2. **Split builds:** keep `MANAGE_EXTERNAL_STORAGE` only in the direct-download
-   APK / sideload variant (via a flavor or manifest placeholder) and strip it from
-   the Play AAB. Costs a second build configuration and a feature gap on Play.
+**Affects:** Play Store approval — now positively: the restricted-permission
+review and the "declaration may be denied" risk disappear. The sideload APK and
+the Windows builds are unaffected. Users upgrading from a pre-SAF build will have
+to re-pick their watched folders through the system picker (a stored path cannot
+be converted into a tree grant); the SAF PR should handle that migration
+explicitly.
+
+**Docs already updated for the target state:** the public privacy policy
+([`play-store/privacy-policy.md`](play-store/privacy-policy.md) → generated
+`site/privacy-policy.html`), [`play-store/permissions-declaration.md`](play-store/permissions-declaration.md)
+§1, [`play-store/checklist.md`](play-store/checklist.md) §4–§6, and
+[`play-store/data-safety.md`](play-store/data-safety.md).
 
 ---
 

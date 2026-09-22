@@ -4,87 +4,76 @@ Ready-to-paste justification text for the Play Console declaration forms, one
 section per form Google asks for. Written in the first person, as the developer
 filling in the Console.
 
-Recorded decision: **option 3, "declare and defend"** (see
-[`../RELEASE_READINESS.md`](../RELEASE_READINESS.md) item (c)) — dated
-**2026-09-22**. `MANAGE_EXTERNAL_STORAGE` stays declared in the manifest and
-requested at runtime; no code, manifest, or gradle change accompanies this
-document.
+Recorded decision on storage (supersedes the 2026-09-22 "declare and defend"
+entry): **`MANAGE_EXTERNAL_STORAGE` is being removed** and Android auto-upload
+is migrating to the Storage Access Framework. **No All-files-access
+declaration will be submitted.** §1 below records why, and what the earlier
+justification got wrong. See [`../RELEASE_READINESS.md`](../RELEASE_READINESS.md)
+item (c) for the decision history.
 
-Every factual claim below was checked against
+The code change (manifest, runtime request, worker) lands in a **separate PR**.
+Until it merges, `android/app/src/main/AndroidManifest.xml:13` still declares
+the permission and `lib/features/auto_upload/auto_upload_settings_screen.dart`
+still requests it. Do not upload an AAB built from that state to Play: the
+Console will detect the permission in the bundle and demand the declaration
+this document no longer provides.
+
+Every factual claim in §2–§7 was checked against
 `android/app/src/main/AndroidManifest.xml` and `lib/features/auto_upload/`.
 Two corrections against earlier drafts of the checklist are noted inline
 (§3 and §5) — read them before pasting.
 
 ---
 
-## 1. Restricted permission declaration — All files access (`MANAGE_EXTERNAL_STORAGE`)
+## 1. All files access (`MANAGE_EXTERNAL_STORAGE`) — REMOVED, no declaration
 
 **Form:** Play Console → App content → **Sensitive app permissions** →
-*Permissions declaration form* → **All files access permission**
+*Permissions declaration form* → **All files access permission** — **do not
+fill in.** Once the SAF PR merges the AAB no longer contains the permission and
+the Console will not ask for this form.
 
-**Permission:** `android.permission.MANAGE_EXTERNAL_STORAGE`
-(`android/app/src/main/AndroidManifest.xml:13`)
+**What replaces it:** the Storage Access Framework. The user picks each
+watched folder with Android's own picker (`ACTION_OPEN_DOCUMENT_TREE`); the
+app takes a persistable URI permission on that tree
+(`takePersistableUriPermission`) and thereafter lists, reads, and **deletes**
+documents inside it through `DocumentsContract` / `DocumentFile`. No further
+prompt is involved: a persisted tree grant lets the holder delete other apps'
+files in that subtree, from a background worker, with the screen off. That is
+exactly the unattended delete-after-upload flow — it never needed All files
+access.
 
-**Core functionality this permission enables:** automatic upload of recordings
-produced by *other* apps, followed by deletion of the local copy.
+**Why the earlier justification was withdrawn, not just dropped:** the
+"declare and defend" text asserted that neither the Storage Access Framework
+nor MediaStore can delete a file written by another app without the system
+asking the user to confirm each individual deletion. That is true of the
+MediaStore path (its delete-request dialog) and **false of SAF**. The
+confirm-each-deletion dialog is MediaStore's mechanism; a SAF tree grant has
+no such dialog. The whole case for the restricted permission rested on
+that error, so the case is withdrawn. Submitting it would have asked Google to
+approve a restricted permission on a false premise.
 
-**Justification (paste into the free-text field):**
+Two further points the earlier text leaned on, corrected for the record:
 
-> Speakr is a client for a self-hosted transcription server — the user runs the
-> server themselves and the app talks only to that server. Its auto-upload
-> feature is the reason I need All files access.
->
-> The user picks one or more folders on the device with the system directory
-> picker. Those folders are written by *other* apps — call recorders, voice
-> recorders, dictation apps — which place their output in arbitrary, app-chosen
-> locations outside any shared media collection. The app periodically scans the
-> chosen folders, uploads any new audio file to the user's own server, and then
-> **deletes the local copy** so that a device recording calls all day does not
-> fill its storage. Delete-after-upload is the feature; without it the folder
-> grows without bound and the user has to clean up by hand after every call.
->
-> Narrower APIs do not serve this. The Storage Access Framework and MediaStore
-> cannot delete a file written by another app without a per-file system consent
-> prompt (`MediaStore.createDeleteRequest`), which the user must tap for every
-> single file. The uploads run unattended in the background — they are triggered
-> by a periodic background job and by the end of a phone call, often while the
-> screen is off — so a per-file consent dialog cannot be answered and the
-> unattended flow breaks down entirely. The recorded folders also frequently sit
-> outside the audio media collection, so `READ_MEDIA_AUDIO` alone does not even
-> let the app see the files, let alone remove them.
->
-> The user can also set a minimum duration per folder; files shorter than that
-> (accidental or missed-call recordings) are deleted without being uploaded.
-> That rule is off unless the user sets a value. A file is never deleted before
-> the server has confirmed the upload; if deletion fails the file stays and the
-> app shows the error.
->
-> The access is confined to that feature. The app does not browse, index, or
-> transmit anything outside the folders the user explicitly selected; it reads
-> the audio file, uploads it to the user's own server, deletes it, and stores
-> nothing else. There is no third-party backend and no advertising SDK. This
-> behaviour is disclosed in the same words in the app's public privacy policy,
-> under "Auto-upload, All files access, and deletion of your files".
+- **`Android/data` is not an argument for the permission.** On Android 11+
+  a recorder's private `Android/data/<pkg>/` output is unreachable by raw path
+  *even with* `MANAGE_EXTERNAL_STORAGE`, and the SAF picker refuses to grant
+  `Android/data` or `Android/obb` trees. Recorders that write there are out of
+  reach either way; the permission bought nothing for them.
+- **`READ_MEDIA_AUDIO` alone not seeing arbitrary folders** is still true, but
+  it argues for SAF, not for All files access: a SAF grant covers whatever
+  folder the user picked regardless of media collection membership.
 
-**Evidence to cite if the reviewer asks (also listed in RELEASE_READINESS item (c)):**
+**What the SAF grant does and does not cover (for the reviewer, if asked):**
+the app can enumerate, read, and delete files only within the trees the user
+picked; it cannot see or touch anything else on external storage; and the user
+can revoke a grant by removing the folder in Auto-upload settings (the SAF PR
+is expected to call `releasePersistableUriPermission` there — confirm before
+citing it) or by uninstalling. This is narrower than
+All files access on every axis and is what the public privacy policy now
+describes under "Auto-upload, folder access, and deletion of your files".
 
-| Claim | File:line |
-|---|---|
-| Permission declared | `android/app/src/main/AndroidManifest.xml:13` |
-| Requested at runtime | `lib/features/auto_upload/auto_upload_settings_screen.dart:691` (`Permission.manageExternalStorage`) |
-| In-app rationale shown to the user | `lib/features/auto_upload/auto_upload_settings_screen.dart:765-767` — *"All files access — to delete recordings after successful upload."* |
-| Folder chosen by the user, not the app | `lib/features/auto_upload/auto_upload_settings_screen.dart:64,240` — `FilePicker.getDirectoryPath()` |
-| Plain-filesystem scan of that folder | `lib/features/auto_upload/auto_upload_worker.dart:76-81` — `listCandidateFiles()` → `Directory(folderPath).listSync(followLinks: false)` |
-| Delete of the local copy after a successful upload | `lib/features/auto_upload/auto_upload_worker.dart:396-415` (`deleteLocalAutoUploadFile`), called at `:482` |
-| Delete-without-upload below the user-set minimum duration | `lib/features/auto_upload/auto_upload_worker.dart:637-664` (`autoDeleteShorterThanSeconds`) |
-| Disclosed in the privacy policy | `docs/play-store/privacy-policy.md`, section "Auto-upload, All files access, and deletion of your files" (published at `site/privacy-policy.html`) |
-| Unattended trigger — periodic background job | `lib/main.dart:62-69` — WorkManager periodic task, 15-minute cadence |
-| Unattended trigger — end of a phone call | `android/app/src/main/kotlin/com/inrego/speakr_app/PhoneStateReceiver.kt` |
-
-**Video demo (the form asks for one):** record a short screen capture showing
-Auto-upload settings → pick folder → a recording appearing in the folder → the
-app uploading it → the local file disappearing. Upload it unlisted to YouTube
-and paste the link.
+**No demo video is required** — the video was an artefact of the restricted
+permission form.
 
 ---
 
@@ -268,13 +257,13 @@ repeating in the Data Safety notes).
 
 ---
 
-## 8. Accepted risk
+## 8. Remaining storage-related risk
 
-The declaration route was chosen with eyes open. All files access is restricted
-to a short list of app categories, and a transcription/upload client is not on
-that list, so Google may deny the declaration. If that happens, the documented
-fallbacks are still on the table — scope down to `READ_MEDIA_AUDIO` + SAF with
-per-file delete consent, or strip `MANAGE_EXTERNAL_STORAGE` from the Play AAB and
-keep it only in the sideloaded APK. Both are described in
-[`../RELEASE_READINESS.md`](../RELEASE_READINESS.md) item (c). The sideload APK
-and the Windows builds are unaffected either way.
+With `MANAGE_EXTERNAL_STORAGE` gone there is no restricted storage permission
+left to declare, so the "declaration may be denied" risk recorded on 2026-09-22
+no longer exists. What remains is sequencing: the Play AAB must be built from a
+commit that includes the SAF PR. An AAB that still carries the permission is
+flagged by the Console at upload and cannot be published without the
+declaration §1 no longer provides. `READ_MEDIA_AUDIO` (manual file picking) is
+an ordinary runtime permission and needs no form. The sideload APK and the
+Windows builds are unaffected.
