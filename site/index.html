@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Speakr — a client for your self-hosted Speakr server</title>
+<meta name="description" content="Speakr is an Android, iOS and Windows client for a self-hosted Speakr transcription server. No backend of ours, no analytics, no tracking.">
+<style>
+  :root {
+    --bg: #FAFAF7;
+    --bg-alt: #F3F1EC;
+    --ink: #1A1A1A;
+    --ink-2: #3A3A36;
+    --muted: #8A8A83;
+    --line: #E6E3DC;
+    --accent: #C2562B;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink-2);
+    font-family: "Inter Tight", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-size: 17px;
+    line-height: 1.65;
+  }
+  .wrap { max-width: 42rem; margin: 0 auto; padding: 3rem 1.25rem 4rem; }
+  .mark { color: var(--ink); width: 56px; height: 56px; display: block; }
+  .eyebrow {
+    font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 1.75rem 0 0.35rem;
+  }
+  h1, h2 {
+    font-family: "Source Serif 4", Georgia, "Times New Roman", serif;
+    font-weight: 600;
+    color: var(--ink);
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+  }
+  h1 { font-size: 2.15rem; margin: 0 0 0.75rem; }
+  h2 { font-size: 1.3rem; margin: 2.5rem 0 0.6rem; }
+  p { margin: 0 0 1rem; }
+  .lede { font-size: 1.08rem; color: var(--ink-2); }
+  ul { margin: 0 0 1rem; padding-left: 1.15rem; }
+  li { margin-bottom: 0.4rem; }
+  a { color: var(--accent); text-underline-offset: 0.18em; }
+  a:hover { color: var(--ink); }
+  .links { margin: 2.25rem 0 0; padding: 0; list-style: none; border-top: 1px solid var(--line); }
+  .links li { margin: 0; border-bottom: 1px solid var(--line); }
+  .links a {
+    display: block;
+    padding: 0.9rem 0.2rem;
+    text-decoration: none;
+    color: var(--ink);
+    font-weight: 500;
+  }
+  .links a:hover { background: var(--bg-alt); }
+  .links span { display: block; font-size: 0.9rem; font-weight: 400; color: var(--muted); }
+  footer {
+    margin-top: 3rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--line);
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+  @media (max-width: 30rem) {
+    .wrap { padding: 2rem 1rem 3rem; }
+    h1 { font-size: 1.8rem; }
+    body { font-size: 16px; }
+  }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <svg class="mark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200" fill="currentColor" role="img" aria-label="Speakr">
+    <g transform="translate(14, 22)">
+      <circle cx="14.2" cy="11.2" r="8.5"></circle>
+      <rect x="34.5" y="5.0" width="102.5" height="11.2" rx="5.6"></rect>
+      <rect x="0" y="36.4" width="172.0" height="11.2" rx="5.6" opacity="0.87"></rect>
+      <rect x="0" y="67.8" width="148.0" height="11.2" rx="5.6" opacity="0.74"></rect>
+      <rect x="0" y="99.2" width="160.0" height="11.2" rx="5.6" opacity="0.61"></rect>
+      <rect x="0" y="130.6" width="100.0" height="11.2" rx="5.6" opacity="0.48"></rect>
+    </g>
+  </svg>
+
+  <p class="eyebrow">Speakr</p>
+  <h1>A client for your self-hosted Speakr server</h1>
+  <p class="lede">
+    Speakr is an Android, iOS and Windows app for
+    <a href="https://github.com/learnedmachine/speakr">Speakr</a>, a self-hosted audio
+    transcription and note-taking server. You point the app at your own server, and it
+    records, uploads, and shows you the transcripts and summaries your server produces.
+  </p>
+
+  <h2>What it does</h2>
+  <ul>
+    <li>Record audio live, or pick up files from a watched folder and upload them.</li>
+    <li>Browse your recordings, transcripts and summaries.</li>
+    <li>Tag recordings, add notes, and set speaker counts and language before upload.</li>
+  </ul>
+
+  <h2>Where your data goes</h2>
+  <p>
+    Only to the Speakr server you configure. There is no backend operated by the
+    app's publisher, no analytics, and no third-party tracking. The app's typefaces
+    are bundled with it, so it contacts no font CDN either. The full details are in
+    the privacy policy.
+  </p>
+
+  <ul class="links">
+    <li>
+      <a href="https://github.com/Inrego/SpeakrApp">Source code on GitHub
+        <span>github.com/Inrego/SpeakrApp</span></a>
+    </li>
+    <li>
+      <a href="./privacy-policy.html">Privacy policy
+        <span>What the app does and does not do with your data</span></a>
+    </li>
+  </ul>
+
+  <footer>
+    Speakr is published by Rene Scott Simonsen. Questions:
+    <a href="mailto:rss@khd.dk">rss@khd.dk</a>
+  </footer>
+</main>
+</body>
+</html>

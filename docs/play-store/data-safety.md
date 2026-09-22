@@ -14,6 +14,31 @@ repository:
   There is no developer-operated backend.
 - The server URL and API token are stored in OS secure storage
   (`flutter_secure_storage`, Android Keystore-backed).
+- The app can capture **other apps' audio** (Android `MediaProjection` +
+  `AudioPlaybackCaptureConfiguration`, `SpeakrAudioRecorder.kt`) and it
+  **deletes source files from the user's watched folders** after upload, plus
+  files shorter than a user-set minimum duration (`auto_upload_worker.dart`).
+  Both are disclosed in `privacy-policy.md` (sections "Recording other apps'
+  audio" and "Auto-upload, All files access, and deletion of your files") and
+  the answers below reflect them.
+
+> **Revision 2026-09-22 — what changed in this draft, and why.** The policy
+> was corrected to disclose system-audio capture, delete-after-upload of files
+> the app did not create, and the Windows microphone-usage monitor. Google
+> cross-checks this form against the hosted policy, so every row was re-read
+> against both. Changes: (1) **Audio** now states the recording may contain
+> other apps' audio and other call participants, and that auto-upload
+> collects audio *files* produced by other apps — both are the same "Voice or
+> sound recordings" / "Other audio files" types, still Collected, still not
+> Shared; (2) **metadata** now lists the file name and last-modified time sent
+> for auto-uploaded files; (3) **Section C** gained explicit notes that the
+> Windows mic monitor's app list is local-only and outside the Android form's
+> scope, and that media projection never captures screen pixels (so
+> "Photos and videos" stays No); (4) the **free text** now mentions system
+> audio and delete-after-upload; (5) confirm-item 4 updated to the pending
+> Pages URL. No top-level Yes/No answer flipped: the app already declared
+> audio as Collected; the corrections widen *what* that audio can contain,
+> they do not add a data type that was previously answered No.
 
 > **Key framing for the form:** Play asks whether YOUR app "collects or shares"
 > user data. Google's definition of "collect" = transmitted off the device.
@@ -52,10 +77,28 @@ caveat note at the bottom).
 - **Required or optional:** Required for the core recording/upload feature
 - **Purpose:** App functionality (recording, upload, transcription)
 - **User data deletion:** handled on the user's server
+- **What the audio can contain (state this in the free text):**
+  - the user's microphone;
+  - **other apps' playback audio** captured via `MediaProjection` when the
+    user turns on the system-audio source for a session — that can include
+    other participants of a call or video meeting, subject to Android only
+    exposing `USAGE_MEDIA` / `USAGE_GAME` / `USAGE_UNKNOWN` streams and to
+    apps opting out;
+  - **audio files written by other apps** (call recorders, voice recorders)
+    that auto-upload picks up from user-chosen folders. Under Play's taxonomy
+    these fall under Audio → "Voice or sound recordings" and/or "Other audio
+    files"; tick both so the auto-upload path is covered.
+- **Deletion from the device:** after a successful upload the app deletes the
+  source file from the watched folder, and deletes files shorter than a
+  user-set minimum duration without uploading them. This is not a form field,
+  but it is in the policy and in the All-files-access declaration, so the
+  free text should say it too (see Section E).
 
 ### "Other" user-generated content — meeting metadata
 
 Tags, notes, speaker names, meeting date, language/speaker-count settings.
+For auto-uploaded files, also the **file name** and **last-modified time**
+(sent as the meeting date).
 
 - **Collected:** Yes
 - **Shared:** No
@@ -100,10 +143,24 @@ Based on the code, the app does **NOT** collect or transmit any of:
 - Photos / videos
 - Calendar / SMS / call logs
 - Web browsing history
-- Installed apps inventory
+- Installed apps inventory — see the Windows note below
 - **Device or other identifiers** (advertising ID, etc.) — no ad/analytics SDKs
 - **Crash logs / diagnostics / analytics** — no crash-reporting or analytics SDK
   is integrated
+
+> Note on media projection: the Android app captures **audio only** through
+> `AudioPlaybackCaptureConfiguration`. It never creates a `VirtualDisplay` or
+> reads screen content, so "Photos and videos" stays **No** even though the
+> user sees Android's *screen-capture* consent dialog.
+
+> Note on the Windows microphone-usage monitor (`mic_monitor.dart`): the
+> **Windows** build polls the registry to learn which applications are using
+> the microphone and keeps a local list of up to 30 recently seen application
+> names. That is not in the Android app at all (`createMicMonitor` returns a
+> no-op off Windows), it is read locally, and it is never transmitted, so it is
+> **not** "collected" in Play's sense and does not change the "Installed apps"
+> answer. It is disclosed in the policy so the hosted policy and this form
+> stay consistent.
 
 > Note on `READ_PHONE_STATE`: the app reads call **state** (ringing/idle/offhook)
 > to trigger an upload scan when a call ends. It does **not** read the phone
@@ -129,7 +186,13 @@ Based on the code, the app does **NOT** collect or transmit any of:
 > Speakr is a client for a user-self-hosted Speakr transcription server. All
 > audio recordings and associated metadata are transmitted only to the server
 > URL the user configures; the developer operates no backend and never receives
-> user data. The server URL and API token are stored locally in the device's
+> user data. Recordings can include the microphone and, when the user turns it
+> on for a session and accepts Android's consent dialog, audio played by other
+> apps (which may include other call participants); only audio is captured,
+> never screen content. Auto-upload sends audio files from folders the user
+> selected and then deletes the local file after the server confirms the upload,
+> and deletes files shorter than a user-set minimum duration without uploading
+> them. The server URL and API token are stored locally in the device's
 > encrypted OS secure storage and are sent only to the user's own server for
 > authentication. The app integrates no analytics, advertising, or third-party
 > tracking. Data deletion is performed by the user on their own server or device.
@@ -152,5 +215,8 @@ Based on the code, the app does **NOT** collect or transmit any of:
 3. **Transcripts/summaries** — confirm whether server-generated content fetched
    back to the app needs to be declared as a collected data type, per Play's
    latest definitions.
-4. **Privacy policy URL** — required and not yet created (see `listing.md` /
-   `checklist.md`). The Data Safety answers must match the policy text.
+4. **Privacy policy URL** — the policy text is final in `privacy-policy.md`
+   and published as `site/privacy-policy.html` (generated; CI checks the two
+   match). The URL goes live once GitHub Pages is enabled — see
+   `checklist.md`. The Data Safety answers above were reconciled against the
+   2026-09-22 policy text; re-check them if the policy changes again.

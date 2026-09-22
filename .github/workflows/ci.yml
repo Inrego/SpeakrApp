@@ -43,5 +43,10 @@ jobs:
       - name: Analyze
         run: flutter analyze
 
+      # site/privacy-policy.html is generated from docs/play-store/privacy-policy.md.
+      # Fail if someone edited one without regenerating the other.
+      - name: Privacy policy page is in sync with its markdown source
+        run: dart run tool/build_privacy_policy.dart --check
+
       - name: Test
         run: flutter test
