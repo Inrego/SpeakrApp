@@ -33,7 +33,7 @@ review, settings/connection screen.
 
 | Form | Required? | Status | Notes |
 |---|---|---|---|
-| **Privacy policy URL** | **BLOCKER** | TODO | Must host a public policy and enter the URL. Does not exist. See `listing.md` and `data-safety.md`. |
+| **Privacy policy URL** | **BLOCKER** | TODO (pending Pages) | Policy text is in `privacy-policy.md`; the published copy is `site/privacy-policy.html`, deployed by `.github/workflows/pages.yml`. Pending URL: **https://inrego.github.io/SpeakrApp/privacy-policy.html** — goes live once GitHub Pages is enabled for the repo (Settings → Pages → Source: GitHub Actions). Not done until that URL resolves; then enter it in Console. See `listing.md` and `data-safety.md`. |
 | **Data Safety form** | **BLOCKER** | DRAFTED | First-draft answers in `data-safety.md`. Review and submit in Console. |
 | **Content rating questionnaire** | **BLOCKER** | TODO | Complete the IARC questionnaire. Expected outcome: **Everyone** — no violence, no sexual content, no gambling. The app does let users record/upload their own audio (user-generated content) but to their own private server, not a public/social feed; answer the UGC questions accordingly (no public sharing within the app). |
 | **Target audience & content** | **BLOCKER** | TODO | Target audience: adults (18+) / general; **do NOT** mark as designed for children — the sensitive permissions and self-hosting requirement make this clearly not a kids' app. This keeps you out of the Families policy / Designed for Families program. |
