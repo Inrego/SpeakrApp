@@ -5,23 +5,37 @@ section per form Google asks for. Written in the first person, as the developer
 filling in the Console.
 
 Recorded decision on storage (supersedes the 2026-09-22 "declare and defend"
-entry): **`MANAGE_EXTERNAL_STORAGE` is being removed** and Android auto-upload
-is migrating to the Storage Access Framework. **No All-files-access
+entry): **`MANAGE_EXTERNAL_STORAGE` was removed** and Android auto-upload
+**migrated** to the Storage Access Framework. **No All-files-access
 declaration will be submitted.** §1 below records why, and what the earlier
 justification got wrong. See [`../RELEASE_READINESS.md`](../RELEASE_READINESS.md)
 item (c) for the decision history.
 
-The code change (manifest, runtime request, worker) lands in a **separate PR**.
-Until it merges, `android/app/src/main/AndroidManifest.xml:13` still declares
-the permission and `lib/features/auto_upload/auto_upload_settings_screen.dart`
-still requests it. Do not upload an AAB built from that state to Play: the
-Console will detect the permission in the bundle and demand the declaration
-this document no longer provides.
+The code change (manifest, runtime request, worker) **merged in #4** on
+2026-09-22. The manifest no longer declares the permission and
+`lib/features/auto_upload/auto_upload_settings_screen.dart` no longer requests
+it. An AAB built from `main` today is clean; an AAB built before #4 is not, and
+the Console will demand the declaration this document no longer provides.
 
-Every factual claim in §2–§7 was checked against
-`android/app/src/main/AndroidManifest.xml` and `lib/features/auto_upload/`.
-Two corrections against earlier drafts of the checklist are noted inline
-(§3 and §5) — read them before pasting.
+**Withdrawn sections.** Three of the forms this document was written for no
+longer apply, because the permissions behind them are gone from the manifest.
+They are struck rather than deleted, with the reason and the date, so the record
+of what was once going to be submitted stays intact:
+
+| Section | Permission | Withdrawn | Removed by |
+| --- | --- | --- | --- |
+| §1 | `MANAGE_EXTERNAL_STORAGE` | 2026-09-22 | SAF migration (#4) |
+| §4 | `FOREGROUND_SERVICE_DATA_SYNC` | 2026-09-22 | permission audit (#7) |
+| §6 | `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` | 2026-09-22 | permission audit (#7) |
+
+**Do not paste §1, §4 or §6 into the Console.** What remains submittable is §2,
+§3, §5 and §7.
+
+Every factual claim in §2–§7 was re-checked on 2026-09-22 against
+`android/app/src/main/AndroidManifest.xml` (nine declared permissions) and
+`lib/features/auto_upload/`, and the manifest line references were re-pointed at
+the current file. Two corrections against earlier drafts of the checklist are
+noted inline (§3 and §5) — read them before pasting.
 
 ---
 
@@ -61,7 +75,11 @@ Two further points the earlier text leaned on, corrected for the record:
   reach either way; the permission bought nothing for them.
 - **`READ_MEDIA_AUDIO` alone not seeing arbitrary folders** is still true, but
   it argues for SAF, not for All files access: a SAF grant covers whatever
-  folder the user picked regardless of media collection membership.
+  folder the user picked regardless of media collection membership. (For the
+  record, `READ_MEDIA_AUDIO` is itself **no longer declared either** — the
+  permission audit (#7) removed it on 2026-09-22, along with
+  `READ_EXTERNAL_STORAGE`. The app now declares **no storage permission of any
+  kind**; see §8.)
 
 **What the SAF grant does and does not cover (for the reviewer, if asked):**
 the app can enumerate, read, and delete files only within the trees the user
@@ -83,9 +101,9 @@ permission form.
 *Microphone*
 
 **Permission / type:** `android.permission.FOREGROUND_SERVICE_MICROPHONE`
-(manifest line 5); service `.audio.AudioCaptureService` declared with
+(`AndroidManifest.xml:11`); service `.audio.AudioCaptureService` declared with
 `android:foregroundServiceType="mediaProjection|microphone"`
-(`AndroidManifest.xml:65-68`).
+(`AndroidManifest.xml:80-83`).
 
 **Justification:**
 
@@ -108,7 +126,7 @@ permission form.
 *Media projection*
 
 **Permission / type:** `android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION`
-(manifest line 6); same service `.audio.AudioCaptureService`.
+(`AndroidManifest.xml:12`); same service `.audio.AudioCaptureService`.
 
 **Justification:**
 
@@ -141,35 +159,47 @@ separate services.
 
 ---
 
-## 4. Foreground service type — Data sync
+## 4. ~~Foreground service type — Data sync~~ — WITHDRAWN 2026-09-22
 
-**Form:** Play Console → App content → **Foreground service permissions** →
-*Data sync*
+**Do not submit this declaration.** `android.permission.FOREGROUND_SERVICE_DATA_SYNC`
+was **removed from the manifest by the permission audit (#7) on 2026-09-22** and
+is absent from `android/app/src/main/AndroidManifest.xml` at `main`. There is no
+Data sync foreground-service form to fill, and the Console should not ask for
+one. If it does, the uploaded AAB predates #7 — rebuild rather than fill it in.
 
-**Permission / type:** `android.permission.FOREGROUND_SERVICE_DATA_SYNC`
-(manifest line 7).
+**Why it was withdrawn, not just dropped.** The justification below argued that
+"WorkManager may need to run the transfer as a data-sync foreground service to
+finish it without being killed mid-upload". That turned out to describe a code
+path the app does not have:
 
-**Justification:**
+- The app declares **no** service with `foregroundServiceType="dataSync"`. The
+  only app-declared service is `.audio.AudioCaptureService`
+  (`mediaProjection|microphone`).
+- The auto-upload job is enqueued as **ordinary, non-expedited** WorkManager
+  work (`lib/main.dart`, no `outOfQuotaPolicy`), so
+  `androidx.work.impl.foreground.SystemForegroundService` is never started and
+  carries no `foregroundServiceType` in the merged manifest — verified against
+  `build/app/outputs/logs/manifest-merger-debug-report.txt` from a real
+  `flutter build apk`.
 
-> Auto-upload transfers audio files from folders the user selected to the user's
-> own Speakr server. The work is scheduled with Android's WorkManager — a
+So the permission backed nothing. Pasting the text below would have justified a
+foreground-service type the app never runs, which is the same category of error
+as §1: asking Google to approve something on a false premise.
+
+The withdrawn text, kept for the record:
+
+> ~~Auto-upload transfers audio files from folders the user selected to the
+> user's own Speakr server. The work is scheduled with Android's WorkManager — a
 > periodic job plus a one-shot job enqueued when a phone call ends — and a
 > recording can be a long file over a slow uplink, so WorkManager may need to run
 > the transfer as a data-sync foreground service to finish it without being
 > killed mid-upload. The notification tells the user an upload is in progress.
 > The only network destination is the server URL the user configured; nothing is
-> synced anywhere else.
+> synced anywhere else.~~
 
-*Correction against the earlier checklist wording:* the app itself declares **no**
-service with `foregroundServiceType="dataSync"`. The only app-declared service is
-`.audio.AudioCaptureService` (mediaProjection|microphone). The `DATA_SYNC`
-permission backs `androidx.work.impl.foreground.SystemForegroundService`, which
-the WorkManager library merges into the manifest and which sets its type at
-runtime. If the Console form asks which service uses the type, name the
-WorkManager system foreground service. If the reviewer pushes back on an unused
-type, the honest answer is that it covers WorkManager's expedited/long-running
-upload path; it can be dropped from the manifest later if measurements show
-WorkManager never takes it.
+**If auto-upload is ever changed to expedited or long-running work**, the type
+would have to come back — and this section would have to be un-withdrawn and
+re-verified against the merged manifest before it is submitted.
 
 ---
 
@@ -179,7 +209,7 @@ WorkManager never takes it.
 permission group), and the review notes.
 
 **Permission:** `android.permission.READ_PHONE_STATE`
-(`AndroidManifest.xml:11`).
+(`AndroidManifest.xml:28`).
 
 **Justification:**
 
@@ -198,39 +228,41 @@ permission group), and the review notes.
 
 **Evidence:** `android/app/src/main/kotlin/com/inrego/speakr_app/PhoneStateReceiver.kt`
 (off-hook → idle transition enqueues a WorkManager one-shot);
-`AndroidManifest.xml:53-60` (receiver registration).
+`AndroidManifest.xml:68-75` (receiver registration).
 
 ---
 
-## 6. `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`
+## 6. ~~`REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`~~ — WITHDRAWN 2026-09-22
 
-**Form:** review notes / policy questionnaire if prompted.
+**Do not submit this justification.**
+`android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` was **removed from
+the manifest by the permission audit (#7) on 2026-09-22** and is absent from
+`android/app/src/main/AndroidManifest.xml` at `main`. There is nothing to
+declare and nothing to explain in the review notes.
 
-**Permission:** `android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`
-(`AndroidManifest.xml:18`).
-
-**Justification:**
-
-> Auto-upload has to run in the background on a schedule; on several OEM Android
-> builds, aggressive battery management stops the background job from ever firing
-> and recordings pile up on the device unseen. The permission is declared so the
-> app can offer the user the standard system exemption dialog when that happens.
-> Any exemption is granted by the user in that system dialog; the app cannot and
-> does not grant it silently.
-
-**⚠️ Correction — verify before submitting.** The permission is declared in the
-manifest but **no code currently requests it**: there is no
+**Why it was withdrawn, not just dropped.** The justification below described a
+user-tapped system-exemption dialog. **That flow never existed.** There is no
 `Permission.ignoreBatteryOptimizations` call and no
 `ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` intent anywhere in `lib/` or
-`android/` (grep is clean). So the "user-initiated flow" the checklist assumes
-does not exist yet. Two honest options before submitting:
+`android/` — the permission was dead weight carried from the initial commit. The
+earlier revision of this section already flagged the discrepancy and offered two
+honest options: remove the permission, or wire the request. **The audit took the
+first.** Play discourages requesting this permission directly in any case, so
+removing it deleted a policy question for free.
 
-1. **Remove the permission** from the manifest — nothing uses it today. This is
-   the cleanest answer and removes a policy note for free.
-2. **Wire the request** behind a user-tapped button in Auto-upload settings, then
-   paste the justification above as written.
+The withdrawn text, kept for the record:
 
-Do not paste §6 as-is while neither is true.
+> ~~Auto-upload has to run in the background on a schedule; on several OEM
+> Android builds, aggressive battery management stops the background job from
+> ever firing and recordings pile up on the device unseen. The permission is
+> declared so the app can offer the user the standard system exemption dialog
+> when that happens. Any exemption is granted by the user in that system dialog;
+> the app cannot and does not grant it silently.~~
+
+**If OEM battery management is ever shown to be killing the auto-upload job in
+practice**, the fix is to wire a real user-tapped request in Auto-upload
+settings *and* re-declare the permission — in that order. Do not re-declare it
+ahead of the code.
 
 ---
 
@@ -240,7 +272,7 @@ Do not paste §6 as-is while neither is true.
 repeating in the Data Safety notes).
 
 **Setting:** `android:usesCleartextTraffic="true"` on `<application>`
-(`AndroidManifest.xml:23`).
+(`AndroidManifest.xml:38`).
 
 **Note to the reviewer:**
 
@@ -257,13 +289,33 @@ repeating in the Data Safety notes).
 
 ---
 
-## 8. Remaining storage-related risk
+## 8. Remaining permission risk
 
-With `MANAGE_EXTERNAL_STORAGE` gone there is no restricted storage permission
-left to declare, so the "declaration may be denied" risk recorded on 2026-09-22
-no longer exists. What remains is sequencing: the Play AAB must be built from a
-commit at or after the SAF migration (#4). An AAB that still carries the permission is
-flagged by the Console at upload and cannot be published without the
-declaration §1 no longer provides. `READ_MEDIA_AUDIO` (manual file picking) is
-an ordinary runtime permission and needs no form. The sideload APK and the
-Windows builds are unaffected.
+**Storage: none left.** With `MANAGE_EXTERNAL_STORAGE` gone (#4) there is no
+restricted storage permission to declare, so the "declaration may be denied"
+risk recorded on 2026-09-22 no longer exists. The permission audit (#7) then
+removed `READ_MEDIA_AUDIO` and `READ_EXTERNAL_STORAGE` (`maxSdkVersion 32`) as
+well: on Android every watched-folder file is listed, read and deleted through
+the persisted SAF tree grant
+(`lib/features/auto_upload/auto_upload_files.dart`), the folder picker is
+`ACTION_OPEN_DOCUMENT_TREE`, and the app has **no single-file picker on
+Android** — `file_picker` is used only for `getDirectoryPath()`. The app now
+declares **no storage permission of any kind**, and no dependency merges one
+back in.
+
+**What the app declares today (nine permissions):** `INTERNET`, `RECORD_AUDIO`,
+`FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_MICROPHONE`,
+`FOREGROUND_SERVICE_MEDIA_PROJECTION`, `WAKE_LOCK`, `READ_PHONE_STATE`,
+`RECEIVE_BOOT_COMPLETED`, `POST_NOTIFICATIONS`. Two more appear in the *merged*
+manifest without being declared here — `ACCESS_NETWORK_STATE` (from
+`androidx.work` and `androidx.media3`) and the signature-level
+`com.inrego.speakr_app.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION` (from
+`androidx.core`) — for eleven in the built bundle. Neither needs a declaration.
+
+**What remains is build provenance, not code.** The Play AAB must be built from
+a commit at or after the permission audit (#7). An AAB built earlier carries
+permissions the app no longer declares — `MANAGE_EXTERNAL_STORAGE` before #4,
+and the four audit removals before #7 — and the Console reads the *bundle*, not
+the repo. It will then demand declarations §1, §4 and §6 no longer provide.
+**Rebuild; do not fill those forms.** The sideload APK and the Windows builds
+are unaffected.
