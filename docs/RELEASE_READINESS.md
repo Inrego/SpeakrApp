@@ -21,7 +21,7 @@ Severity legend: **BLOCKER** (fix before that channel can ship) · **HIGH** ·
 |---|------|----------|---------|
 | a | ~~Google Fonts fetched at runtime~~ | ~~**HIGH**~~ — **RESOLVED 2026-09-22** | First-launch UX (needs network) |
 | b | `android:usesCleartextTraffic="true"` | MEDIUM | Security posture / Play review note |
-| c | `MANAGE_EXTERNAL_STORAGE` (All files access) | ~~**HIGH (Play)** — declare and defend (2026-09-22)~~ **SUPERSEDED 2026-09-22: permission removed, migrating to SAF** (code PR pending) | Play approval |
+| c | `MANAGE_EXTERNAL_STORAGE` (All files access) | ~~**HIGH (Play)** — declare and defend (2026-09-22)~~ **SUPERSEDED 2026-09-22: permission removed, migrated to SAF** (landed in #4) | Play approval |
 | d | iOS unverified — no Mac in CI | MEDIUM | iOS release availability |
 | e | Linux not a target | LOW | Scope clarity |
 | f | Android debug-signing fallback | MEDIUM | Release-build integrity / Play upload |
@@ -143,7 +143,7 @@ Two more corrections to what the earlier entry and its Console copy leaned on:
   grant covers whatever folder the user picks regardless of media collection
   membership, so it argues for SAF rather than for All files access.
 
-**Target state (what the SAF PR delivers; verify against it when it lands):**
+**Delivered by the SAF migration (#4, merged 2026-09-22):**
 - The user picks each watched folder with the system picker
   (`ACTION_OPEN_DOCUMENT_TREE`); the app calls `takePersistableUriPermission`
   and stores the tree URI instead of a filesystem path.
@@ -160,8 +160,9 @@ Two more corrections to what the earlier entry and its Console copy leaned on:
 review and the "declaration may be denied" risk disappear. The sideload APK and
 the Windows builds are unaffected. Users upgrading from a pre-SAF build will have
 to re-pick their watched folders through the system picker (a stored path cannot
-be converted into a tree grant); the SAF PR should handle that migration
-explicitly.
+be converted into a tree grant); the migration prompts for this with a
+"Needs access" row and a "Re-select folder" banner, and remaps the stored
+error/uploaded markers by basename so nothing is re-uploaded.
 
 **Docs already updated for the target state:** the public privacy policy
 ([`play-store/privacy-policy.md`](play-store/privacy-policy.md) → generated

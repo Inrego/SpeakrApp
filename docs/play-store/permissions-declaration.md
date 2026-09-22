@@ -29,7 +29,7 @@ Two corrections against earlier drafts of the checklist are noted inline
 
 **Form:** Play Console → App content → **Sensitive app permissions** →
 *Permissions declaration form* → **All files access permission** — **do not
-fill in.** Once the SAF PR merges the AAB no longer contains the permission and
+fill in.** Since the SAF migration landed (#4) the AAB no longer contains the permission and
 the Console will not ask for this form.
 
 **What replaces it:** the Storage Access Framework. The user picks each
@@ -66,9 +66,9 @@ Two further points the earlier text leaned on, corrected for the record:
 **What the SAF grant does and does not cover (for the reviewer, if asked):**
 the app can enumerate, read, and delete files only within the trees the user
 picked; it cannot see or touch anything else on external storage; and the user
-can revoke a grant by removing the folder in Auto-upload settings (the SAF PR
-is expected to call `releasePersistableUriPermission` there — confirm before
-citing it) or by uninstalling. This is narrower than
+can revoke a grant by removing the folder in Auto-upload settings (which calls
+`releasePersistableUriPermission`, `packages/speakr_saf/android/src/main/kotlin/com/inrego/speakr_saf/SpeakrSafPlugin.kt:107`)
+or by uninstalling. This is narrower than
 All files access on every axis and is what the public privacy policy now
 describes under "Auto-upload, folder access, and deletion of your files".
 
@@ -262,7 +262,7 @@ repeating in the Data Safety notes).
 With `MANAGE_EXTERNAL_STORAGE` gone there is no restricted storage permission
 left to declare, so the "declaration may be denied" risk recorded on 2026-09-22
 no longer exists. What remains is sequencing: the Play AAB must be built from a
-commit that includes the SAF PR. An AAB that still carries the permission is
+commit at or after the SAF migration (#4). An AAB that still carries the permission is
 flagged by the Console at upload and cannot be published without the
 declaration §1 no longer provides. `READ_MEDIA_AUDIO` (manual file picking) is
 an ordinary runtime permission and needs no form. The sideload APK and the
