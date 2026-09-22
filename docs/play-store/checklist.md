@@ -13,9 +13,9 @@ justification text for every sensitive permission lives in
 
 | Asset | Spec | Status | Notes |
 |---|---|---|---|
-| **App icon** | 512 × 512 PNG (32-bit, with alpha), ≤1 MB | TODO | Source: `assets/icon/icon.png` is 1024×1024 — downscale to 512×512. Play renders its own rounded mask; supply a square. |
-| **Feature graphic** | 1024 × 500 PNG or JPG (no alpha) | TODO (**BLOCKER** — required for the listing) | Does not exist yet. Build from the brand mark `speakr-mark-square.svg` on the off-white `#FAFAF7` background. |
-| **Phone screenshots** | ≥2 (min 2, max 8), 16:9 or 9:16, each side 320–3840 px | TODO (**BLOCKER**) | Capture from a phone build. Reference asset path in repo: `docs/screenshots/mobile.png` (capture this and additional screens). At least 2 distinct screens required. |
+| **App icon** | 512 × 512 PNG (32-bit, with alpha), ≤1 MB | **DONE** | [`assets/icon-512.png`](assets/icon-512.png) — 512 × 512 RGBA, 8.4 KB. Regenerate with `dart run tools/build_store_graphics.dart` (downscales `assets/icon/icon.png`). |
+| **Feature graphic** | 1024 × 500 PNG or JPG (no alpha) | **DONE** | [`assets/feature-graphic-1024x500.png`](assets/feature-graphic-1024x500.png) — 1024 × 500, RGB (**verified no alpha channel**). The `speakr-mark-square.svg` mark centered on `#FAFAF7`. Regenerate with `dart run tools/build_store_graphics.dart`. |
+| **Phone screenshots** | ≥2 (min 2, max 8), 16:9 or 9:16, each side 320–3840 px | **DONE** | Five distinct screens in [`../screenshots/`](../screenshots/): `mobile-onboarding.png`, `mobile-library.png`, `mobile-detail.png`, `mobile-live.png`, `mobile-settings.png`, plus `mobile.png` (= the detail screen) for the README hero. All 1080 × 2400, captured from a profile build on the Medium Phone API 36.1 AVD against [`tools/mock-server`](../../tools/mock-server/README.md). **Watch at upload:** 1080 × 2400 is 20:9 (2.22 : 1), slightly past a strict 2 : 1 reading of the spec — if the Console rejects them, pad or re-capture at 1080 × 1920. |
 | **7-inch tablet screenshots** | optional | Optional | Only if you want the app shown as tablet-optimized. |
 | **10-inch tablet screenshots** | optional | Optional | Same. |
 | **Promo / TV / Wear assets** | n/a | Skip | Not a TV/Wear app. |
@@ -171,7 +171,8 @@ notes the likely Play requirement. The first one is a genuine rejection risk.
       rationale and accepted risk: [`../RELEASE_READINESS.md`](../RELEASE_READINESS.md) item (c).
 - [ ] Restricted-permission declaration form actually submitted in the Console
       (paste §1, attach the demo video).
-- [ ] Screenshots + feature graphic uploaded.
+- [x] Screenshots + feature graphic **produced** (§1) — still to be uploaded
+      in the Console.
 - [ ] Content rating questionnaire submitted (expect Everyone).
 
 ---
@@ -179,10 +180,14 @@ notes the likely Play requirement. The first one is a genuine rejection risk.
 ## 6. Follow-ups requiring your input (cannot be done from the repo)
 
 1. **Write & host the privacy policy** → paste URL into Console. (BLOCKER)
-2. **Capture screenshots** (`docs/screenshots/mobile.png` + more) and the
-   **feature graphic**. (BLOCKER)
+2. ~~**Capture screenshots** (`docs/screenshots/mobile.png` + more) and the
+   **feature graphic**.~~ **Done 2026-09-22** — see §1. Screenshots were
+   captured against the local mock server, so no real recordings appear in the
+   listing.
 3. **Provide reviewer test access** (demo server + token, or instructions) in
-   the App access form. (BLOCKER)
+   the App access form. (BLOCKER) — [`tools/mock-server`](../../tools/mock-server/README.md)
+   is built to be hosted for exactly this: stand it up behind TLS and give the
+   reviewer the URL plus the demo token `speakr-demo-token`.
 4. ~~Decide the `MANAGE_EXTERNAL_STORAGE` strategy for the Play build.~~ **Done
    2026-09-22 — declare and defend.** Remaining: paste
    [`permissions-declaration.md`](permissions-declaration.md) §1 into the
