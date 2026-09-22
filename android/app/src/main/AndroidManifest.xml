@@ -1,23 +1,36 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+    <!-- The only foreground service this app starts is
+         .audio.AudioCaptureService (see below), which calls startForeground
+         with MICROPHONE, or MICROPHONE|MEDIA_PROJECTION while capturing
+         system audio. No dataSync service exists: WorkManager runs the
+         auto-upload job as ordinary (non-expedited) work, so
+         FOREGROUND_SERVICE_DATA_SYNC is deliberately not declared. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION"/>
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"/>
+    <!-- Required by androidx.work, which merges it in regardless; kept
+         explicit so the manifest documents the app's own surface. -->
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
 
     <!-- Auto-upload from folder. Folder access itself goes through the
          Storage Access Framework (a persisted ACTION_OPEN_DOCUMENT_TREE
          grant taken in packages/speakr_saf), so no storage permission is
-         declared here. -->
+         declared here - not READ_MEDIA_AUDIO and not READ_EXTERNAL_STORAGE
+         either. On Android every candidate file is listed, read and deleted
+         through the tree grant (lib/features/auto_upload/auto_upload_files.dart),
+         and the folder picker is ACTION_OPEN_DOCUMENT_TREE, so the raw
+         dart:io path in that file is Windows-only. -->
+
+    <!-- ACTION_PHONE_STATE_CHANGED is a protected broadcast: without this
+         the PhoneStateReceiver below is never delivered. -->
     <uses-permission android:name="android.permission.READ_PHONE_STATE"/>
-    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO"/>
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
-        android:maxSdkVersion="32"/>
+    <!-- WorkManager reschedules its periodic auto-upload job after a
+         reboot (androidx.work RescheduleReceiver). -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+    <!-- Ongoing notification for the recording foreground service. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
-    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"/>
     <application
         android:label="Speakr"
         android:name="${applicationName}"

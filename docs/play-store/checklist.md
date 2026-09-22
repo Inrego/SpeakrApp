@@ -98,19 +98,25 @@ access — is being removed from the app; see the first entry.
 ### 🟠 Foreground service types — FGS declaration required (targetSdk 36)
 
 - Manifest declares `FOREGROUND_SERVICE`,
-  `FOREGROUND_SERVICE_MICROPHONE`, `FOREGROUND_SERVICE_MEDIA_PROJECTION`,
-  `FOREGROUND_SERVICE_DATA_SYNC`; service `.audio.AudioCaptureService` uses
+  `FOREGROUND_SERVICE_MICROPHONE`, `FOREGROUND_SERVICE_MEDIA_PROJECTION`;
+  service `.audio.AudioCaptureService` uses
   `foregroundServiceType="mediaProjection|microphone"`.
+- **`FOREGROUND_SERVICE_DATA_SYNC` removed 2026-09-22 (permission audit).** The
+  app declares no `dataSync` service, and WorkManager runs the auto-upload job
+  as ordinary non-expedited work (`lib/main.dart:61`, no `outOfQuotaPolicy`), so
+  `androidx.work`'s `SystemForegroundService` is never started and carries no
+  `foregroundServiceType` in the merged manifest. Only **two** FGS types now
+  need a Console justification.
 - **Play requirement:** the **Foreground Service permissions** declaration form
   in the Console requires a justification for each FGS type used on
   targetSdk 34+. `mediaProjection` (capturing other apps' audio) draws extra
   scrutiny and needs a clear use-case description (capturing system/other-app
   audio during a recording session that the user explicitly starts).
-- **Status:** must be declared — not an automatic reject if justified. Copy for
-  all three types is in [`permissions-declaration.md`](permissions-declaration.md)
-  §2–§4. Note that `microphone` and `mediaProjection` are two types on the **one**
-  service `.audio.AudioCaptureService`, and that the app declares no `dataSync`
-  service of its own — that type backs WorkManager's own foreground service.
+- **Status:** must be declared — not an automatic reject if justified. Copy is
+  in [`permissions-declaration.md`](permissions-declaration.md) §2–§4; **§4
+  (`dataSync`) is now moot** and should not be submitted. `microphone` and
+  `mediaProjection` are two types on the **one** service
+  `.audio.AudioCaptureService`.
 
 ### 🟠 `READ_PHONE_STATE` — sensitive permission declaration
 
@@ -130,23 +136,34 @@ access — is being removed from the app; see the first entry.
   in your review notes; it is allowed but noted. Reviewer-note copy:
   [`permissions-declaration.md`](permissions-declaration.md) §7.
 
-### 🟡 `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` (LOW–MEDIUM)
+### 🟢 `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` — REMOVED 2026-09-22
 
-- Play discourages directly requesting this. Generally allowed for legitimate
-  background-upload reliability, but may draw a policy note.
-- **Verified 2026-09-22: nothing in the app requests it.** The permission is
-  declared in the manifest (line 18) but there is no
-  `Permission.ignoreBatteryOptimizations` call and no
-  `ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` intent in `lib/` or `android/`.
-  Either remove it from the manifest or wire a user-tapped request before
-  submitting — see [`permissions-declaration.md`](permissions-declaration.md) §6.
+- Play discourages directly requesting this, and nothing in the app ever did:
+  no `Permission.ignoreBatteryOptimizations` call and no
+  `ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` intent anywhere in `lib/` or
+  `android/`. It was dead weight from the initial commit.
+- **Removed from the manifest in the permission audit.** Nothing to declare;
+  [`permissions-declaration.md`](permissions-declaration.md) §6 is moot and
+  should not be submitted.
 
 ### 🟢 Standard / low risk
 
-- `INTERNET`, `WAKE_LOCK`, `POST_NOTIFICATIONS`, `RECEIVE_BOOT_COMPLETED`,
-  `READ_MEDIA_AUDIO`, `READ_EXTERNAL_STORAGE` (maxSdkVersion 32),
-  `FOREGROUND_SERVICE_DATA_SYNC` — standard for a background-upload app; declare
-  where the Console asks, low rejection risk.
+- `INTERNET`, `WAKE_LOCK`, `POST_NOTIFICATIONS`, `RECEIVE_BOOT_COMPLETED` —
+  standard for a background-upload app; declare where the Console asks, low
+  rejection risk. `WAKE_LOCK`, `RECEIVE_BOOT_COMPLETED` and `POST_NOTIFICATIONS`
+  are merged in by `androidx.work` / `workmanager_android` regardless of what
+  the app manifest says.
+- **`READ_MEDIA_AUDIO` and `READ_EXTERNAL_STORAGE` (maxSdkVersion 32) removed
+  2026-09-22 (permission audit).** No storage permission of any kind is left.
+  On Android every watched-folder file is listed, read and deleted through the
+  persisted SAF tree grant (`lib/features/auto_upload/auto_upload_files.dart:180`),
+  the folder picker is `ACTION_OPEN_DOCUMENT_TREE`, and no dependency merges
+  either permission back in. The app has **no** single-file picker on Android.
+- `ACCESS_NETWORK_STATE` appears in the merged manifest but is **not** declared
+  by the app: `androidx.work` and `androidx.media3` (just_audio) each contribute
+  it. Same for the signature-level
+  `com.inrego.speakr_app.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION` from
+  `androidx.core`. Both are expected; neither needs a declaration.
 
 ---
 

@@ -737,9 +737,14 @@ class _PermissionsBannerState extends State<_PermissionsBanner> {
   }
 
   Future<void> _check() async {
+    // Permission.audio (READ_MEDIA_AUDIO) is deliberately absent: on
+    // Android the watched folder is read through a persisted Storage
+    // Access Framework tree grant, which needs no storage permission, and
+    // the manifest no longer declares one. Asking for an undeclared
+    // permission returns permanentlyDenied, so the banner would never
+    // clear.
     final wanted = <Permission>[
       Permission.phone,
-      Permission.audio,
       Permission.notification,
     ];
     final missing = <Permission>[];
@@ -809,9 +814,6 @@ class _PermissionsBannerState extends State<_PermissionsBanner> {
     final parts = <String>[];
     if (missing.contains(Permission.phone)) {
       parts.add('Phone state — to detect when calls end.');
-    }
-    if (missing.contains(Permission.audio)) {
-      parts.add('Audio files — to read recordings on the device.');
     }
     if (missing.contains(Permission.notification)) {
       parts.add('Notifications — required for background uploads.');
