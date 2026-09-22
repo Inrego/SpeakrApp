@@ -19,7 +19,7 @@ Severity legend: **BLOCKER** (fix before that channel can ship) · **HIGH** ·
 
 | # | Item | Severity | Affects |
 |---|------|----------|---------|
-| a | Google Fonts fetched at runtime | **HIGH** | First-launch UX (needs network) |
+| a | ~~Google Fonts fetched at runtime~~ | ~~**HIGH**~~ — **RESOLVED 2026-09-22** | First-launch UX (needs network) |
 | b | `android:usesCleartextTraffic="true"` | MEDIUM | Security posture / Play review note |
 | c | `MANAGE_EXTERNAL_STORAGE` (All files access) | **HIGH (Play)** — decision recorded 2026-09-22: declare and defend | Play approval |
 | d | iOS unverified — no Mac in CI | MEDIUM | iOS release availability |
@@ -29,32 +29,58 @@ Severity legend: **BLOCKER** (fix before that channel can ship) · **HIGH** ·
 
 ---
 
-## (a) Google Fonts fetched at runtime — HIGH
+## (a) Google Fonts fetched at runtime — RESOLVED (2026-09-22)
 
-**What:** Runtime font fetching is explicitly enabled. The three brand typefaces
-(Inter Tight, Source Serif 4, JetBrains Mono) are loaded via the `google_fonts`
-package and are **not bundled as assets**, so first launch needs network access or
-the UI silently falls back to system fonts.
+**Was:** Runtime font fetching was explicitly enabled. The three brand typefaces
+(Inter Tight, Source Serif 4, JetBrains Mono) were loaded via the `google_fonts`
+package and were not bundled as assets, so a cold first launch needed network
+access or the UI silently fell back to system fonts — and the outbound CDN call
+contradicted the "no third-party backend" positioning in the store copy.
 
-**Evidence:**
-- `lib/main.dart:59` — `GoogleFonts.config.allowRuntimeFetching = true;`
-- `lib/theme/typography.dart:20,36,50` — `GoogleFonts.sourceSerif4(...)`,
-  `GoogleFonts.interTight(...)`, `GoogleFonts.jetBrainsMono(...)`.
-- `AGENTS.md:26` (Stack table, Fonts row): *"Runtime fetching enabled in
-  `main.dart`; bundle TTFs as assets before shipping a release build."*
-- `AGENTS.md:78` (pitfall #6): *"Google Fonts runtime fetching is on in
-  `main.dart`. First launch needs network, or fonts fall back to system. Before
-  shipping a real release, bundle the TTFs."*
+**What shipped:** 11 static TTFs under [`assets/fonts/`](../assets/fonts/),
+registered per weight and style under `flutter: fonts:` in `pubspec.yaml`:
 
-**Affects:** UX (cold first launch on a fresh install / offline device renders with
-fallback fonts; a self-hosted, possibly-LAN-only user may never have internet for
-the font CDN). Also a privacy nuance — first launch reaches out to the Google Fonts
-CDN, which contradicts the "no third-party backend" positioning in the store copy.
+| Family | Weights | Italic |
+|---|---|---|
+| Source Serif 4 | 300, 400, 500, 600 | 400 |
+| Inter Tight | 400, 500, 600 | 400 |
+| JetBrains Mono | 400, 500 | — |
 
-**Recommended action:** Before a public release, download the TTFs, add them under
-`assets/fonts/`, register them in `pubspec.yaml`, and either remove the
-`allowRuntimeFetching = true` line or leave it as a fallback. This removes the
-network dependency and the third-party CDN call on first launch.
+2,392,924 bytes uncompressed. That is exactly the set of faces reachable from
+`SpeakrText.serif` / `.sans` / `.mono` across `lib/`; nothing wider is shipped,
+because every unused face is dead weight in the AAB.
+
+These are **static instances, not variable fonts**. Flutter picks a declared face
+for a given `fontWeight`; it does not interpolate a variable font's `wght` axis
+unless you pass `fontVariations` explicitly, so static per-weight files are the
+only way to get the intended weights to render. Upstream `google/fonts` now
+publishes all three families as variable TTFs only, so the bundled files are the
+exact static instances `google_fonts` downloaded at runtime, fetched by sha256
+from the `google_fonts` 8.1.0 manifest and verified against that manifest's
+recorded hash and byte length — rendering is byte-identical to what shipped
+before.
+
+`lib/theme/typography.dart` now references the families by name
+(`kSerifFamily` / `kSansFamily` / `kMonoFamily`). `SpeakrText`'s public surface is
+unchanged, so no call site needed editing.
+
+**`google_fonts` was removed from `pubspec.yaml` entirely**, rather than just
+setting `allowRuntimeFetching = false`. Nothing referenced it once
+`summary_tab.dart`'s one direct call was rewired, and removing the dependency is
+strictly stronger than disabling the flag: there is no CDN code path left in the
+binary at all, and the dep tree stays one package smaller (AGENTS.md pitfalls 1
+and 2). Each family's `OFL.txt` is vendored alongside the fonts, as the OFL
+requires.
+
+**How it was verified:** built a debug APK and confirmed `FontManifest.json` lists
+all three families with the expected per-weight assets, then ran it on the
+`Medium_Phone_API_36.1` AVD against the mock server. The new onboarding capture is
+pixel-identical to the committed `docs/screenshots/mobile-onboarding.png` below
+the status bar (0 differing pixels of 2,473,200) — which exercises the serif
+regular *and* true italic, Inter Tight, and the JetBrains Mono eyebrow. On the
+library screen, 0 differing pixels are text; all 10,917 are the folder colour
+swatches, which are mock-server state rather than type. `flutter analyze` is
+clean and all 76 tests pass.
 
 ---
 
@@ -237,9 +263,10 @@ becomes available.
 
 ## Cross-cutting notes (not blockers)
 
-- **No telemetry / third-party backend** is a stated property; item (a) is the one
-  outbound call on first launch (Google Fonts CDN) that contradicts it — bundling
-  the TTFs also closes that gap.
+- **No telemetry / third-party backend** is a stated property, and as of
+  2026-09-22 it holds: item (a) was the one outbound call on first launch (Google
+  Fonts CDN), and bundling the TTFs plus dropping the `google_fonts` dependency
+  closed that gap.
 - **Sensitive Android permissions beyond (c)** still need Play Console declarations
   even if not outright blockers: `READ_PHONE_STATE` (call-end trigger via
   `PhoneStateReceiver`), `FOREGROUND_SERVICE_MEDIA_PROJECTION` (capturing other apps'

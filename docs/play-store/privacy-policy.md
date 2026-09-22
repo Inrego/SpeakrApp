@@ -58,9 +58,9 @@ server's own terms.
 ## Analytics, advertising, and third parties
 
 The app integrates **no** analytics, crash-reporting, advertising, or tracking
-SDKs. No usage data is collected. (Google Fonts may be fetched from Google's CDN
-on first launch to render the app's typefaces; no personal data is sent in that
-request.)
+SDKs. No usage data is collected. The app's typefaces are bundled with the app,
+so it contacts no font CDN or any other third-party host — the only network
+destination the app ever contacts is the Speakr server you point it at.
 
 ## Data retention and deletion
 

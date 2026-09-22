@@ -193,7 +193,6 @@ The OpenAPI spec at [`openapi/speakr-openapi.json`](openapi/speakr-openapi.json)
 
 - **iOS** builds compile but have not been verified end-to-end (no Mac in CI).
 - **Linux** is not a supported target — there is no `linux/` platform directory. (`record_linux` appears only as a transitive dependency of `record` in `pubspec.lock`; it is not a Linux build target.)
-- **Google Fonts** are fetched at runtime on first launch. Bundle the TTFs as assets before shipping a real release if you need offline-first font rendering.
 - No offline cache, no resumable uploads, no push notifications when transcription finishes — the Library re-polls on refresh.
 
 ## Contributing
