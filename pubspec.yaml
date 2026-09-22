@@ -48,6 +48,12 @@ dependencies:
   # Platform integration
   permission_handler: ^12.0.1
   path_provider: ^2.1.5
+  # Reads the real build version/build-number at runtime (replaces the
+  # hard-coded version string shown in Settings + the Windows window title).
+  # Pinned at 9.x: package_info_plus 10.x requires win32 ^6.0.1, but win32 is
+  # held at 5.x by file_picker's transitive constraint. 9.0.1 wants win32
+  # ^5.5.3 which is compatible. Bump once file_picker relaxes win32 to 6.x.
+  package_info_plus: ^9.0.1
   file_picker: ^11.0.2
   workmanager: ^0.9.0+3
   # Multi-window (Windows-only feature: always-on-top mini recorder).
