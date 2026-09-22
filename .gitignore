@@ -51,3 +51,9 @@ app.*.map.json
 /android/app/release
 
 .claude/worktrees
+
+# Android signing secrets — never commit
+android/key.properties
+android/app/upload-keystore.jks
+*.jks
+*.keystore

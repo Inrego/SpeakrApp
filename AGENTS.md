@@ -23,7 +23,7 @@ A Flutter client (Android, iOS, Windows desktop) for **Speakr**, a self-hosted a
 | Audio playback | `just_audio` | Auth-headered URL passed via `setUrl(url, headers: {...})`. |
 | Audio capture | `record` | Outputs AAC m4a in `getTemporaryDirectory()`; uploaded then deleted. |
 | Markdown | `flutter_markdown_plus` | Summary tab. |
-| Fonts | `google_fonts` (Inter Tight, Source Serif 4, JetBrains Mono) | Runtime fetching enabled in `main.dart`; bundle TTFs as assets before shipping a release build. |
+| Fonts | Bundled static TTFs (Inter Tight, Source Serif 4, JetBrains Mono) | Assets under [`assets/fonts/`](assets/fonts/), registered per weight/style in `pubspec.yaml`. Nothing is fetched at runtime; `google_fonts` is **not** a dependency. |
 | Permissions | `permission_handler` | Mic only. |
 
 ## Layout
@@ -75,7 +75,7 @@ flutter build apk --debug --target-platform android-arm64
 3. **`@JsonKey` on Freezed factory parameters produces analyzer warnings (`invalid_annotation_target`).** The generated code is correct. We suppress this lint in `analysis_options.yaml`. Don't refactor the models to silence it manually.
 4. **The Speakr API wraps some responses in `{recording: {...}}` / `{tag: {...}}` and others not.** [`SpeakrApi._unwrap`](lib/api/speakr_api.dart) handles both shapes. Mirror that pattern when adding new endpoints.
 5. **Audio file URLs need the auth header at request time.** `just_audio` accepts a `headers` map on `setUrl`. Do not embed the token in the URL.
-6. **Google Fonts runtime fetching is on in `main.dart`.** First launch needs network, or fonts fall back to system. Before shipping a real release, bundle the TTFs.
+6. **Fonts are bundled, and `google_fonts` is deliberately not a dependency.** The three families live as static per-weight TTFs in `assets/fonts/` and are declared under `flutter: fonts:` in `pubspec.yaml`. Do not reintroduce `google_fonts` — it would put a Google CDN call back on first launch, which breaks offline/LAN-only cold starts and contradicts the "no third-party backend" claim in the store copy. If you use a weight or style that is not registered, Flutter synthesises it from the nearest face and the type looks subtly wrong rather than failing; add the matching static TTF instead. See [`assets/fonts/README.md`](assets/fonts/README.md).
 
 ## Adding a new endpoint
 

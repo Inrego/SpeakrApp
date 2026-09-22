@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import '../../api/models.dart';
 import '../../api/providers.dart';
 import '../../api/speakr_api.dart';
+import '../../services/app_info.dart';
 import '../../services/auto_record/auto_record_providers.dart';
 import '../../services/auto_record/auto_record_settings.dart'
     show SystemAudioScope;
@@ -406,8 +407,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
             SettingsGroup(
               label: 'About',
-              children: const [
-                SettingsRow(label: 'App version', value: '0.1.0', mono: true),
+              children: [
+                SettingsRow(
+                  label: 'App version',
+                  value: ref
+                      .watch(appVersionProvider)
+                      .maybeWhen(data: (v) => v, orElse: () => '—'),
+                  mono: true,
+                ),
               ],
             ),
             Padding(

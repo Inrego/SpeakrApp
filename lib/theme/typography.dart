@@ -1,13 +1,20 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import 'colors.dart';
 
 /// Typography helpers matching Direction A.
-/// Three families:
+/// Three families, all bundled as assets under `assets/fonts/` and declared in
+/// `pubspec.yaml` — nothing is fetched at runtime:
 ///  - Source Serif 4 — display, headlines, transcript bubbles
 ///  - Inter Tight — UI body / buttons
 ///  - JetBrains Mono — eyebrows, timestamps, server URL fields
+///
+/// The family strings below must match the `family:` keys in `pubspec.yaml`
+/// exactly; a typo silently falls back to the platform default font.
+const String kSerifFamily = 'Source Serif 4';
+const String kSansFamily = 'Inter Tight';
+const String kMonoFamily = 'JetBrains Mono';
+
 class SpeakrText {
   static TextStyle serif({
     double? size,
@@ -17,7 +24,8 @@ class SpeakrText {
     double height = 1.2,
     double letterSpacing = 0,
   }) =>
-      GoogleFonts.sourceSerif4(
+      TextStyle(
+        fontFamily: kSerifFamily,
         fontSize: size,
         fontWeight: weight,
         fontStyle: style,
@@ -33,7 +41,8 @@ class SpeakrText {
     double height = 1.4,
     double letterSpacing = 0,
   }) =>
-      GoogleFonts.interTight(
+      TextStyle(
+        fontFamily: kSansFamily,
         fontSize: size,
         fontWeight: weight,
         color: color,
@@ -47,7 +56,8 @@ class SpeakrText {
     Color color = SpeakrColors.muted,
     double letterSpacing = 1.5,
   }) =>
-      GoogleFonts.jetBrainsMono(
+      TextStyle(
+        fontFamily: kMonoFamily,
         fontSize: size,
         fontWeight: weight,
         color: color,

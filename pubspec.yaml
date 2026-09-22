@@ -40,7 +40,6 @@ dependencies:
   record: ^6.2.0
 
   # UI
-  google_fonts: ^8.1.0
   flutter_svg: ^2.2.4
   flutter_markdown_plus: ^1.0.7
   intl: ^0.20.2
@@ -48,6 +47,12 @@ dependencies:
   # Platform integration
   permission_handler: ^12.0.1
   path_provider: ^2.1.5
+  # Reads the real build version/build-number at runtime (replaces the
+  # hard-coded version string shown in Settings + the Windows window title).
+  # Pinned at 9.x: package_info_plus 10.x requires win32 ^6.0.1, but win32 is
+  # held at 5.x by file_picker's transitive constraint. 9.0.1 wants win32
+  # ^5.5.3 which is compatible. Bump once file_picker relaxes win32 to 6.x.
+  package_info_plus: ^9.0.1
   file_picker: ^11.0.2
   workmanager: ^0.9.0+3
   # Multi-window (Windows-only feature: always-on-top mini recorder).
@@ -97,6 +102,42 @@ flutter:
   assets:
     - openapi/speakr-openapi.json
     - speakr-mark-square.svg
+
+  # Bundled OFL fonts. Registered per static weight/style so `fontWeight` /
+  # `fontStyle` resolve to a real face instead of being synthesised. Only the
+  # weights lib/theme/typography.dart and its call sites actually ask for are
+  # shipped — see assets/fonts/README.md before adding one.
+  fonts:
+    - family: Source Serif 4
+      fonts:
+        - asset: assets/fonts/SourceSerif4-Light.ttf
+          weight: 300
+        - asset: assets/fonts/SourceSerif4-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/SourceSerif4-Italic.ttf
+          weight: 400
+          style: italic
+        - asset: assets/fonts/SourceSerif4-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/SourceSerif4-SemiBold.ttf
+          weight: 600
+    - family: Inter Tight
+      fonts:
+        - asset: assets/fonts/InterTight-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/InterTight-Italic.ttf
+          weight: 400
+          style: italic
+        - asset: assets/fonts/InterTight-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/InterTight-SemiBold.ttf
+          weight: 600
+    - family: JetBrains Mono
+      fonts:
+        - asset: assets/fonts/JetBrainsMono-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/JetBrainsMono-Medium.ttf
+          weight: 500
 
 flutter_launcher_icons:
   image_path: "assets/icon/icon.png"

@@ -9,6 +9,7 @@ import 'package:go_router/go_router.dart';
 import '../../api/models.dart';
 import '../../api/providers.dart';
 import '../../api/speakr_api.dart';
+import '../../services/app_info.dart';
 import '../../services/auto_record/auto_record_providers.dart';
 import '../../services/auto_record/auto_record_settings.dart'
     show SystemAudioScope;
@@ -1182,7 +1183,14 @@ class _AboutSection extends StatelessWidget {
         const _SectionHead(title: 'About'),
         _Field(
           label: 'App version',
-          child: const _TextValue(text: '0.1.0', mono: true),
+          child: Consumer(
+            builder: (context, ref, _) => _TextValue(
+              text: ref
+                  .watch(appVersionProvider)
+                  .maybeWhen(data: (v) => v, orElse: () => '—'),
+              mono: true,
+            ),
+          ),
         ),
         _Field(
           label: 'Storage used',

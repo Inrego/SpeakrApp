@@ -1,5 +1,9 @@
 # Speakr App
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Platforms](https://img.shields.io/badge/platforms-Android%20%7C%20iOS%20%7C%20Windows-informational.svg)](#requirements)
+[![Latest release](https://img.shields.io/github/v/release/Inrego/SpeakrApp?sort=semver)](https://github.com/Inrego/SpeakrApp/releases/latest)
+
 A Flutter client for [Speakr](https://github.com/learnedmachine/speakr), the self-hosted audio transcription and meeting-notes server. Runs on **Android**, **iOS**, and **Windows desktop**.
 
 Record meetings live, upload existing audio, watch transcription progress, then read AI-generated summaries with speaker-attributed transcripts — all against your own Speakr instance.
@@ -17,22 +21,80 @@ Record meetings live, upload existing audio, watch transcription progress, then 
 
 ## Screenshots
 
-_Screenshots and a short demo clip live in [`docs/`](docs/) — drop your own in there before publishing._
+<table>
+  <tr>
+    <td align="center" width="40%">
+      <img src="docs/screenshots/mobile.png" alt="Speakr running on Android — library and detail view" width="280" /><br />
+      <sub>Mobile (Android)</sub>
+    </td>
+    <td align="center" width="60%">
+      <img src="docs/screenshots/desktop.png" alt="Speakr running on Windows desktop — library with live recorder" width="520" /><br />
+      <sub>Windows desktop</sub>
+    </td>
+  </tr>
+</table>
+
+## Download / Releases
+
+Prebuilt artifacts for tagged versions are published on the [GitHub Releases](https://github.com/Inrego/SpeakrApp/releases) page.
+
+### Android
+
+- **Direct download:** grab the universal `.apk` from the latest [release](https://github.com/Inrego/SpeakrApp/releases/latest) and install it (enable "install from unknown sources" if your device prompts you).
+- **Google Play:** the signed app bundle (`.aab`) is built for the Play track; once published it can be installed from the Play Store listing.
+
+### Windows
+
+The desktop app ships in two forms on each release:
+
+- **Installer** — `Speakr-Setup-<version>.exe` (Inno Setup). Recommended for most users; adds Start Menu entries and handles upgrades.
+- **Portable zip** — `Speakr-<version>-windows-x64.zip`. Unzip anywhere and run `speakr_app.exe`; no install required.
+
+> **Note:** the Windows builds are **unsigned**. Windows SmartScreen may show a "Windows protected your PC" warning the first time you run the installer or executable. Choose **More info → Run anyway** to proceed. This is expected for an unsigned community build.
+
+## Android permissions
+
+If you sideload the APK, Android will ask for a few permissions that deserve an
+explanation:
+
+- **All files access** (`MANAGE_EXTERNAL_STORAGE`) — only used by **auto-upload**.
+  You point Speakr at folders written by your call recorder or voice recorder; it
+  uploads new recordings to your own Speakr server and then **deletes the local
+  copy** so the phone does not fill up. Those folders sit outside the shared media
+  collection, and Android will not let one app delete another app's file through
+  MediaStore or the Storage Access Framework without a system confirmation dialog
+  per file — which nobody can tap while an upload runs in the background. Speakr
+  touches only the folders you picked; it does not browse or upload anything else.
+  Leave auto-upload off and you never need to grant it.
+- **Phone state** (`READ_PHONE_STATE`) — used purely as a timing signal: when a
+  call ends, Speakr schedules one scan of your watched folders so a fresh call
+  recording gets picked up. No call log, no phone number, no caller identity — the
+  call-log permissions are not declared at all.
+- **Microphone** and **screen capture** — the in-app recorder. Screen capture is
+  how Android exposes system audio, so a recording that includes the other side of
+  a call asks for the system capture consent dialog each session. Only audio is
+  captured; nothing about the screen is read or stored.
+- **Notifications** — the persistent notification shown while recording or
+  uploading.
+
+Everything recorded or uploaded goes to the server URL you entered and nowhere
+else. The app also allows plain `http://` traffic, because self-hosted Speakr
+servers commonly run on a LAN address without TLS.
 
 ## Requirements
 
 - Flutter SDK **^3.11.0** (Dart 3.11+)
 - A reachable Speakr server (REST API v1) and an API token from its **Account → API Tokens** page
 - Platform toolchains for whichever targets you build:
-  - Android: Android Studio + Android SDK 21+
+  - Android: Android Studio + Android SDK 24+
   - iOS: Xcode on macOS (untested in CI — see _Known limitations_)
   - Windows: Visual Studio 2022 with the "Desktop development with C++" workload
 
 ## Getting started
 
 ```bash
-git clone https://github.com/<your-fork>/speakr-app.git
-cd speakr-app
+git clone https://github.com/Inrego/SpeakrApp.git
+cd SpeakrApp
 
 flutter pub get
 dart run build_runner build --delete-conflicting-outputs
@@ -51,6 +113,19 @@ On first launch the app shows an **Onboarding** screen. Enter:
 Both are stored via `flutter_secure_storage` and never logged. The app talks only to the server you configure — there is no hard-coded backend.
 
 ## Building releases
+
+### Tag-based CI (recommended)
+
+Releases are driven by Git tags. Pushing a tag of the form `vX.Y.Z` triggers the release workflow, which builds the Android AAB + universal APK and the Windows installer + portable zip, then publishes them to a GitHub Release:
+
+```bash
+git tag v1.2.3
+git push origin v1.2.3
+```
+
+The version name (`X.Y.Z`) comes from the tag (without the leading `v`) and the build number comes from the GitHub Actions run number. A `workflow_dispatch` run can also build artifacts on demand (using the `version:` from `pubspec.yaml`) without publishing a Release.
+
+### Local builds
 
 ```bash
 # Windows
@@ -76,7 +151,9 @@ lib/
 ├── services/                  # secure storage, auto-record FFI, ...
 ├── widgets/                   # MonoEyebrow, TagChip, MiniWave, StatusBadge, ...
 ├── utils/                     # formatters
-└── features/
+├── responsive/                # phone/desktop layout switch
+├── desktop/                   # Windows-tuned screens (onboarding, library, detail, settings)
+└── features/                  # phone/shared screens
     ├── onboarding/  library/  detail/{tabs/}
     ├── live/{mini/, widgets/}
     ├── auto_upload/   settings/
@@ -115,8 +192,7 @@ The OpenAPI spec at [`openapi/speakr-openapi.json`](openapi/speakr-openapi.json)
 ## Known limitations
 
 - **iOS** builds compile but have not been verified end-to-end (no Mac in CI).
-- **Linux** is not a supported target. `record_linux` is pinned via `dependency_overrides` only so the Windows desktop build resolves.
-- **Google Fonts** are fetched at runtime on first launch. Bundle the TTFs as assets before shipping a real release if you need offline-first font rendering.
+- **Linux** is not a supported target — there is no `linux/` platform directory. (`record_linux` appears only as a transitive dependency of `record` in `pubspec.lock`; it is not a Linux build target.)
 - No offline cache, no resumable uploads, no push notifications when transcription finishes — the Library re-polls on refresh.
 
 ## Contributing
@@ -125,4 +201,6 @@ Please read [`AGENTS.md`](AGENTS.md) before opening a PR. It documents the depen
 
 ## License
 
-This client is not affiliated with the Speakr server project. Add a `LICENSE` file before publishing.
+Released under the [MIT License](LICENSE) — Copyright (c) 2026 Rene Scott Simonsen.
+
+This client is an independent project and is not affiliated with the Speakr server project.
