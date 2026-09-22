@@ -163,7 +163,6 @@ the microphone.
 - **Capture other apps' audio (Android media projection)** — to record system
   audio alongside the microphone, as described above. Requested per session
   through Android's own consent dialog.
-- **Audio media access / storage** — to read audio files you choose to upload.
 - **Access to folders you pick (Android)** — a per-folder grant from
   Android's folder picker, used to scan the folders you watch for auto-upload
   and to delete recordings from them after they have been uploaded, as

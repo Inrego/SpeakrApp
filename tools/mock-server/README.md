@@ -11,8 +11,6 @@ It exists for three jobs:
 2. Acting as the **demo endpoint for the Play reviewer** (Play Console →
    App content → *App access*), which otherwise cannot get past the connection
    screen.
-3. Backing the `MANAGE_EXTERNAL_STORAGE` demo video required by the restricted
-   permission declaration.
 
 It is **not** part of the Flutter app build: it imports nothing from `lib/`,
 adds no package dependencies, and is never referenced by app source.
