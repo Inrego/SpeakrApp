@@ -3,7 +3,9 @@
 A pre-flight list to get Speakr (`com.inrego.speakr_app`) onto the Play Store.
 Items marked **BLOCKER** must be done before the app can be submitted. Items
 marked **REVIEW RISK** can be submitted but may trigger extra review or
-rejection — read the permissions section carefully.
+rejection — read the permissions section carefully. The ready-to-paste Console
+justification text for every sensitive permission lives in
+[`permissions-declaration.md`](permissions-declaration.md).
 
 ---
 
@@ -64,29 +66,32 @@ review, settings/connection screen.
 These come straight from `android/app/src/main/AndroidManifest.xml`. Each row
 notes the likely Play requirement. The first one is a genuine rejection risk.
 
-### 🔴 `MANAGE_EXTERNAL_STORAGE` — "All files access" — HIGH RISK (likely BLOCKER)
+### 🟠 `MANAGE_EXTERNAL_STORAGE` — "All files access" — DECIDED: declare and defend
 
+- **Decision (2026-09-22):** keep the permission and **submit the restricted
+  permission declaration** — option 3. Ready-to-paste Console copy, with the
+  file:line evidence a reviewer may ask for, is in
+  [`permissions-declaration.md`](permissions-declaration.md) §1. See
+  [`../RELEASE_READINESS.md`](../RELEASE_READINESS.md) item (c) for the recorded
+  decision and the accepted risk.
 - **Where:** manifest line 13; requested at runtime in
-  `lib/features/auto_upload/auto_upload_settings_screen.dart` (rationale shown
-  to the user: "All files access — to delete recordings after successful
-  upload").
+  `lib/features/auto_upload/auto_upload_settings_screen.dart:691` (rationale shown
+  to the user at `:765-767`: "All files access — to delete recordings after
+  successful upload").
 - **Play requirement:** All-files access is a **restricted permission**. Google
   Play allows it only for a narrow set of app categories (file managers, backup,
   antivirus, document management, on-device file search, etc.). A
-  transcription/upload client is **not** on the approved list, so this will
-  trigger the "Restricted permission" declaration in the Console and is
-  **likely to be rejected or require removal**.
-- **What you must do (pick one):**
-  1. **Recommended for the Play build:** drop `MANAGE_EXTERNAL_STORAGE` and use
-     scoped access — `READ_MEDIA_AUDIO` for reading + the Storage Access
-     Framework / `MediaStore.createDeleteRequest()` (user-consented deletion)
-     for cleanup. This removes the restricted-permission review entirely.
+  transcription/upload client is not on that list, so the declaration triggers a
+  permission-use review and **may be denied** — an accepted risk, not a solved
+  problem. The declaration form also asks for a demo video; see
+  [`permissions-declaration.md`](permissions-declaration.md) §1 for what to record.
+- **Fallbacks if the declaration is denied** (both still documented, neither
+  implemented):
+  1. Drop `MANAGE_EXTERNAL_STORAGE` and use scoped access — `READ_MEDIA_AUDIO` for
+     reading + SAF / `MediaStore.createDeleteRequest()` for per-file consented
+     deletion. Costs the unattended delete-after-upload flow.
   2. Keep `MANAGE_EXTERNAL_STORAGE` **only** in the sideload/direct-download APK
      and strip it from the Play AAB via a manifest placeholder or build flavor.
-  3. If you insist on shipping it to Play, complete the **Permissions
-     declaration form** with a strong justification — but be prepared for
-     rejection; an upload client is unlikely to qualify.
-- **Status:** UNRESOLVED — **decide before submitting the AAB.**
 
 ### 🟠 `RECORD_AUDIO` (microphone) — declaration + prominent disclosure
 
@@ -107,7 +112,11 @@ notes the likely Play requirement. The first one is a genuine rejection risk.
   targetSdk 34+. `mediaProjection` (capturing other apps' audio) draws extra
   scrutiny and needs a clear use-case description (capturing system/other-app
   audio during a recording session that the user explicitly starts).
-- **Status:** must be declared — not an automatic reject if justified.
+- **Status:** must be declared — not an automatic reject if justified. Copy for
+  all three types is in [`permissions-declaration.md`](permissions-declaration.md)
+  §2–§4. Note that `microphone` and `mediaProjection` are two types on the **one**
+  service `.audio.AudioCaptureService`, and that the app declares no `dataSync`
+  service of its own — that type backs WorkManager's own foreground service.
 
 ### 🟠 `READ_PHONE_STATE` — sensitive permission declaration
 
@@ -116,20 +125,27 @@ notes the likely Play requirement. The first one is a genuine rejection risk.
 - **Play requirement:** phone-state is a sensitive permission and needs a
   justification in the permissions declaration. Confirm **no call-log
   permissions** (`READ_CALL_LOG`/`PROCESS_OUTGOING_CALLS`) are pulled in
-  transitively (none declared in the manifest — good).
+  transitively (none declared in the manifest — good). Copy:
+  [`permissions-declaration.md`](permissions-declaration.md) §5.
 
 ### 🟡 `android:usesCleartextTraffic="true"` — security note (MEDIUM)
 
 - Manifest line 23. Allows plain HTTP, justified because Speakr is self-hosted
   and may run on `http://` LAN addresses. The **pre-launch report** and security
   reviewers will flag this. Document the rationale in the Data Safety notes and
-  in your review notes; it is allowed but noted.
+  in your review notes; it is allowed but noted. Reviewer-note copy:
+  [`permissions-declaration.md`](permissions-declaration.md) §7.
 
 ### 🟡 `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` (LOW–MEDIUM)
 
 - Play discourages directly requesting this. Generally allowed for legitimate
-  background-upload reliability, but may draw a policy note. Ensure the in-app
-  flow is user-initiated.
+  background-upload reliability, but may draw a policy note.
+- **Verified 2026-09-22: nothing in the app requests it.** The permission is
+  declared in the manifest (line 18) but there is no
+  `Permission.ignoreBatteryOptimizations` call and no
+  `ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` intent in `lib/` or `android/`.
+  Either remove it from the manifest or wire a user-tapped request before
+  submitting — see [`permissions-declaration.md`](permissions-declaration.md) §6.
 
 ### 🟢 Standard / low risk
 
@@ -150,7 +166,11 @@ notes the likely Play requirement. The first one is a genuine rejection risk.
       reviewer working test credentials or a demo Speakr server.
 - [ ] Privacy policy URL is live and reachable.
 - [ ] Data Safety answers match actual behavior (see `data-safety.md`).
-- [ ] Decision recorded on `MANAGE_EXTERNAL_STORAGE` (remove for Play vs. declare).
+- [x] Decision recorded on `MANAGE_EXTERNAL_STORAGE` — **declare and defend**,
+      2026-09-22. Declaration copy: [`permissions-declaration.md`](permissions-declaration.md);
+      rationale and accepted risk: [`../RELEASE_READINESS.md`](../RELEASE_READINESS.md) item (c).
+- [ ] Restricted-permission declaration form actually submitted in the Console
+      (paste §1, attach the demo video).
 - [ ] Screenshots + feature graphic uploaded.
 - [ ] Content rating questionnaire submitted (expect Everyone).
 
@@ -163,8 +183,10 @@ notes the likely Play requirement. The first one is a genuine rejection risk.
    **feature graphic**. (BLOCKER)
 3. **Provide reviewer test access** (demo server + token, or instructions) in
    the App access form. (BLOCKER)
-4. **Decide the `MANAGE_EXTERNAL_STORAGE` strategy** for the Play build. (LIKELY
-   BLOCKER)
+4. ~~Decide the `MANAGE_EXTERNAL_STORAGE` strategy for the Play build.~~ **Done
+   2026-09-22 — declare and defend.** Remaining: paste
+   [`permissions-declaration.md`](permissions-declaration.md) §1 into the
+   restricted-permission declaration and record the demo video.
 5. **Enroll in Play App Signing** and upload the production AAB.
 6. Complete every "App content" form (rating, target audience, ads, news,
    financial, health, government).

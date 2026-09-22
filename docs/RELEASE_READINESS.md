@@ -21,7 +21,7 @@ Severity legend: **BLOCKER** (fix before that channel can ship) · **HIGH** ·
 |---|------|----------|---------|
 | a | Google Fonts fetched at runtime | **HIGH** | First-launch UX (needs network) |
 | b | `android:usesCleartextTraffic="true"` | MEDIUM | Security posture / Play review note |
-| c | `MANAGE_EXTERNAL_STORAGE` (All files access) | **BLOCKER (Play)** | Play approval |
+| c | `MANAGE_EXTERNAL_STORAGE` (All files access) | **HIGH (Play)** — decision recorded 2026-09-22: declare and defend | Play approval |
 | d | iOS unverified — no Mac in CI | MEDIUM | iOS release availability |
 | e | Linux not a target | LOW | Scope clarity |
 | f | Android debug-signing fallback | MEDIUM | Release-build integrity / Play upload |
@@ -79,13 +79,25 @@ user-configured hosts rather than globally.
 
 ---
 
-## (c) `MANAGE_EXTERNAL_STORAGE` / All files access — BLOCKER (Play track)
+## (c) `MANAGE_EXTERNAL_STORAGE` / All files access — HIGH (Play track)
+
+**Status: DECIDED — 2026-09-22.** Option 3, **declare and defend**, is the chosen
+route. `MANAGE_EXTERNAL_STORAGE` stays declared in the manifest and requested at
+runtime; nothing about the app's behaviour changes. The Play Console
+permissions-declaration copy is written and ready to paste:
+[`play-store/permissions-declaration.md`](play-store/permissions-declaration.md).
 
 **What:** The app declares and requests All-files-access. Google Play classifies
 `MANAGE_EXTERNAL_STORAGE` as a restricted permission limited to a narrow set of app
-categories (file managers, backup, antivirus, etc.). A transcription/upload client
-is **likely to be rejected** or to require a special Play Console declaration plus a
-permission-use review, and risks removal if the declaration is denied.
+categories (file managers, backup, antivirus, etc.), so shipping it requires the
+Play Console restricted-permission declaration plus a permission-use review.
+
+**Why the permission is needed:** the auto-upload feature watches folders the user
+picks, uploads recordings written there by *other* apps (call recorders, voice
+recorders) to the user's own server, and then deletes the local copy so the device
+does not fill up. MediaStore/SAF cannot delete another app's file without a
+per-file system consent prompt, which cannot be answered by an unattended
+background upload triggered by a periodic job or by the end of a call.
 
 **Evidence:**
 - Declared: `android/app/src/main/AndroidManifest.xml:13` —
@@ -94,23 +106,25 @@ permission-use review, and risks removal if the declaration is denied.
   — `Permission.manageExternalStorage`.
 - In-app rationale string: `lib/features/auto_upload/auto_upload_settings_screen.dart:765-767`
   — *"All files access — to delete recordings after successful upload."*
+- Delete-after-upload: `lib/features/auto_upload/auto_upload_worker.dart:396-415`
+  (`deleteLocalAutoUploadFile`), called at `:482`.
 
-**Affects:** Play Store approval. This is the single biggest release blocker for the
-Play track. (It does **not** block the direct-download / sideload APK or the Windows
-builds.)
+**Affects:** Play Store approval only. The direct-download / sideload APK and the
+Windows builds are unaffected.
 
-**Recommended action — pick one:**
+**Accepted risk (stated, not mitigated):** a transcription/upload client is not on
+Google's approved category list for All-files-access, so the declaration may be
+**denied**, which would block the Play track until the app is changed. The
+maintainer accepts that risk in exchange for keeping one build and one code path.
+
+**Documented fallbacks if the declaration is denied:**
 1. **Scope down for Play:** replace All-files-access with `READ_MEDIA_AUDIO` +
    Storage Access Framework / `MediaStore`, requesting per-file delete consent via
    `MediaStore.createDeleteRequest`, and drop `MANAGE_EXTERNAL_STORAGE` from the AAB.
+   Costs the unattended delete-after-upload flow.
 2. **Split builds:** keep `MANAGE_EXTERNAL_STORAGE` only in the direct-download
    APK / sideload variant (via a flavor or manifest placeholder) and strip it from
-   the Play AAB.
-3. **Declare and defend:** submit the Play Console permissions declaration with the
-   delete-after-upload justification and accept the review risk.
-
-Surface this prominently in `docs/play-store/` and the README before submitting to
-Play.
+   the Play AAB. Costs a second build configuration and a feature gap on Play.
 
 ---
 
@@ -229,6 +243,7 @@ becomes available.
 - **Sensitive Android permissions beyond (c)** still need Play Console declarations
   even if not outright blockers: `READ_PHONE_STATE` (call-end trigger via
   `PhoneStateReceiver`), `FOREGROUND_SERVICE_MEDIA_PROJECTION` (capturing other apps'
-  audio draws extra scrutiny), and `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`. See the
-  permissions inventory in `android/app/src/main/AndroidManifest.xml` and the
-  store-prep notes under `docs/play-store/`.
+  audio draws extra scrutiny), and `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`. The
+  ready-to-paste Console copy for every one of these is in
+  [`play-store/permissions-declaration.md`](play-store/permissions-declaration.md);
+  the raw inventory is `android/app/src/main/AndroidManifest.xml`.

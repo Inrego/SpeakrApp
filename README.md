@@ -52,6 +52,35 @@ The desktop app ships in two forms on each release:
 
 > **Note:** the Windows builds are **unsigned**. Windows SmartScreen may show a "Windows protected your PC" warning the first time you run the installer or executable. Choose **More info → Run anyway** to proceed. This is expected for an unsigned community build.
 
+## Android permissions
+
+If you sideload the APK, Android will ask for a few permissions that deserve an
+explanation:
+
+- **All files access** (`MANAGE_EXTERNAL_STORAGE`) — only used by **auto-upload**.
+  You point Speakr at folders written by your call recorder or voice recorder; it
+  uploads new recordings to your own Speakr server and then **deletes the local
+  copy** so the phone does not fill up. Those folders sit outside the shared media
+  collection, and Android will not let one app delete another app's file through
+  MediaStore or the Storage Access Framework without a system confirmation dialog
+  per file — which nobody can tap while an upload runs in the background. Speakr
+  touches only the folders you picked; it does not browse or upload anything else.
+  Leave auto-upload off and you never need to grant it.
+- **Phone state** (`READ_PHONE_STATE`) — used purely as a timing signal: when a
+  call ends, Speakr schedules one scan of your watched folders so a fresh call
+  recording gets picked up. No call log, no phone number, no caller identity — the
+  call-log permissions are not declared at all.
+- **Microphone** and **screen capture** — the in-app recorder. Screen capture is
+  how Android exposes system audio, so a recording that includes the other side of
+  a call asks for the system capture consent dialog each session. Only audio is
+  captured; nothing about the screen is read or stored.
+- **Notifications** — the persistent notification shown while recording or
+  uploading.
+
+Everything recorded or uploaded goes to the server URL you entered and nowhere
+else. The app also allows plain `http://` traffic, because self-hosted Speakr
+servers commonly run on a LAN address without TLS.
+
 ## Requirements
 
 - Flutter SDK **^3.11.0** (Dart 3.11+)
