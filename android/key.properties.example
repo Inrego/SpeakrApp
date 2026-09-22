@@ -1,0 +1,20 @@
+# Android release signing configuration (template — copy to android/key.properties).
+#
+# android/key.properties is gitignored and MUST NOT be committed. It is read by
+# android/app/build.gradle.kts to sign release builds. When this file is absent
+# (normal local dev), release builds fall back to debug signing automatically.
+#
+# In CI (GitHub Actions release workflow) this file is generated from secrets:
+#   storePassword -> ANDROID_KEYSTORE_PASSWORD
+#   keyAlias      -> ANDROID_KEY_ALIAS
+#   keyPassword   -> ANDROID_KEY_PASSWORD
+# and the keystore itself is base64-decoded from ANDROID_KEYSTORE_BASE64 to
+# android/app/upload-keystore.jks.
+#
+# storeFile is resolved relative to the android/ directory (the Gradle root
+# project), so "app/upload-keystore.jks" points at android/app/upload-keystore.jks.
+
+storeFile=app/upload-keystore.jks
+storePassword=your-keystore-password
+keyAlias=your-key-alias
+keyPassword=your-key-password
