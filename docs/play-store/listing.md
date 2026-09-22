@@ -53,7 +53,9 @@ reachable Speakr server, the app cannot transcribe anything.
 
 WHAT YOU CAN DO
 
-• Record meetings live, with a tag picker and pause/resume.
+• Record meetings live, with a tag picker and pause/resume. Optionally capture
+  the audio other apps are playing (the other side of a call or video meeting)
+  alongside your microphone — Android asks for its consent dialog each time.
 • Upload existing audio files (m4a, mp3, wav, and more) with options for
   minimum/maximum speakers, language, tags, meeting date, and notes.
 • Watch transcription progress with live status badges: Pending → Processing →
@@ -65,15 +67,21 @@ WHAT YOU CAN DO
 
 AUTOMATION
 
-• Background auto-upload watcher (Android and Windows): drop audio files into a
-  folder and they upload to your server automatically.
+• Background auto-upload watcher (Android and Windows): pick a folder — for
+  example your call recorder's output folder — and new audio files in it upload
+  to your server automatically, then the local copy is deleted so your device
+  does not fill up. Optionally skip and delete recordings shorter than a
+  minimum you set.
+• On Android you choose each folder in the system folder picker; Speakr only
+  gets access to the folders you pick, never to the rest of your storage.
 • On Android, the watcher can run a scan after a phone call ends, so call
   recordings are picked up without opening the app.
 
 DESKTOP EXTRAS (WINDOWS)
 
 • Always-on-top mini recorder that survives app switching.
-• Auto-record that starts when system or microphone audio crosses a threshold.
+• Auto-record that starts when an application you choose (e.g. your meeting
+  app) begins using the microphone, and offers to stop when it goes quiet.
 
 PRIVACY BY DESIGN
 
@@ -87,13 +95,14 @@ REQUIREMENTS
 
 • A reachable Speakr server (REST API v1) and an API token from it.
 • Microphone permission for live recording.
-• Storage/audio access to read files you want to upload.
+• Audio/storage access to read files you want to upload, and — for auto-upload
+  only — access to the folders you pick.
 
 Speakr is cross-platform: Android, iOS, and Windows desktop. (iOS builds are
 not produced in this project's CI.)
 ```
 
-(Approx. 2,160 characters — well under the 4,000 limit. Trim or expand freely.)
+(Approx. 2,810 characters — under the 4,000 limit. Trim or expand freely.)
 
 ---
 
@@ -121,14 +130,18 @@ not produced in this project's CI.)
 ## Privacy policy URL (REQUIRED)
 
 Google Play **requires** a privacy policy URL for this app because it requests
-sensitive permissions (microphone, phone state, all-files access) and handles
-user-generated content (audio).
+sensitive permissions (microphone, phone state, capturing other apps' audio
+through media projection) and handles user-generated content (audio). All files
+access is **not** among them: Android auto-upload uses a per-folder Storage
+Access Framework grant, and `MANAGE_EXTERNAL_STORAGE` is being removed (the code
+change is in a separate PR; see `permissions-declaration.md` §1).
 
-You must host a privacy policy at a public URL and enter it in
-**Play Console → App content → Privacy policy**. It does not exist yet — this is
-a hard publishing blocker you must create.
+The policy exists: source of truth `privacy-policy.md`, published from
+`site/privacy-policy.html` at
+**https://inrego.github.io/SpeakrApp/privacy-policy.html**. Enter that URL in
+**Play Console → App content → Privacy policy**.
 
-The policy should state, accurately for this app:
+The policy states, accurately for this app:
 
 - The app is a client for a **user-self-hosted** Speakr server. The developer
   does not operate a backend and does not receive user data.
@@ -139,12 +152,16 @@ The policy should state, accurately for this app:
 - No analytics, advertising, or third-party tracking SDKs are integrated
   (verified against `pubspec.yaml` — no Firebase/Analytics/Crashlytics/ads
   dependencies present).
+- The app can capture other apps' audio (Android media projection, Windows
+  loopback), and auto-upload deletes files from the user-chosen folders after
+  upload — on Android through the SAF grant to those folders only.
+- The Windows build monitors which applications use the microphone, locally
+  only, to drive auto-record.
 - How users can request deletion: since the developer holds no data, deletion
   is performed on the user's own Speakr server / device.
 
-A GitHub-hosted Markdown page or GitHub Pages URL is acceptable as the policy
-host. **Action required from you: write and host this policy, then paste the
-URL into the Console.**
+**Action required from you: paste the URL into the Console.** Keep the listing
+text above consistent with the policy whenever either changes.
 
 ---
 
