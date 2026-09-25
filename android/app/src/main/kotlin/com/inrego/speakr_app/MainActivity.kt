@@ -45,7 +45,12 @@ class MainActivity : FlutterFragmentActivity() {
                 "start" -> {
                     val path = call.argument<String>("path") ?: ""
                     val mic = call.argument<Boolean>("micEnabled") ?: true
-                    val sys = call.argument<Boolean>("systemEnabled") ?: false
+                    // Dart sends `systemMode` ("off" | "all" | "process");
+                    // Android has no per-process capture, so any non-off
+                    // mode means whole-device playback capture.
+                    val mode = call.argument<String>("systemMode")
+                    val sys = if (mode != null) mode != "off"
+                        else call.argument<Boolean>("systemEnabled") ?: false
                     rec.start(path, mic, sys) { err ->
                         runOnUiThread {
                             if (err == null) result.success(null)
@@ -58,9 +63,9 @@ class MainActivity : FlutterFragmentActivity() {
                     rec.setMicEnabled(v)
                     result.success(null)
                 }
-                "setSystemEnabled" -> {
-                    val v = call.argument<Boolean>("enabled") ?: false
-                    rec.setSystemEnabled(v)
+                "setSystemMode" -> {
+                    val mode = call.argument<String>("mode") ?: "off"
+                    rec.setSystemEnabled(mode != "off")
                     result.success(null)
                 }
                 "pause" -> { rec.pause(); result.success(null) }

@@ -14,6 +14,8 @@ import android.media.MediaRecorder
 import android.media.projection.MediaProjection
 import android.media.projection.MediaProjectionManager
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import io.flutter.plugin.common.MethodChannel
 import kotlin.math.sqrt
@@ -64,11 +66,17 @@ class SpeakrAudioRecorder(
     private val paused = AtomicBoolean(false)
     private val running = AtomicBoolean(false)
     private val stopRequested = AtomicBoolean(false)
+    // Set by the MediaProjection callback (main thread) when the OS or the
+    // user ends the projection mid-session; the worker drops the dead
+    // capture so a later system-on can open a fresh one.
+    private val projectionRevoked = AtomicBoolean(false)
 
+    // Written from the platform thread (consent, toggles, projection
+    // callback) and read by the session worker.
     private var outputPath: String? = null
-    private var lastError: String? = null
-    private var projection: MediaProjection? = null
-    private var pendingProjectionResult: ProjectionResult? = null
+    @Volatile private var lastError: String? = null
+    @Volatile private var projection: MediaProjection? = null
+    @Volatile private var pendingProjectionResult: ProjectionResult? = null
 
     // Level meter buffer — the worker writes the latest RMS-derived
     // level here on every mixed chunk; Dart polls it via the `getLevel`
@@ -125,6 +133,7 @@ class SpeakrAudioRecorder(
                 systemEnabled.set(sysOn)
                 paused.set(false)
                 stopRequested.set(false)
+                projectionRevoked.set(false)
                 lastError = null
                 lastLevel = 0.0
 
@@ -153,7 +162,76 @@ class SpeakrAudioRecorder(
     }
 
     fun setMicEnabled(v: Boolean) { micEnabled.set(v) }
-    fun setSystemEnabled(v: Boolean) { systemEnabled.set(v) }
+    fun setSystemEnabled(v: Boolean) {
+        systemEnabled.set(v)
+        // Switching system on mid-session: the service was started
+        // mic-only, so re-issue it with the mediaProjection type now that a
+        // consent token exists. The worker opens the capture once the
+        // service reports the type active.
+        if (v && running.get() && projection == null &&
+            pendingProjectionResult != null
+        ) {
+            AudioCaptureService.start(context, true)
+        }
+    }
+
+    /**
+     * Turn the cached consent token into a playback-capture [AudioRecord].
+     * Must run after the service is foreground with the mediaProjection
+     * type, or `getMediaProjection` throws on Android 14+.
+     */
+    @SuppressLint("MissingPermission")
+    private fun openSystemRecord(): AudioRecord? {
+        if (!supportsSystemAudio()) return null
+        val res = pendingProjectionResult ?: return null
+        pendingProjectionResult = null
+        return try {
+            val mgr = context.getSystemService(Context.MEDIA_PROJECTION_SERVICE)
+                as MediaProjectionManager
+            val proj = mgr.getMediaProjection(res.resultCode, res.data)
+                ?: return null
+            projection = proj
+            proj.registerCallback(object : MediaProjection.Callback() {
+                override fun onStop() {
+                    // Our own cleanup stops the projection too (and a
+                    // late callback from a previous session's projection
+                    // must not touch this one).
+                    if (stopRequested.get() || projection !== proj) return
+                    // The OS or the user (status-bar "stop sharing")
+                    // ended the projection. Gate system to silence and
+                    // keep recording the mic — this must not set
+                    // lastError, which would delete the whole file.
+                    Log.w(TAG, "system-audio projection stopped mid-session; " +
+                        "continuing without system audio")
+                    systemEnabled.set(false)
+                    projectionRevoked.set(true)
+                }
+            }, Handler(Looper.getMainLooper()))
+            val cfg = AudioPlaybackCaptureConfiguration.Builder(proj)
+                .addMatchingUsage(AudioAttributes.USAGE_MEDIA)
+                .addMatchingUsage(AudioAttributes.USAGE_GAME)
+                .addMatchingUsage(AudioAttributes.USAGE_UNKNOWN)
+                .build()
+            val sysBufSize = AudioRecord.getMinBufferSize(
+                SAMPLE_RATE, AudioFormat.CHANNEL_IN_STEREO,
+                AudioFormat.ENCODING_PCM_16BIT
+            ).coerceAtLeast(FRAMES_PER_CHUNK * 4)
+            AudioRecord.Builder()
+                .setAudioFormat(
+                    AudioFormat.Builder()
+                        .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                        .setSampleRate(SAMPLE_RATE)
+                        .setChannelMask(AudioFormat.CHANNEL_IN_STEREO)
+                        .build()
+                )
+                .setBufferSizeInBytes(sysBufSize)
+                .setAudioPlaybackCaptureConfig(cfg)
+                .build()
+        } catch (t: Throwable) {
+            Log.w(TAG, "system capture init failed: ${t.message}")
+            null
+        }
+    }
     fun pause() { paused.set(true) }
     fun resume() { paused.set(false) }
 
@@ -230,57 +308,17 @@ class SpeakrAudioRecorder(
             return
         }
 
-        // System (loopback) input via MediaProjection.
+        // System (loopback) input is opened lazily inside the loop, once
+        // the service holds the mediaProjection FGS type — see
+        // [openSystemRecord]. That covers both start-with-system and
+        // switching system on mid-session.
         var sysRecord: AudioRecord? = null
-        if (systemEnabled.get() && supportsSystemAudio()) {
-            val res = pendingProjectionResult
-            if (res != null) {
-                try {
-                    val mgr = context.getSystemService(Context.MEDIA_PROJECTION_SERVICE)
-                        as MediaProjectionManager
-                    projection = mgr.getMediaProjection(res.resultCode, res.data)
-                    pendingProjectionResult = null
-                    projection!!.registerCallback(object : MediaProjection.Callback() {
-                        override fun onStop() {
-                            // OS revoked projection — gate system to silence.
-                            systemEnabled.set(false)
-                            lastError = "System-audio projection was revoked."
-                        }
-                    }, null)
-                    val cfg = AudioPlaybackCaptureConfiguration.Builder(projection!!)
-                        .addMatchingUsage(AudioAttributes.USAGE_MEDIA)
-                        .addMatchingUsage(AudioAttributes.USAGE_GAME)
-                        .addMatchingUsage(AudioAttributes.USAGE_UNKNOWN)
-                        .build()
-                    val sysBufSize = AudioRecord.getMinBufferSize(
-                        SAMPLE_RATE, AudioFormat.CHANNEL_IN_STEREO,
-                        AudioFormat.ENCODING_PCM_16BIT
-                    ).coerceAtLeast(FRAMES_PER_CHUNK * 4)
-                    sysRecord = AudioRecord.Builder()
-                        .setAudioFormat(
-                            AudioFormat.Builder()
-                                .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
-                                .setSampleRate(SAMPLE_RATE)
-                                .setChannelMask(AudioFormat.CHANNEL_IN_STEREO)
-                                .build()
-                        )
-                        .setBufferSizeInBytes(sysBufSize)
-                        .setAudioPlaybackCaptureConfig(cfg)
-                        .build()
-                } catch (t: Throwable) {
-                    Log.w(TAG, "system capture init failed: ${t.message}")
-                    sysRecord = null
-                }
-            }
-        }
 
         try {
             mic.startRecording()
-            sysRecord?.startRecording()
         } catch (t: Throwable) {
             lastError = "AudioRecord.startRecording failed: ${t.message}"
             mic.release()
-            sysRecord?.release()
             try { codec.stop(); codec.release() } catch (_: Throwable) {}
             try { muxer.release() } catch (_: Throwable) {}
             return
@@ -296,6 +334,25 @@ class SpeakrAudioRecorder(
         var chunkCounter = 0L
 
         while (!stopRequested.get()) {
+            if (projectionRevoked.getAndSet(false)) {
+                try { sysRecord?.stop() } catch (_: Throwable) {}
+                try { sysRecord?.release() } catch (_: Throwable) {}
+                sysRecord = null
+                projection = null
+            }
+            if (sysRecord == null && systemEnabled.get() &&
+                pendingProjectionResult != null &&
+                AudioCaptureService.projectionTypeActive
+            ) {
+                sysRecord = openSystemRecord()
+                try {
+                    sysRecord?.startRecording()
+                } catch (t: Throwable) {
+                    Log.w(TAG, "system capture start failed: ${t.message}")
+                    sysRecord?.release()
+                    sysRecord = null
+                }
+            }
             // Read mic mono → mixed stereo (duplicated to L+R).
             val micRead = mic.read(micBuf, 0, FRAMES_PER_CHUNK)
             val haveMic = micEnabled.get() && micRead > 0
@@ -346,8 +403,8 @@ class SpeakrAudioRecorder(
             val level = maxOf(rmsToLevel(micRms), rmsToLevel(sysRms))
             storeLevel(level)
             if (chunkCounter % 50L == 0L) {
-                Log.d(TAG, "level mic=%.3f (rms=%.4f) sys=%.3f (rms=%.4f) " +
-                    "haveSys=%b sysEnabled=%b".format(
+                Log.d(TAG, ("level mic=%.3f (rms=%.4f) sys=%.3f (rms=%.4f) " +
+                    "haveSys=%b sysEnabled=%b").format(
                         rmsToLevel(micRms), micRms,
                         rmsToLevel(sysRms), sysRms,
                         sysRecord != null, systemEnabled.get()))
