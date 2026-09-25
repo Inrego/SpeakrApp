@@ -354,7 +354,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       SettingsRow(
                         label: 'Start with Windows',
                         subtitle:
-                            'Launches Speakr minimized to the tray when you sign in.',
+                            'Launches Minutes minimized to the tray when you sign in.',
                         toggleValue: enabled.maybeWhen(
                           data: (v) => v,
                           orElse: () => false,

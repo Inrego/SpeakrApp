@@ -122,7 +122,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       case 0:
         return const _Slide(
           key: ValueKey('intro'),
-          eyebrow: 'Speakr',
+          eyebrow: 'Minutes for Speakr',
           headline: 'The quiet way to ',
           headlineEm: 'capture',
           headlineTail: ' a meeting.',

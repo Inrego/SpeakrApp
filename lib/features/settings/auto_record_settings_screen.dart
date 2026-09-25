@@ -80,11 +80,11 @@ class _AutoRecordSettingsScreenState
                       const SizedBox(height: 6),
                       Text(
                         'When an allowlisted app starts using your '
-                        'microphone, Speakr automatically begins '
+                        'microphone, Minutes automatically begins '
                         'recording. Recording continues until both the '
                         'app has released the mic and the audio output '
                         'has been idle for ${s.silenceSeconds} seconds — '
-                        'then Speakr asks whether to stop.',
+                        'then Minutes asks whether to stop.',
                         style: SpeakrText.sans(
                           size: 13,
                           color: SpeakrColors.ink2,

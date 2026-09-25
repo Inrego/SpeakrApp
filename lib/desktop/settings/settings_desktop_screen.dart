@@ -868,7 +868,7 @@ class _AutoStartField extends ConsumerWidget {
     final service = ref.read(autoStartServiceProvider);
     return _Field(
       label: 'Start with Windows',
-      hint: 'Launches Speakr minimized to the tray when you sign in.',
+      hint: 'Launches Minutes minimized to the tray when you sign in.',
       child: _Toggle(
         on: asyncEnabled.maybeWhen(data: (v) => v, orElse: () => false),
         onTap: asyncEnabled.hasValue
@@ -1123,7 +1123,7 @@ class _ShortcutsSection extends StatelessWidget {
           title: 'Shortcuts',
           sub:
               "System-wide hotkeys live on the roadmap. Today's shortcuts "
-              "are active only while Speakr is focused.",
+              "are active only while Minutes is focused.",
         ),
         for (final (label, key) in _buildRows())
           Container(

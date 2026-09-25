@@ -29,7 +29,7 @@ class _OnboardingDesktopScreenState
 
   static const _slides = [
     _SlideCopy(
-      eyebrow: 'Speakr',
+      eyebrow: 'Minutes for Speakr',
       headLeading: 'The quiet way to ',
       headEm: 'capture',
       headTrailing: ' a meeting.',

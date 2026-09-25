@@ -39,7 +39,7 @@ bool TrayIcon::Install(HWND owner) {
   nid.uCallbackMessage = kTrayCallbackMessage;
   nid.hIcon = LoadIconW(GetModuleHandleW(nullptr),
                         MAKEINTRESOURCEW(IDI_APP_ICON));
-  wcsncpy_s(nid.szTip, L"Speakr", _TRUNCATE);
+  wcsncpy_s(nid.szTip, L"Minutes for Speakr", _TRUNCATE);
 
   if (!Shell_NotifyIconW(NIM_ADD, &nid)) {
     return false;

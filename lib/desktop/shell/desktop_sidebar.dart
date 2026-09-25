@@ -479,7 +479,7 @@ class _UserChip extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Speakr',
+                      'Minutes',
                       style: SpeakrText.sans(
                         size: 12.5,
                         weight: FontWeight.w500,

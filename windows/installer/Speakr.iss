@@ -14,7 +14,7 @@
   #define MyAppVersion "0.0.0"
 #endif
 
-#define MyAppName "Speakr"
+#define MyAppName "Minutes for Speakr"
 #define MyAppPublisher "Rene Scott Simonsen"
 #define MyAppExeName "speakr_app.exe"
 #define MyAppURL "https://github.com/Inrego/SpeakrApp"

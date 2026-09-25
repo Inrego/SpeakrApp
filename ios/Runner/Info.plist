@@ -7,9 +7,9 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Speakr</string>
+	<string>Minutes</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Speakr needs microphone access to record audio for transcription.</string>
+	<string>Minutes needs microphone access to record audio for transcription.</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>

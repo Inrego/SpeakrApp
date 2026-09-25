@@ -96,7 +96,7 @@ class AudioCaptureService : Service() {
                 Notification.Builder(ctx)
             }
             return builder
-                .setContentTitle("Speakr recording")
+                .setContentTitle("Minutes recording")
                 .setContentText(text)
                 .setSmallIcon(android.R.drawable.ic_btn_speak_now)
                 .setOngoing(true)

@@ -241,7 +241,7 @@ class _Header extends StatelessWidget {
                   )
                 : const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 8),
-                    child: MonoEyebrow('Speakr'),
+                    child: MonoEyebrow('Minutes'),
                   ),
           ),
           if (!kIsWeb &&
