@@ -1,35 +1,23 @@
 # Screenshots
 
-These images are referenced by the project [`README.md`](../../README.md) and the
-[Play Store listing](../play-store/listing.md). Drop the PNGs here using the exact
-filenames below and everything resolves automatically.
+All screenshots are captured from the real app against the invented dataset in
+[`tools/mock-server`](../../tools/mock-server/README.md), so there's no real data in them.
+The project [`README.md`](../../README.md) shows one per platform (the recordings list);
+the full set is below.
 
-Source mockups (Calm Minimal direction):
-
-- Mobile: `https://claude.ai/design/p/019dfe86-3f10-707f-9d00-e624cb45bfda?file=Speakr+Mobile.html`
-- Desktop: `https://claude.ai/design/p/019dfe86-3f10-707f-9d00-e624cb45bfda?file=Speakr+Desktop.html`
-
-## Required (referenced by README + store)
-
-| File | Used by | Notes |
+| Screen | Android | Windows |
 | --- | --- | --- |
-| `mobile.png` | README hero, Play listing | Best single mobile screen or a composite of the phone frames |
-| `desktop.png` | README hero | The Windows desktop mockup |
+| Recordings list | <img src="mobile-library.png" width="200" /> | <img src="desktop-library.png" width="420" /> |
+| Recording detail | <img src="mobile-detail.png" width="200" /> | <img src="desktop-detail.png" width="420" /> |
+| Live capture | <img src="mobile-live.png" width="200" /> | <img src="desktop-live.png" width="420" /> |
+| Settings | <img src="mobile-settings.png" width="200" /> | <img src="desktop-settings.png" width="420" /> |
+| Onboarding | <img src="mobile-onboarding.png" width="200" /> | <img src="desktop-onboarding.png" width="420" /> |
 
-## Recommended gallery (the five mobile screens)
+## Notes
 
-| File | Screen |
-| --- | --- |
-| `mobile-onboarding.png` | Onboarding — "The quiet way to capture a meeting." |
-| `mobile-library.png` | Library — Recordings list with status badges |
-| `mobile-detail.png` | Recording detail — Summary / Transcript / Chat tabs |
-| `mobile-live.png` | Live capture — recording timer, mic + system, speakers |
-| `mobile-settings.png` | Settings — server, recording, appearance, version |
-
-## Play Store assets (not committed here unless you want them tracked)
-
-- App icon 512×512 (downscale from `assets/icon/icon.png`)
-- Feature graphic 1024×500
-- At least 2 phone screenshots (the mobile screens above qualify)
-
-See [`../play-store/checklist.md`](../play-store/checklist.md) for the full asset list.
+- Android shots are the Google Play listing screenshots: 1080 × 2400, Medium Phone API 36.1
+  AVD, profile build. See [`../play-store/checklist.md`](../play-store/checklist.md).
+- Windows shots are 2880 × 1800: a 1440 × 900 window at 2× pixel ratio, captured from a
+  debug build via a throwaway `integration_test` harness.
+- `mobile.png` duplicates `mobile-detail.png`. It's kept only because the Play docs refer to it;
+  don't upload it to the Play Console.
