@@ -1,8 +1,8 @@
-# Speakr — Privacy Policy
+# Minutes for Speakr — Privacy Policy
 
-_Last updated: 22 September 2026_
+_Last updated: 25 September 2026_
 
-Speakr ("the app") is a **client application** for a self-hosted
+Minutes for Speakr ("the app") is a **client application** for a self-hosted
 [Speakr](https://github.com/learnedmachine/speakr) transcription server. The app
 is published by **Rene Scott Simonsen** ("we", "us"). This policy explains what
 the app does and does not do with your data.
@@ -16,7 +16,7 @@ the app does and does not do with your data.
 
 ## The short version
 
-- Speakr has **no backend operated by us.** It talks **only** to the Speakr
+- The app has **no backend operated by us.** It talks **only** to the Speakr
   server **you** configure.
 - We **do not collect, receive, store, or have access to** any of your data.
 - The app contains **no analytics, no advertising, and no third-party tracking
@@ -27,7 +27,7 @@ the app does and does not do with your data.
 
 ## What the app handles, and where it goes
 
-When you use Speakr, the following data is sent **directly from your device to
+When you use the app, the following data is sent **directly from your device to
 the Speakr server URL you enter** — and nowhere else:
 
 - **Audio recordings**: audio you record in the app (from your microphone,
@@ -95,7 +95,7 @@ The auto-upload feature watches **folders you choose** on your device, for
 example the output folder of a call-recorder or voice-recorder app. The app
 periodically scans those folders, uploads each new audio file to your server,
 and then — by design — **deletes the original file from your device** once the
-upload has succeeded. These are files written by other apps, not by Speakr.
+upload has succeeded. These are files written by other apps, not by this app.
 Delete-after-upload is what keeps a device that records calls all day from
 filling up.
 
@@ -196,7 +196,7 @@ above) are gone from the device; the uploaded copy is on your server.
 
 ## Children
 
-Speakr is a productivity tool for managing your own transcription server and is
+Minutes for Speakr is a productivity tool for managing your own transcription server and is
 **not directed at children** under 13.
 
 ## Changes to this policy

@@ -1,10 +1,10 @@
-# Speakr App
+# Minutes for Speakr
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Platforms](https://img.shields.io/badge/platforms-Android%20%7C%20iOS%20%7C%20Windows-informational.svg)](#requirements)
 [![Latest release](https://img.shields.io/github/v/release/Inrego/SpeakrApp?sort=semver)](https://github.com/Inrego/SpeakrApp/releases/latest)
 
-A Flutter client for [Speakr](https://github.com/learnedmachine/speakr), the self-hosted audio transcription and meeting-notes server. Runs on **Android**, **iOS**, and **Windows desktop**.
+An unofficial Flutter client for [Speakr](https://github.com/learnedmachine/speakr), the self-hosted audio transcription and meeting-notes server. Runs on **Android**, **iOS**, and **Windows desktop**.
 
 Record meetings live, upload existing audio, watch transcription progress, then read AI-generated summaries with speaker-attributed transcripts — all against your own Speakr instance.
 
@@ -24,11 +24,11 @@ Record meetings live, upload existing audio, watch transcription progress, then 
 <table>
   <tr>
     <td align="center" width="40%">
-      <img src="docs/screenshots/mobile.png" alt="Speakr running on Android — library and detail view" width="280" /><br />
+      <img src="docs/screenshots/mobile.png" alt="Minutes running on Android — library and detail view" width="280" /><br />
       <sub>Mobile (Android)</sub>
     </td>
     <td align="center" width="60%">
-      <img src="docs/screenshots/desktop.png" alt="Speakr running on Windows desktop — library with live recorder" width="520" /><br />
+      <img src="docs/screenshots/desktop.png" alt="Minutes running on Windows desktop — library with live recorder" width="520" /><br />
       <sub>Windows desktop</sub>
     </td>
   </tr>
@@ -58,11 +58,11 @@ If you sideload the APK, Android will ask for a few permissions that deserve an
 explanation:
 
 - **Access to folders you pick** — only used by **auto-upload**. You point
-  Speakr at folders written by your call recorder or voice recorder using
-  Android's own folder picker (the Storage Access Framework); Speakr keeps that
+  Minutes at folders written by your call recorder or voice recorder using
+  Android's own folder picker (the Storage Access Framework); Minutes keeps that
   per-folder grant, uploads new recordings to your own Speakr server and then
   **deletes the local copy** so the phone does not fill up. The grant covers
-  only the folders you picked, so Speakr cannot browse or upload anything else.
+  only the folders you picked, so Minutes cannot browse or upload anything else.
   Leave auto-upload off and you never grant it.
   *Earlier builds requested **All files access** (`MANAGE_EXTERNAL_STORAGE`) for
   this instead. That permission is being removed — the migration to the folder
@@ -70,7 +70,7 @@ explanation:
   files in that folder without any per-file prompt, so All files access was never
   actually needed.*
 - **Phone state** (`READ_PHONE_STATE`) — used purely as a timing signal: when a
-  call ends, Speakr schedules one scan of your watched folders so a fresh call
+  call ends, Minutes schedules one scan of your watched folders so a fresh call
   recording gets picked up. No call log, no phone number, no caller identity — the
   call-log permissions are not declared at all.
 - **Microphone** and **screen capture** — the in-app recorder. Screen capture is
@@ -206,4 +206,4 @@ Please read [`AGENTS.md`](AGENTS.md) before opening a PR. It documents the depen
 
 Released under the [MIT License](LICENSE) — Copyright (c) 2026 Rene Scott Simonsen.
 
-This client is an independent project and is not affiliated with the Speakr server project.
+This client is an independent, unofficial project and is not affiliated with or endorsed by the Speakr server project. It is published as **Minutes for Speakr**.

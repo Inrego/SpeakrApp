@@ -26,10 +26,10 @@ Future<void> applyDevBranchTitleIfDebug() async {
       if (res.exitCode != 0) return;
       final branch = (res.stdout as String).trim();
       if (branch.isEmpty || branch == 'HEAD') return;
-      await MiniWindowNative.setMainWindowTitle('Speakr — $branch');
+      await MiniWindowNative.setMainWindowTitle('Minutes — $branch');
     } else {
       final info = await PackageInfo.fromPlatform();
-      await MiniWindowNative.setMainWindowTitle('Speakr v${info.version}');
+      await MiniWindowNative.setMainWindowTitle('Minutes v${info.version}');
     }
   } on ProcessException {
     // git not on PATH — leave default title.

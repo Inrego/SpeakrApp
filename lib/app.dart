@@ -22,7 +22,7 @@ class SpeakrApp extends ConsumerWidget {
       data: (_) {
         final router = ref.watch(routerProvider);
         return MaterialApp.router(
-          title: 'Speakr',
+          title: 'Minutes for Speakr',
           debugShowCheckedModeBanner: false,
           theme: buildSpeakrTheme(),
           routerConfig: router,

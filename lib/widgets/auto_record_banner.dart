@@ -89,7 +89,7 @@ class _StopPromptDialog extends StatelessWidget {
       backgroundColor: SpeakrColors.bg,
       title: Text('Stop recording?', style: SpeakrText.serif(size: 20)),
       content: Text(
-        'Speakr has been auto-recording ${req.triggerLabel} for '
+        'Minutes has been auto-recording ${req.triggerLabel} for '
         '${_formatElapsed(req.elapsed)}. The mic and audio output have '
         'been idle.',
         style: SpeakrText.sans(size: 14, color: SpeakrColors.ink2),

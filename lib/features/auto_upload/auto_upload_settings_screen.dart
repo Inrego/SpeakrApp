@@ -862,11 +862,11 @@ class _FolderAccessBanner extends ConsumerWidget {
           const SizedBox(height: 4),
           Text(
             legacy
-                ? 'Speakr now reads this folder through Android\'s folder '
+                ? 'Minutes now reads this folder through Android\'s folder '
                     'picker instead of "All files access". Re-select the '
                     'folder once to keep auto-upload running; your upload '
                     'history is kept.'
-                : 'Speakr no longer has permission to read this folder. '
+                : 'Minutes no longer has permission to read this folder. '
                     'Re-select it to grant access again.',
             style: SpeakrText.sans(
               size: 12,

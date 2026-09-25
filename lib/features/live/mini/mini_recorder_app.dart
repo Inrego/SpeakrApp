@@ -28,7 +28,7 @@ class _MiniRecorderAppState extends ConsumerState<MiniRecorderApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Speakr Recording',
+      title: 'Minutes Recording',
       debugShowCheckedModeBanner: false,
       theme: buildSpeakrTheme(),
       home: const MiniRecorderScreen(),

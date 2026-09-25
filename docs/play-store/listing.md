@@ -8,19 +8,13 @@ page. Character limits are noted per field; the drafts below stay within them.
 ## App title (max 30 chars)
 
 ```
-Speakr
+Minutes for Speakr
 ```
 
-(6 chars. Plenty of headroom — kept to the bare app name to match the launcher
-label `android:label="Speakr"` and the desktop branding.)
-
-Alternative if a longer, more descriptive title is desired (still ≤30):
-
-```
-Speakr — Transcribe Client
-```
-
-(26 chars.)
+(18 chars. The launcher label is the short form `android:label="Minutes"`. The
+app is not called plain "Speakr": it is an unofficial client, and a bare
+"Speakr" title would read as the server project's own app — an impersonation /
+IP risk, sharper now that the app is paid. "for Speakr" states compatibility.)
 
 ---
 
@@ -42,12 +36,12 @@ Alternatives (both ≤80):
 ## Full description (max 4000 chars)
 
 ```
-Speakr is a client for the self-hosted, open-source Speakr transcription and
-meeting-notes server. It records, uploads, and reviews AI-transcribed
+Minutes for Speakr is a client for the self-hosted, open-source Speakr
+transcription and meeting-notes server. It records, uploads, and reviews AI-transcribed
 meetings — and it talks ONLY to the Speakr instance you configure.
 
-IMPORTANT: This app is not affiliated with the Speakr server project and is not
-a standalone service. You must run (or have access to) your own Speakr server
+IMPORTANT: This is an independent, unofficial app. It is not affiliated with or
+endorsed by the Speakr server project, and it is not a standalone service. You must run (or have access to) your own Speakr server
 and supply an API token from the server's Account → API Tokens page. Without a
 reachable Speakr server, the app cannot transcribe anything.
 
@@ -72,7 +66,7 @@ AUTOMATION
   to your server automatically, then the local copy is deleted so your device
   does not fill up. Optionally skip and delete recordings shorter than a
   minimum you set.
-• On Android you choose each folder in the system folder picker; Speakr only
+• On Android you choose each folder in the system folder picker; Minutes only
   gets access to the folders you pick, never to the rest of your storage.
 • On Android, the watcher can run a scan after a phone call ends, so call
   recordings are picked up without opening the app.
@@ -96,9 +90,9 @@ REQUIREMENTS
 • A reachable Speakr server (REST API v1) and an API token from it.
 • Microphone permission for live recording.
 • For auto-upload only: access to the folders you pick, granted through your
-  device's own folder picker. Speakr requests no other storage access.
+  device's own folder picker. Minutes requests no other storage access.
 
-Speakr is cross-platform: Android, iOS, and Windows desktop. (iOS builds are
+Minutes is cross-platform: Android, iOS, and Windows desktop. (iOS builds are
 not produced in this project's CI.)
 ```
 
@@ -169,8 +163,8 @@ text above consistent with the policy whenever either changes.
 
 ## Notes / things to confirm
 
-- **Title length:** "Speakr" alone is safest. If you want the descriptive
-  variant, confirm it doesn't collide with another Play app named "Speakr".
+- **Title:** "Minutes for Speakr" (decided 2026-09-25). Do not go back to a
+  bare "Speakr" title — see the App title note above.
 - **"AI" claims:** the description says "AI summary / AI-transcribed". This is
   accurate to the server's behavior; keep it factual and avoid implying the app
   itself does on-device AI.

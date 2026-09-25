@@ -609,7 +609,7 @@ class RecordingController extends StateNotifier<RecordingState> {
         jsonEncode({'role': MiniIpc.argRoleMini}),
       );
       _miniController = c;
-      await c.setTitle('Speakr Recording');
+      await c.setTitle('Minutes Recording');
       await c.show();
       // Update state — listener will push the current snapshot to the mini.
       state = state.copyWith(miniOpen: true, miniWindowId: c.windowId);
