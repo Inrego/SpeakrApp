@@ -116,6 +116,7 @@ class Rec {
         'has_summary': hasSummary,
         'has_transcription': hasTranscription,
         'original_filename': originalFilename,
+        'audio_duration': audioDuration,
       };
 
   /// Shape returned by GET /api/recordings/{id} (the richer, unofficial

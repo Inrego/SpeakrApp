@@ -24,15 +24,17 @@ Record meetings live, upload existing audio, watch transcription progress, then 
 <table>
   <tr>
     <td align="center" width="40%">
-      <img src="docs/screenshots/mobile.png" alt="Minutes running on Android — library and detail view" width="280" /><br />
+      <img src="docs/screenshots/mobile-library.png" alt="Minutes running on Android — recordings list" width="280" /><br />
       <sub>Mobile (Android)</sub>
     </td>
     <td align="center" width="60%">
-      <img src="docs/screenshots/desktop.png" alt="Minutes running on Windows desktop — library with live recorder" width="520" /><br />
+      <img src="docs/screenshots/desktop-library.png" alt="Minutes running on Windows desktop — recordings list" width="520" /><br />
       <sub>Windows desktop</sub>
     </td>
   </tr>
 </table>
+
+More screenshots (onboarding, recording detail, live capture, settings) for both platforms are in [`docs/screenshots/`](docs/screenshots/).
 
 ## Download / Releases
 
