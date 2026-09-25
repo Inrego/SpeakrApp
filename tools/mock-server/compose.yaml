@@ -1,0 +1,54 @@
+# Speakr mock server — the long-lived Play-reviewer demo endpoint.
+#
+#   docker compose up -d --build     # from tools/mock-server/
+#   docker compose logs -f
+#   docker compose down
+#
+# Defaults are standalone: the container publishes 8420 on the host, so a
+# host-resident Caddy can reverse_proxy to 127.0.0.1:8420. If Caddy runs in
+# Docker too, uncomment the `networks` blocks at the bottom and drop the
+# `ports:` mapping — Caddy then reaches it as `speakr-mock:8420` and nothing is
+# exposed on the host at all.
+
+services:
+  speakr-mock:
+    build:
+      context: .
+    image: speakr-mock-server:local
+    container_name: speakr-mock
+    restart: unless-stopped
+
+    # HOST_PORT is the only thing worth changing; the in-container port stays
+    # 8420 so the healthcheck and Caddyfile examples stay honest.
+    ports:
+      - "${SPEAKR_MOCK_HOST_PORT:-8420}:8420"
+
+    # State is in memory. A restart re-seeds the same six recordings, which is
+    # the intended behaviour — a reviewer poking at the demo can never break it.
+    healthcheck:
+      test: ["CMD", "/app/bin/healthcheck"]
+      interval: 30s
+      timeout: 5s
+      start_period: 5s
+      retries: 3
+
+    # Nothing is written to disk and nothing needs root.
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    # --- Caddy-on-Docker variant -------------------------------------------
+    # Remove the `ports:` block above, then uncomment:
+    # networks:
+    #   - caddy
+
+# networks:
+#   caddy:
+#     external: true
+#     name: caddy          # the network your Caddy container already joins

@@ -1,0 +1,7 @@
+# The build stage only needs bin/*.dart. Keep everything else out so docs
+# edits don't bust the layer cache.
+*
+!bin/
+bin/*.exe
+bin/server
+bin/healthcheck

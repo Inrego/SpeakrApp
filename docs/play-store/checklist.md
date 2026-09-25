@@ -3,8 +3,9 @@
 A pre-flight list to get Speakr (`com.inrego.speakr_app`) onto the Play Store.
 **To actually fill the Console, work from
 [`SUBMISSION-RUNBOOK.md`](SUBMISSION-RUNBOOK.md)** — it carries the paste-ready
-answers, including the two settled decisions (App access via a temporary
-Cloudflare Tunnel; encryption in transit answered **No**). This file is the
+answers, including the two settled decisions (App access via the permanently
+hosted demo server `https://speakr-demo.renescott.dk`; encryption in transit
+answered **No**). This file is the
 inventory and the status board behind it.
 
 Items marked **BLOCKER** must be done before the app can be submitted. Items
@@ -49,7 +50,7 @@ review, settings/connection screen.
 | **Financial features declaration** | Required answer | TODO | Answer **No** (no financial features). |
 | **Health apps declaration** | Required answer | TODO | Answer **No** (records audio but is not a health app). |
 | **Ads declaration** | **BLOCKER** | TODO | Answer **No ads** — verified: no ad SDKs in `pubspec.yaml`. |
-| **App access (login required)** | **BLOCKER** | **APPROACH SETTLED**, still to fill | The app requires a Speakr server URL + API token to do anything useful, and a reviewer cannot supply either. **Decided 2026-09-22:** run `tools/mock-server` locally behind a temporary `cloudflared tunnel --url` quick tunnel for the review window, give the reviewer that `trycloudflare.com` URL plus `speakr-demo-token`, and tear it down after approval. Full steps and paste text: `SUBMISSION-RUNBOOK.md` §2. **Read §2.4 first — the tunnel URL changes on every restart, and a dead URL fails the review.** |
+| **App access (login required)** | **BLOCKER** | **APPROACH SETTLED**, still to fill | The app requires a Speakr server URL + API token to do anything useful, and a reviewer cannot supply either. **Decided 2026-09-25** (superseding the 2026-09-22 Cloudflare quick tunnel): `tools/mock-server` runs permanently as a Docker container on an Oracle arm64 VPS behind Caddy at **`https://speakr-demo.renescott.dk`**; give the reviewer that URL (no trailing slash) plus `speakr-demo-token`. Nothing to start and nothing to tear down. Full steps and paste text: `SUBMISSION-RUNBOOK.md` §2. **Do App access first — it gates Target audience, which gates Data safety (§2.6).** |
 
 ---
 
@@ -190,10 +191,11 @@ once declared stays readable — **none of them needs a Console declaration.**
       above the minimum; OK).
 - [ ] AAB is signed and uploads without "debug-signed" errors (CI release
       keystore is wired; verify the production build, not a debug build).
-- [ ] Mock server + `cloudflared` quick tunnel running, and the **App access**
-      form carries the live `trycloudflare.com` URL and `speakr-demo-token`
-      (`SUBMISSION-RUNBOOK.md` §2). Re-check the URL on the day you submit and
-      daily while the review is open — it changes if the tunnel restarts.
+- [ ] **App access** form carries `https://speakr-demo.renescott.dk` (no
+      trailing slash) and `speakr-demo-token`, with the 313-character
+      instructions text — the field caps at 500 (`SUBMISSION-RUNBOOK.md` §2).
+      Re-run the §2.2 probes on the day you submit; the endpoint is permanent,
+      but its Let's Encrypt certificate expires **2026-12-13**.
 - [x] Privacy policy URL is live and reachable —
       **https://inrego.github.io/SpeakrApp/privacy-policy.html**, HTTP 200.
 - [ ] Data Safety answers match actual behavior, with **encrypted in transit =
@@ -223,11 +225,12 @@ once declared stays readable — **none of them needs a Console declaration.**
    captured against the local mock server, so no real recordings appear in the
    listing.
 3. **Provide reviewer test access** in the App access form. (BLOCKER)
-   **Approach decided 2026-09-22:** run
-   [`tools/mock-server`](../../tools/mock-server/README.md) locally and expose it
-   with a temporary `cloudflared tunnel --url http://localhost:8420` quick
-   tunnel; give the reviewer the `trycloudflare.com` URL plus the demo token
-   `speakr-demo-token`; tear both down after approval. Steps and paste text:
+   **Approach decided 2026-09-25**, superseding the 2026-09-22 quick tunnel:
+   [`tools/mock-server`](../../tools/mock-server/README.md) is deployed as a
+   permanent Docker container on an Oracle arm64 (Ampere A1) VPS, created with
+   Dockhand and fronted by Caddy, at **`https://speakr-demo.renescott.dk`**.
+   Give the reviewer that URL plus the demo token `speakr-demo-token`; there is
+   nothing to start and nothing to tear down. Steps and paste text:
    `SUBMISSION-RUNBOOK.md` §2. The reviewer-runs-it-themselves variant is a
    documented fallback only (runbook Appendix A) and should not be submitted.
 4. ~~Decide the `MANAGE_EXTERNAL_STORAGE` strategy for the Play build.~~ **Done
@@ -238,6 +241,6 @@ once declared stays readable — **none of them needs a Console declaration.**
 6. Complete every "App content" form (rating, target audience, ads, news,
    financial, health, government).
 7. ~~Decide how the reviewer reaches a server, and how to answer "encrypted in
-   transit".~~ **Both done 2026-09-22** — Cloudflare Tunnel (item 3) and **No**
-   (the Data Safety row in §2). No open decisions remain in the submission
-   docs.
+   transit".~~ **Both done** — the hosted demo endpoint (item 3, settled
+   2026-09-25) and **No** (the Data Safety row in §2, settled 2026-09-22). No
+   open decisions remain in the submission docs.

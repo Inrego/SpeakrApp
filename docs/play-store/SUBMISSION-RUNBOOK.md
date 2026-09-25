@@ -23,7 +23,8 @@ this is the answers.
 - ⏳ **AFTER AAB** — the form does not exist (or is not enforced) until a bundle
   has been uploaded. Skip on the first pass; see §6.
 
-**Verified against the repo at `main` = `54b8f58`** (PRs #3–#7 merged).
+**Verified against the repo at `main` = `c9b9ef0`** (PRs #3–#9 merged; #9
+was the last docs pass).
 `android/app/src/main/AndroidManifest.xml` declares exactly nine permissions:
 `INTERNET`, `RECORD_AUDIO`, `FOREGROUND_SERVICE`,
 `FOREGROUND_SERVICE_MICROPHONE`, `FOREGROUND_SERVICE_MEDIA_PROJECTION`,
@@ -35,7 +36,8 @@ audit (#7). `https://inrego.github.io/SpeakrApp/privacy-policy.html` returns
 **HTTP 200**.
 
 **Both decisions this runbook used to leave open are now settled:** App access
-uses a temporary Cloudflare Tunnel (§2), and "Data is encrypted in transit" is
+points the reviewer at a permanently hosted demo server,
+`https://speakr-demo.renescott.dk` (§2), and "Data is encrypted in transit" is
 answered **No** (§4.1).
 
 ---
@@ -46,22 +48,29 @@ answered **No** (§4.1).
 | --- | --- |
 | The AAB you upload is built from a commit **at or after #7** (permission audit; #4 was the SAF migration). | An older bundle still carries permissions the app no longer declares — `MANAGE_EXTERNAL_STORAGE` before #4, and `READ_MEDIA_AUDIO` / `READ_EXTERNAL_STORAGE` / `FOREGROUND_SERVICE_DATA_SYNC` / `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` before #7. The Console reads the bundle, not the repo, and will demand declarations this runbook deliberately does not provide. `main` is clean today. |
 | Re-read `android/app/src/main/AndroidManifest.xml` immediately before filling §5 (permission declarations). | The permission audit has **landed** (#7) and this runbook matches it: nine declared permissions, two foreground-service types. The manifest nevertheless stays the source of truth for which declaration forms you will be asked to fill — not this runbook, and not `permissions-declaration.md`. If the Console asks for a form §5 does not cover, stop and check the manifest. |
-| Start the mock server and the Cloudflare Tunnel (§2.2) before you open the App access form. | The text you paste contains the tunnel's URL, which does not exist until `cloudflared` is running. |
+| Run the §2.2 probes against `https://speakr-demo.renescott.dk` before you open the App access form. | The demo server is a permanently hosted container, so there is nothing to start — but a URL that is down when the reviewer tries it fails the review, and the TLS certificate has a renewal date (§2.4). |
 | Keystore backed up, passwords recorded. | Losing the upload key blocks every future update. The four CI secrets are `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`. |
 | Confirm the AAB is **not** debug-signed. | `android/app/build.gradle.kts` silently falls back to the debug signing config when `android/key.properties` is absent. CI has a guard step that fails the job if a signing secret is missing; a local build has no such guard. |
 
 ### Recommended order
 
-The Console lets you do these in any order, but this order minimises rework:
+The Console lets you do most of these in any order, but this order minimises
+rework — and step 2 is **not optional**, it is a hard gate the Console enforces:
 
-1. **Upload an AAB to Internal testing first** (§5.2), *without* rolling it out.
-   This makes the Console read your manifest, which unlocks the permission and
-   foreground-service declaration forms (⏳ items) and the pre-launch report.
-2. Then work §1 → §4 below.
-3. Then come back and finish the release (§5).
+1. **Upload an AAB to Internal testing first** (§6.2), *without* rolling it out.
+   This makes the Console read your manifest, which unlocks the pre-launch
+   report and the ordering of the ⏳ items. Note that the §5 declaration forms
+   still do not appear on a saved draft — they are requested at submission time
+   (§2.6).
+2. **Fill App access (§2) next.** Sign in details (App access) **gates Target
+   audience and content (§3.4), which in turn gates submitting Data safety
+   (§4).** Skipping ahead just means coming back.
+3. Then work the rest of §1 → §4 below.
+4. Then come back and finish the release (§6).
 
 If you prefer to fill the paperwork first, that works too — just expect the ⏳
-items to be missing until step 1 happens.
+items to be missing until step 1 happens, and App access to block §3.4 and §4
+until step 2 happens.
 
 ---
 
@@ -113,7 +122,7 @@ WHAT YOU CAN DO
 • Watch transcription progress with live status badges: Pending → Processing →
   Summarizing → Completed.
 • Read the results: a Markdown AI summary, a speaker-attributed transcript, and
-  a metadata tab — all in one detail view.
+  a chat tab for asking questions about the recording — all in one detail view.
 • Review and rename speakers, with autocomplete from your global speaker list
   and per-segment suggestions.
 
@@ -215,72 +224,93 @@ You then add one or more **instructions** entries. Each entry has a name, a
 username field, a password field, and a free-text "any other instructions"
 field ⚠️ **NAMING UNVERIFIED** — treat the username/password fields as
 optional-but-present, and put everything that is not a literal credential in
-the free-text field. I do **not** know the current character limit on that
-field; if the text below is truncated, cut from the bottom (the "What you can
-verify without connecting" paragraph) first.
+the free-text field. **That free-text field caps at 500 characters** (measured
+in the live Console, 2026-09-25) — §2.3 gives text that fits.
 
 Because Speakr has no username/password, put the **Server URL** in the username
 field and the **API Token** in the password field, and say so in the text.
 
-### 2.1 Settled: the reviewer connects over a temporary Cloudflare Tunnel
+**Do App access first.** In the current Console, **Sign in details (App access)
+gates Target audience and content, which in turn gates submitting Data
+safety.** Neither downstream form will let you finish until this one is saved.
+§0's recommended order is written accordingly.
 
-**Decided 2026-09-22.** You run `tools/mock-server` on your own machine and
-expose it for the length of the review with a throwaway
-`cloudflared tunnel --url` quick tunnel. The reviewer types one URL and one
-token and is in. Nothing is hosted permanently, nothing is left standing after
-approval, and there is no VM or certificate to maintain.
+### 2.1 🔒 DECIDED: the reviewer connects to a permanently hosted demo server
 
-The alternative — telling the reviewer to install the Dart SDK, clone the repo
+**Decided 2026-09-25, superseding the temporary Cloudflare quick tunnel that
+earlier revisions of this runbook specified.** The mock server now runs as a
+**permanent Docker container on an Oracle arm64 (Ampere A1) VPS**, created with
+**Dockhand** and fronted by **Caddy**. It is reachable at:
+
+```
+https://speakr-demo.renescott.dk
+```
+
+Paste it **without a trailing slash**. The API token is unchanged:
+`speakr-demo-token`. The mock server accepts any non-empty `X-API-Token` (or
+`Authorization: Bearer ...`), so a mistyped token still gets the reviewer in; an
+absent one does not.
+
+What this buys, against the tunnel that was decided before:
+
+- **No daily babysitting.** There is no process on your laptop to keep alive and
+  no hostname that changes when something restarts.
+- **No re-pasting between reviews.** The same URL is valid for the initial
+  submission and for every future update review, so §2.3 is written once.
+- **Real TLS.** Caddy serves a Let's Encrypt wildcard certificate for
+  `*.renescott.dk`, so the reviewer's connection is HTTPS end to end on a
+  publicly trusted chain. No cleartext exception is involved here — §5.7 is
+  about the *app's* support for LAN servers, not about this endpoint.
+
+The container assets live in the repo, so the deployment is reproducible:
+`tools/mock-server/Dockerfile`, `tools/mock-server/.dockerignore`,
+`tools/mock-server/compose.yaml`, `tools/mock-server/Caddyfile.example`, and the
+container health probe `tools/mock-server/bin/healthcheck.dart`.
+
+The old fallback — telling the reviewer to install the Dart SDK, clone the repo
 and run the server on their own machine — is **not** submitted. It is kept in
 [Appendix A](#appendix-a--fallback-reviewer-runs-the-server-themselves) only in
-case the tunnel route becomes impossible; read §2.4 there before you reach for
-it.
+case the hosted endpoint ever becomes impossible.
 
-Do §2.2 (stand the tunnel up) **before** §2.3 (paste), because the paste text
-contains the URL the tunnel hands you.
+### 2.2 Verify the endpoint before you paste it
 
-### 2.2 Stand the tunnel up
+Nothing has to be started — the container runs whether or not you are at your
+desk. You are only confirming it is healthy on the day you submit.
 
-Two processes, both on your own machine, both left running for the review.
-
-**Step 1 — start the mock server.** From the repo root:
+**Health probe (no token needed).** `GET /` is unauthenticated:
 
 ```bash
-dart run tools/mock-server/bin/speakr_mock_server.dart --port 8420
+curl -s https://speakr-demo.renescott.dk/
 ```
 
-It binds `0.0.0.0:8420`, holds everything in memory, writes nothing to disk and
-seeds six invented recordings. There is no state to protect and nothing secret
-in it.
+Expect `{"service":"speakr-mock-server","recordings":6}`.
 
-**Step 2 — start the quick tunnel.** In a second terminal:
+**Authenticated probe.**
 
 ```bash
-cloudflared tunnel --url http://localhost:8420
+curl -s -o /dev/null -w '%{http_code}\n' \
+  -H 'X-API-Token: speakr-demo-token' \
+  https://speakr-demo.renescott.dk/api/v1/recordings
 ```
 
-`cloudflared` prints a banner containing a URL of the form
-`https://<random-words>.trycloudflare.com`. That is the public URL. A quick
-tunnel needs **no Cloudflare account, no domain and no DNS record** — it is
-anonymous and free, and it terminates TLS for you, so the reviewer's connection
-is HTTPS end to end even though the mock server itself speaks plain HTTP on
-localhost.
-
-**Step 3 — verify it before you paste it.** From any machine:
-
-```bash
-curl -s -o /dev/null -w '%{http_code}
-'   -H 'X-API-Token: speakr-demo-token'   https://<random-words>.trycloudflare.com/api/v1/recordings
-```
-
-Expect `200`. If you get anything else, fix it now — a URL that 404s or times
+Expect `200`. Anything else, fix it before you paste — a URL that 404s or times
 out in the App access field is a guaranteed rejection.
 
-**Step 4 — paste §2.3 into the Console**, substituting the real URL everywhere
-`https://<random-words>.trycloudflare.com` appears (it appears twice: the
-username field and the instructions body).
+All of the following were verified on 2026-09-25:
 
-**Step 5 — leave both processes running** until the review completes. See §2.4.
+| Request | Result |
+| --- | --- |
+| `GET /api/v1/recordings` with the token | **200**, six recordings |
+| `GET /api/v1/recordings` with no token | **401** |
+| `GET /api/v1/recordings/101` with the token | **200** |
+| `http://speakr-demo.renescott.dk/…` | **308** redirect to HTTPS |
+| The real Flutter app in an Android emulator | Onboarding connected; library showed "6 total"; detail view rendered summary and transcript; no TLS or cleartext errors in logcat |
+
+A **doubled slash** (`https://speakr-demo.renescott.dk//api/v1/...`) 404s at the
+HTTP level, so do not paste a trailing slash. The app itself is unaffected
+either way — `lib/features/onboarding/onboarding_screen.dart:42-43` strips one
+trailing slash before storing the URL — but the Console text should be the clean
+form.
 
 ### 2.3 What to paste into App access
 
@@ -293,7 +323,7 @@ Speakr demo server
 Username field (the app has no username; the Server URL goes here):
 
 ```
-https://<random-words>.trycloudflare.com
+https://speakr-demo.renescott.dk
 ```
 
 Password field (the app has no password; the API token goes here):
@@ -302,87 +332,78 @@ Password field (the app has no password; the API token goes here):
 speakr-demo-token
 ```
 
-Any other instructions:
+Any other instructions — **this is the text actually submitted**, 313
+characters, inside the 500-character cap:
 
 ```
-Speakr is a client for a Speakr transcription server that the user hosts
-themselves. The app has no accounts and no developer-operated backend. A server
-URL and an API token are the credentials, so they are given in the username and
-password fields above.
+No accounts: the server URL and API token above are the credentials.
 
-To get in:
-1. Launch the app. Tap "Next" twice through the two intro screens.
-2. On the third screen ("Let's connect to your Speakr"), enter:
-   Server URL: https://<random-words>.trycloudflare.com
-   API Token:  speakr-demo-token
-3. Tap "Connect". The library screen opens with six demo recordings.
+Launch the app, tap Next through the intro screens, then enter the Server URL and API Token on the connection screen. The library opens with demo recordings.
 
-What to try from there:
-- Tap any recording to see its AI summary, its speaker-attributed transcript,
-  its metadata, and the speaker-renaming screen.
-- The "+" action on the library screen opens the live recorder. Android will
-  ask for microphone permission, and — only if you switch the system-audio
-  source on — for its own screen-capture consent (the app captures audio only,
-  never screen content).
-- Settings holds the server connection and the auto-upload options.
-
-The server above is a demo instance seeded with entirely fictional data, stood
-up for this review only. Without a reachable Speakr server the app cannot get
-past the connection screen; that is the app's purpose, not a paywall or a
-hidden feature.
-
-If the URL above stops responding, please contact rss@khd.dk and a working URL
-will be supplied within a few hours.
+Demo server with fictional data, stood up for this review only. Problems: rss@khd.dk
 ```
 
-The last paragraph is not boilerplate — it is there because of §2.4. Keep it.
+The longer walkthrough that earlier revisions of this runbook put here **does
+not fit** — it ran to roughly 1400 characters. Everything in it that is still
+worth telling a reviewer belongs in the release **review notes** (§6.3), which
+has no such limit: what the app is for, that the developer operates no backend,
+that the "+" action on the library screen opens the live recorder and that
+Android will ask for microphone permission (and, only if the system-audio
+source is switched on, for its screen-capture consent), and that audio only —
+never screen content — is captured.
 
-### 2.4 The risk you are accepting: the URL is ephemeral
+### 2.4 Keeping the endpoint healthy
 
-**This is the main weakness of this approach, and it is worth reading twice.**
+There is no ephemerality left to manage, but two things can still take the
+endpoint down quietly:
 
-A `trycloudflare.com` quick tunnel URL is **randomly generated per tunnel
-process**. It is not reserved and it does not come back. If `cloudflared`
-exits — you reboot, the laptop sleeps, the network drops, the process is
-killed, or Cloudflare recycles it — then restarting gives you a **different**
-hostname, and the URL sitting in the Play Console immediately points at
-nothing.
+- **Certificate expiry.** The Let's Encrypt wildcard for `*.renescott.dk`
+  **expires 2026-12-13**. Confirm Caddy's automatic renewal is actually working
+  rather than assuming it — a lapsed certificate breaks the endpoint silently
+  for any later update review, and the first you would hear of it is a
+  rejection.
+- **Container or host restart.** Check that `compose.yaml`'s restart policy
+  survives a VPS reboot. The `GET /` probe in §2.2 is the cheapest confirmation;
+  it needs no token and returns the recording count.
 
-A reviewer who hits a dead URL sees an app that cannot get past its connection
-screen. That is precisely the rejection this section exists to prevent, so a
-dropped tunnel does not degrade the submission gracefully — it fails it.
+Re-run the §2.2 probes on the day you submit, and again if you are ever rejected
+for inability to access the app — a dead endpoint would be the most likely cause
+and the cheapest to fix.
 
-What this obliges you to do:
+### 2.5 After approval: nothing to tear down
 
-- **Keep both processes alive for the whole review window.** Reviews commonly
-  take a few days; a first submission can take longer. Run them somewhere that
-  will not sleep or reboot, and do not close the terminals.
-- **Check the URL daily** while the review is open, with the `curl` from §2.2
-  step 3.
-- **If the tunnel drops, you must update the App access field**, not just
-  restart the tunnel. Restart `cloudflared`, take the new URL, and edit **both**
-  the username field and the two occurrences inside the instructions text, then
-  save. Editing App access does not by itself restart the review, but a
-  reviewer who tried the dead URL in the meantime may already have failed you.
-- **If you are rejected for inability to access the app**, check whether the
-  tunnel was up at the time before you change anything else. A dead tunnel is
-  the most likely cause and the cheapest to fix.
+The endpoint stays up. It is a demo instance holding entirely fictional data in
+memory, writing nothing to disk, with nothing to protect — so there is no cost
+to leaving it running and a real cost to taking it down: **every future update
+review needs the same App access entry**, and a stable URL means §2.3 is never
+re-pasted.
 
-If that daily obligation is unacceptable, the honest upgrade is a stable host —
-the same binary behind a named Cloudflare Tunnel, Caddy or nginx on any small
-VM — which costs setup time once and removes the ephemerality entirely. That is
-a bigger change than this runbook assumes, so it is your call; the quick tunnel
-is what is decided today.
+If the endpoint is ever retired, update the App access entry *before* the next
+submission, not after.
 
-### 2.5 Tear-down, after approval
+### 2.6 Console findings this runbook did not anticipate
 
-Stop `cloudflared`, then stop the mock server. The quick-tunnel hostname
-evaporates with the process; there is nothing to deregister and no account to
-clean up. Nothing was stored on disk.
+Recorded from the live Console on 2026-09-25. These are facts about the forms,
+not decisions being re-opened.
 
-**Bring it back for every future update review** — each new submission gets a
-new random hostname, so §2.2 and §2.3 run again from scratch each time, and the
-App access field must be re-pasted with the new URL.
+- **Ordering.** Sign in details (App access) gates **Target audience and
+  content** (§3.4), which gates submitting **Data safety** (§4). Do App access
+  first.
+- **Advertising ID declaration.** App content contains an **Advertising ID**
+  declaration that §3 never mentions. It is required. Answered **No** — the
+  merged manifest declares no `AD_ID` permission.
+- **Data safety — "Can users log in to your app with accounts created outside of
+  the app?"** Answered **No**. A server URL and an API token are not an account:
+  there is no identity, no sign-up and no sign-out.
+- **IARC questionnaire — "Online Content".** Answered **No**, even though its
+  examples name "generated AI content". The summaries are generated by the
+  user's own server from the user's own audio; the app surfaces no content from
+  other users and none from a developer-operated service.
+- **§5's declaration forms did not appear at all** for a saved **Internal
+  testing draft.** The foreground-service and `READ_PHONE_STATE` declarations
+  are requested **at submission time**, not on upload. Do not go hunting for
+  forms that are not there yet — §5's ⏳ means "after an AAB *and* at
+  submission", not "immediately after upload".
 
 ---
 
@@ -653,7 +674,7 @@ Three notes worth having ready:
 ### 4.6 Free text / additional context
 
 Paste this wherever the form offers an explanation field, and again in the
-release **review notes** (§5.3):
+release **review notes** (§6.3):
 
 ```
 Speakr is a client for a Speakr transcription server that the user hosts
@@ -681,7 +702,10 @@ office LAN with no TLS certificate.
 ## §5 — Permission and foreground-service declarations
 
 ⏳ **These forms are driven by what the Console detects in an uploaded bundle.**
-Expect them to be absent or greyed out until an AAB is in a track (§6).
+Expect them to be absent or greyed out until an AAB is in a track (§6) — and
+note that, verified 2026-09-25, they did **not** appear even then for a saved
+Internal-testing draft. They are requested **at submission time** (§2.6), so do
+not go looking for them earlier.
 
 > **The permission audit has landed (#7) and this section matches the shipping
 > manifest.** Exactly two foreground-service types are declared —
@@ -901,8 +925,11 @@ rebuild, do not fill the form it asks for.
 ### 6.3 Release notes and review notes
 
 Release notes (user-facing) are your call. The **review notes** field (internal,
-for the reviewer) should carry: the §5.7 cleartext note, the §4.6 free text, and
-a one-line pointer to the App access instructions.
+for the reviewer) should carry: the §5.7 cleartext note, the §4.6 free text, a
+one-line pointer to the App access instructions, and the longer walkthrough that
+no longer fits in App access's 500-character field (§2.3) — what to try from the
+library screen, the microphone and screen-capture consent dialogs, and that only
+audio is ever captured.
 
 ### 6.4 Countries and regions
 
@@ -930,16 +957,18 @@ bundle is in a track.
 
 | Item | Why it waits |
 | --- | --- |
-| **Foreground service permissions** declarations (§5.2–5.3 — microphone and media projection only) | The Console derives the list of FGS types from the uploaded bundle's manifest. |
-| **Sensitive app permissions** — `READ_PHONE_STATE` (§5.5) | Same: surfaced from the detected permission set. |
+| **Foreground service permissions** declarations (§5.2–5.3 — microphone and media projection only) | The Console derives the list of FGS types from the uploaded bundle's manifest. Verified 2026-09-25: still absent on a *saved* Internal-testing draft — requested at submission time (§2.6). |
+| **Sensitive app permissions** — `READ_PHONE_STATE` (§5.5) | Same: surfaced from the detected permission set, and likewise only at submission time. |
 | **Pre-launch report** | Generated by running the uploaded bundle on Google's device farm. Expect cleartext and permission notes. |
 | **Play App Signing** enrolment (§6.1) | Settled at the first release you create. |
 | **Countries / regions, rollout** (§6.4) | Belong to a release, which needs a bundle. |
 | Device / API-level availability warnings | Computed from the bundle. |
 
 Everything else — listing, privacy policy, App access, Data safety, content
-rating, target audience, and the News / COVID / Government / Financial / Health
-/ Ads declarations — can be completed before any upload.
+rating, target audience, the Advertising ID declaration (§2.6), and the News /
+COVID / Government / Financial / Health / Ads declarations — can be completed
+before any upload. Within that set the Console still imposes its own order: App
+access before target audience before Data safety (§2.6).
 
 ---
 
@@ -1024,12 +1053,18 @@ the five removed permissions, your AAB predates #7 — rebuild.
 - [ ] AAB is release-signed, not debug-signed.
 - [ ] `versionCode` higher than any previous upload.
 - [ ] Privacy policy URL entered and still resolving.
-- [ ] Mock server **and** `cloudflared` running; the tunnel URL returns HTTP 200
-      to the §2.2 `curl` (re-check on the day you submit).
-- [ ] App access filled with the live tunnel URL — pasted in **both** the
-      username field and the two places inside the instructions text (§2.3).
-- [ ] Calendar reminder set to re-check the tunnel URL daily while the review is
-      open (§2.4). A dead URL fails the review.
+- [ ] `https://speakr-demo.renescott.dk` answers both §2.2 probes — `GET /`
+      returns `{"service":"speakr-mock-server","recordings":6}` and
+      `/api/v1/recordings` with the token returns **200** (re-check on the day
+      you submit).
+- [ ] Caddy's Let's Encrypt renewal confirmed working; the `*.renescott.dk`
+      certificate expires **2026-12-13** (§2.4).
+- [ ] App access filled **first** — it gates §3.4, which gates §4 (§2.6).
+      Server URL in the username field with **no trailing slash**, token in the
+      password field, and the 313-character instructions text from §2.3 (the
+      field caps at 500).
+- [ ] Advertising ID declaration answered **No** (§2.6) — it is required and
+      §3 does not list it.
 - [ ] Data safety answers match §4, with encryption in transit answered **No**
       (§4.1).
 - [ ] Content rating questionnaire submitted; outcome is **Everyone**.
@@ -1045,16 +1080,17 @@ the five removed permissions, your AAB predates #7 — rebuild.
 - [ ] Review notes carry the cleartext explanation.
 - [ ] Listing text, graphics and 5 screenshots uploaded.
 - [ ] Countries and Free pricing set.
-- [ ] After approval: `cloudflared` and the mock server stopped (§2.5).
+- [ ] After approval: **nothing to tear down** — the demo endpoint stays up for
+      future update reviews (§2.5).
 
 ---
 
 ## Appendix A — FALLBACK: reviewer runs the server themselves
 
-**Do not submit this.** The decided route is the Cloudflare Tunnel in §2. This
-appendix is kept only so that, if the tunnel route becomes impossible, you are
-not rewriting the text under time pressure — and so the reasons it was rejected
-stay on the record.
+**Do not submit this. It is not the chosen path.** The decided route is the
+permanently hosted demo server in §2. This appendix is kept only so that, if
+that endpoint ever becomes impossible, you are not rewriting the text under time
+pressure — and so the reasons it was rejected stay on the record.
 
 ### A.1 The entry, if you ever have to use it
 
@@ -1122,6 +1158,7 @@ or step 2 fails outright.
   functionality. That costs a review cycle (days), and repeated access
   rejections are worse than a single delay.
 
-The tunnel in §2 keeps the reviewer's path to one screen of typing, which is
-why it won. Its cost — an ephemeral URL you must babysit (§2.4) — is smaller
-than a probable rejection.
+The hosted endpoint in §2 keeps the reviewer's path to one screen of typing,
+which is why it won. It also carries none of the ephemerality that the earlier
+quick-tunnel decision did: the URL is stable across reviews, and the only upkeep
+is certificate renewal (§2.4).
