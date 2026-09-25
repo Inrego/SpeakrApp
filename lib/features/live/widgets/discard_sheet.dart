@@ -61,7 +61,12 @@ class DiscardOverlay extends ConsumerWidget {
               duration: const Duration(milliseconds: 240),
               curve: Curves.easeOutCubic,
               offset: armed ? Offset.zero : const Offset(0, 1),
-              child: SafeArea(
+              // Fade as well as slide: the sheet's upward shadow would
+              // otherwise peek above the bottom edge while it's parked.
+              child: AnimatedOpacity(
+                duration: const Duration(milliseconds: 240),
+                opacity: armed ? 1.0 : 0.0,
+                child: SafeArea(
                 top: false,
                 // Cap the sheet's width on desktop / tablet so it doesn't
                 // stretch edge-to-edge across a wide window.
@@ -71,6 +76,7 @@ class DiscardOverlay extends ConsumerWidget {
                     child: const DiscardSheet(),
                   ),
                 ),
+              ),
               ),
             ),
           ),

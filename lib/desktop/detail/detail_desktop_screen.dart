@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -12,7 +13,10 @@ import '../../features/detail/detail_controller.dart';
 import '../../features/detail/speaker_review_screen.dart';
 import '../../features/detail/tabs/chat_tab.dart';
 import '../../features/detail/tabs/summary_tab.dart';
+import '../../features/library/library_controller.dart';
 import '../../services/credentials_store.dart';
+import '../../services/preferences/time_format_preference.dart';
+import '../../services/preferences/time_format_providers.dart';
 import '../../theme/colors.dart';
 import '../../theme/typography.dart';
 import '../../utils/formatters.dart';
@@ -234,9 +238,12 @@ class _BreadcrumbBar extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final date = recording.meetingDate ?? recording.createdAt;
     final dayLabel = date == null ? '—' : formatRelativeDay(date).toUpperCase();
+    final pref = ref.watch(timeFormatPreferenceProvider).asData?.value
+        ?? TimeFormatPreference.system;
+    final use24 = resolveUse24Hour(pref, context);
     final time = date == null
         ? ''
-        : formatHourMinute(date.toLocal()).toUpperCase();
+        : formatHourMinute(date.toLocal(), use24Hour: use24).toUpperCase();
     final duration = recording.audioDuration == null
         ? ''
         : formatDuration(recording.audioDuration!);
@@ -405,13 +412,19 @@ class _BackChip extends StatelessWidget {
   }
 }
 
-class _TitleBlock extends StatelessWidget {
+class _TitleBlock extends ConsumerWidget {
   const _TitleBlock({required this.recording});
   final Recording recording;
 
   @override
-  Widget build(BuildContext context) {
-    final folder = recording.folder;
+  Widget build(BuildContext context, WidgetRef ref) {
+    // The recording's embedded folder is a stub without a color (and the
+    // detail endpoint may omit it), so resolve against /folders like the
+    // library does.
+    final folders = ref.watch(foldersProvider).value ?? const <Folder>[];
+    final folder =
+        folders.firstWhereOrNull((f) => f.id == recording.folderId) ??
+        recording.folder;
     final folderColor = folder?.color == null
         ? null
         : parseHexColor(folder!.color);

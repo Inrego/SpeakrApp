@@ -575,7 +575,7 @@ class _ListRowState extends ConsumerState<_ListRow> {
                             letterSpacing: 0,
                           ),
                         )
-                      : const _ProcessingChip(),
+                      : _StatusChip(status: r.status),
                 ),
               ),
               const SizedBox(width: 16),
@@ -924,23 +924,31 @@ class _PendingStatusBadge extends StatelessWidget {
   }
 }
 
-class _ProcessingChip extends StatelessWidget {
-  const _ProcessingChip();
+/// Duration-column stand-in for recordings that aren't completed. Pulses
+/// while the server is still working; failed gets a static danger dot.
+class _StatusChip extends StatelessWidget {
+  const _StatusChip({required this.status});
+  final RecordingStatus status;
 
   @override
   Widget build(BuildContext context) {
+    final failed = status == RecordingStatus.failed;
+    final color = failed ? SpeakrColors.danger : SpeakrColors.recordingDot;
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const _PulsingDot(color: SpeakrColors.recordingDot, size: 6),
+        if (failed)
+          Container(
+            width: 6,
+            height: 6,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          )
+        else
+          _PulsingDot(color: color, size: 6),
         const SizedBox(width: 5),
         Text(
-          'PROCESSING',
-          style: SpeakrText.mono(
-            size: 9,
-            color: SpeakrColors.recordingDot,
-            letterSpacing: 1,
-          ),
+          status.displayLabel.toUpperCase(),
+          style: SpeakrText.mono(size: 9, color: color, letterSpacing: 1),
         ),
       ],
     );
