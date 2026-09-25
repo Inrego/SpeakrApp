@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import '../../api/models.dart';
 import '../../api/providers.dart';
@@ -266,6 +267,7 @@ class RecordingController extends StateNotifier<RecordingState> {
         return;
       }
     }
+    await _requestNotificationPermission();
     if (sysMode != SystemAudioMode.off) {
       final ok = await _recorder.requestSystemPermission();
       if (!ok) {
@@ -308,6 +310,21 @@ class RecordingController extends StateNotifier<RecordingState> {
     } catch (e) {
       state = state.copyWith(error: 'Could not start recording: $e');
       await _cleanupAfterFailure();
+    }
+  }
+
+  /// Android 13+ hides the recording foreground-service notification
+  /// unless POST_NOTIFICATIONS is granted, so ask for it when a live
+  /// recording starts. Best-effort: the service runs either way, so a
+  /// denial (or any plugin error) never blocks the recording.
+  Future<void> _requestNotificationPermission() async {
+    if (kIsWeb || !Platform.isAndroid) return;
+    try {
+      final status = await Permission.notification.status;
+      if (status.isGranted || status.isPermanentlyDenied) return;
+      await Permission.notification.request();
+    } catch (e) {
+      debugPrint('Notification permission request failed: $e');
     }
   }
 

@@ -40,13 +40,16 @@ class AudioCaptureService : Service() {
                 type = type or ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
             }
             startForeground(NOTIF_ID, notification, type)
+            projectionTypeActive = useProjection
         } else {
             startForeground(NOTIF_ID, notification)
+            projectionTypeActive = true
         }
         return START_NOT_STICKY
     }
 
     override fun onDestroy() {
+        projectionTypeActive = false
         try {
             stopForeground(STOP_FOREGROUND_REMOVE)
         } catch (_: Throwable) {}
@@ -59,9 +62,24 @@ class AudioCaptureService : Service() {
         private const val NOTIF_ID = 0x53504B52  // 'SPKR'
         private const val EXTRA_USE_MEDIA_PROJECTION = "use_media_projection"
 
+        /**
+         * True once the service is in the foreground with the
+         * mediaProjection type (always true below Android 14, which has no
+         * FGS types to check). `getMediaProjection` throws before that, so
+         * the recorder waits on this after asking [start] to add the type
+         * mid-session.
+         */
+        @Volatile
+        var projectionTypeActive = false
+            private set
+
         fun start(ctx: Context, useMediaProjection: Boolean) {
             val intent = Intent(ctx, AudioCaptureService::class.java)
                 .putExtra(EXTRA_USE_MEDIA_PROJECTION, useMediaProjection)
+            // Don't let a stale `true` (a service instance that has not
+            // been torn down yet) open the projection before this start
+            // command has been processed; onStartCommand sets it again.
+            if (useMediaProjection) projectionTypeActive = false
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 ctx.startForegroundService(intent)
             } else {
