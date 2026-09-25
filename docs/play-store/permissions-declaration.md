@@ -206,7 +206,7 @@ re-verified against the merged manifest before it is submitted.
 ## 5. Sensitive permission — `READ_PHONE_STATE`
 
 **Form:** Play Console → App content → **Sensitive app permissions** (phone
-permission group), and the review notes.
+permission group).
 
 **Permission:** `android.permission.READ_PHONE_STATE`
 (`AndroidManifest.xml:28`).
@@ -268,8 +268,9 @@ ahead of the code.
 
 ## 7. Review notes — `usesCleartextTraffic="true"`
 
-**Form:** Play Console → the release's **review notes** field (and worth
-repeating in the Data Safety notes).
+**Form:** Play Console → the release's **review notes** field, as one sentence
+in the trimmed text in `SUBMISSION-RUNBOOK.md` §6.3 (the full text below is
+background, not paste text).
 
 **Setting:** `android:usesCleartextTraffic="true"` on `<application>`
 (`AndroidManifest.xml:38`).

@@ -673,8 +673,8 @@ Three notes worth having ready:
 
 ### 4.6 Free text / additional context
 
-Paste this wherever the form offers an explanation field, and again in the
-release **review notes** (§6.3):
+Paste this wherever the form offers an explanation field (not in the review
+notes; see §6.3):
 
 ```
 Speakr is a client for a Speakr transcription server that the user hosts
@@ -825,8 +825,7 @@ does not run.
 
 ### 5.5 `READ_PHONE_STATE`
 
-**Where:** App content → Sensitive app permissions (phone group) — and repeat in
-the release review notes.
+**Where:** App content → Sensitive app permissions (phone group).
 
 **Enter:**
 
@@ -868,8 +867,8 @@ The justification text that once sat in `permissions-declaration.md` §6 is
 
 ### 5.7 Cleartext traffic — review note, not a form
 
-There is no Console form for this; it goes in the release **review notes**
-(§6.3) and is worth repeating in the Data safety context field.
+There is no Console form for this. The release **review notes** (§6.3) carry it
+as one sentence; the text below is background if a reviewer asks for more.
 
 ```
 Speakr talks to a server the user hosts themselves and enters the URL for at
@@ -924,12 +923,22 @@ rebuild, do not fill the form it asks for.
 
 ### 6.3 Release notes and review notes
 
-Release notes (user-facing) are your call. The **review notes** field (internal,
-for the reviewer) should carry: the §5.7 cleartext note, the §4.6 free text, a
-one-line pointer to the App access instructions, and the longer walkthrough that
-no longer fits in App access's 500-character field (§2.3) — what to try from the
-library screen, the microphone and screen-capture consent dialogs, and that only
-audio is ever captured.
+Release notes (user-facing) are your call. If the release page offers a
+**review notes** field (internal, for the reviewer), paste this — it may not
+exist, in which case App access and the §5 declaration forms are the only
+reviewer channels and nothing is lost:
+
+```
+Speakr is a client for a transcription server the user hosts themselves; the developer runs no backend. Demo server URL and token are under App access.
+
+To test recording: tap + on the library screen. Android asks for microphone permission; if the optional system-audio source is switched on, it also shows its per-session screen-capture consent. Only audio is captured, never screen content.
+
+Cleartext HTTP is enabled on purpose: many users run their server on a home/office LAN at http:// with no certificate.
+```
+
+Do **not** paste the §4.6 Data safety text, the §5.3 media-projection text or the
+§5.5 `READ_PHONE_STATE` text here as well. Each is judged in its own form, so a
+second copy adds nothing.
 
 ### 6.4 Countries and regions
 
