@@ -1,0 +1,51 @@
+# Speakr mock server behind Caddy.
+#
+# >>> EDIT THIS ONE LINE <<<  replace speakr-demo.example.com with a hostname
+# that actually resolves to your home server. Everything else works as-is.
+# Caddy provisions the certificate itself, so the reviewer gets an https:// URL
+# with no further setup.
+#
+# Paste ONE of the two blocks below into your Caddyfile, reload with
+# `caddy reload --config /etc/caddy/Caddyfile` (or `docker compose restart caddy`).
+
+# ---------------------------------------------------------------------------
+# A. Caddy and the mock server share a Docker network
+#    (compose.yaml: `ports:` removed, `networks: [caddy]` uncommented)
+# ---------------------------------------------------------------------------
+speakr-demo.example.com {
+	encode zstd gzip
+
+	reverse_proxy speakr-mock:8420 {
+		# GET / needs no token and returns the service banner — use it as the
+		# upstream health probe so Caddy backs off while the container re-seeds.
+		health_uri /
+		health_interval 30s
+		health_timeout 5s
+	}
+}
+
+# ---------------------------------------------------------------------------
+# B. Caddy runs on the host, container publishes 8420
+#    (compose.yaml defaults — no edits needed there)
+# ---------------------------------------------------------------------------
+# speakr-demo.example.com {
+# 	encode zstd gzip
+#
+# 	reverse_proxy 127.0.0.1:8420 {
+# 		health_uri /
+# 		health_interval 30s
+# 		health_timeout 5s
+# 	}
+# }
+
+# ---------------------------------------------------------------------------
+# Optional: the mock accepts *any* non-empty token, so the endpoint is public
+# to anyone who guesses the hostname. It serves nothing but invented data, but
+# if you would rather not have it indexed:
+#
+# 	header {
+# 		X-Robots-Tag "noindex, nofollow"
+# 	}
+#
+# Do NOT add basic auth or an IP allowlist — the Play reviewer has to reach it
+# with nothing but the URL and the demo token.

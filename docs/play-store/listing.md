@@ -61,7 +61,7 @@ WHAT YOU CAN DO
 • Watch transcription progress with live status badges: Pending → Processing →
   Summarizing → Completed.
 • Read the results: a Markdown AI summary, a speaker-attributed transcript, and
-  a metadata tab — all in one detail view.
+  a chat tab for asking questions about the recording — all in one detail view.
 • Review and rename speakers, with autocomplete from your global speaker list
   and per-segment suggestions.
 

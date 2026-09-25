@@ -304,15 +304,19 @@ becomes available.
   apps' audio draws extra scrutiny). The ready-to-paste Console copy is in
   [`play-store/permissions-declaration.md`](play-store/permissions-declaration.md);
   the raw inventory is `android/app/src/main/AndroidManifest.xml`.
-- **Play reviewer access, decided 2026-09-22.** The reviewer cannot supply a
-  Speakr server, so `tools/mock-server` is run locally behind a temporary
-  `cloudflared tunnel --url http://localhost:8420` quick tunnel for the review
-  window, and torn down after approval. The reviewer gets the
-  `trycloudflare.com` URL plus the demo token `speakr-demo-token`. **Known
-  weakness:** a quick-tunnel hostname is randomly regenerated on every restart,
-  so if the tunnel drops mid-review the App access field must be edited with the
-  new URL — a dead URL fails the review outright. Steps, paste text and the risk
-  in full: [`play-store/SUBMISSION-RUNBOOK.md`](play-store/SUBMISSION-RUNBOOK.md)
+- **Play reviewer access, decided 2026-09-22, revised 2026-09-25.** The reviewer
+  cannot supply a Speakr server, so `tools/mock-server` is published as a
+  permanently hosted demo endpoint at `https://speakr-demo.renescott.dk` with the
+  demo token `speakr-demo-token`. It runs as a Docker container on an Oracle
+  arm64 (Ampere A1) VPS, created via Dockhand and fronted by Caddy with a
+  Let's Encrypt certificate; container assets live in `tools/mock-server/`
+  (`Dockerfile`, `compose.yaml`, `Caddyfile.example`, `bin/healthcheck.dart`).
+  The original plan — a temporary `cloudflared` quick tunnel — was **abandoned**:
+  a quick-tunnel hostname is regenerated on every restart, the process did not
+  survive, and a dead URL fails the review outright. The hosted endpoint has a
+  stable hostname, needs no re-pasting between reviews, and is not torn down
+  after approval. Ongoing upkeep is Caddy certificate renewal. Steps, paste text
+  and verification: [`play-store/SUBMISSION-RUNBOOK.md`](play-store/SUBMISSION-RUNBOOK.md)
   §2. The reviewer-runs-it-themselves alternative is retained only as a fallback
   (runbook Appendix A) and is not submitted.
 - **Permission audit, 2026-09-22 (follow-up to the SAF migration).** Every

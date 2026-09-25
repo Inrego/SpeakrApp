@@ -79,6 +79,9 @@ dart compile exe tools/mock-server/bin/speakr_mock_server.dart \
 Put it behind a TLS-terminating reverse proxy (Caddy, nginx, Cloudflare Tunnel)
 and give the reviewer the `https://` URL plus the demo token.
 
+For a permanent endpoint rather than a shell you have to keep open, see
+**[Running it in Docker](#running-it-in-docker)** below.
+
 ---
 
 ## What it serves
@@ -114,6 +117,7 @@ which the router accepts:
 
 | Method | Path | Notes |
 | --- | --- | --- |
+| `GET` | `/` | **Unauthenticated.** Service banner — the container `HEALTHCHECK` and Caddy's upstream probe |
 | `GET` | `/stats?scope=user` | Also the onboarding reachability probe |
 | `GET` | `/config` | Root-API. Transcription models + connector capability flags |
 | `GET` | `/recordings` | `page`, `per_page`, `status`, `sort_by`, `sort_order`, `tag_id`, `folder_id`, `q` |
@@ -184,3 +188,109 @@ curl -s -o /dev/null -w '%{http_code} %{content_type} %{size_download}\n' \
   -H "$T" localhost:8420/api/v1/recordings/101/audio
 curl -s -o /dev/null -w '%{http_code}\n' localhost:8420/api/v1/stats   # 401
 ```
+
+---
+
+## Running it in Docker
+
+The quick-tunnel approach works but dies with the terminal that started it. For
+the Play reviewer the endpoint has to still be there next week, so the server
+also ships as a container you can park on a home server behind Caddy.
+
+Four files, all in this directory:
+
+| File | Purpose |
+| --- | --- |
+| `Dockerfile` | Two-stage build: `dart:stable` compiles, `scratch` runs |
+| `.dockerignore` | Keeps everything but `bin/*.dart` out of the build context |
+| `compose.yaml` | One service, `restart: unless-stopped`, healthchecked |
+| `Caddyfile.example` | Reverse-proxy snippet — **edit the hostname** |
+
+`bin/healthcheck.dart` compiles to a second small binary alongside the server.
+It exists only because the runtime image is `FROM scratch`: there is no shell,
+no `curl` and no `wget` for `HEALTHCHECK` to call, so the probe is a Dart
+binary that hits `GET /` and exits non-zero on anything but a 200 banner.
+
+### Build and run
+
+The build context is **this directory**, not the repo root:
+
+```bash
+cd tools/mock-server
+
+docker build -t speakr-mock-server .
+docker run -d --name speakr-mock -p 8420:8420 speakr-mock-server
+
+# or, the way you'd actually deploy it
+docker compose up -d --build
+docker compose logs -f
+```
+
+Building from the repo root would pull the Flutter package's `pubspec.yaml`
+into scope and `dart compile exe` would fail on its build hooks. The mock
+server itself has no `pubspec.yaml` and needs none — it imports nothing but
+`dart:*` and its own `seed.dart`.
+
+Change the published host port with `SPEAKR_MOCK_HOST_PORT` (the port *inside*
+the container stays 8420 so the healthcheck and the Caddy snippets stay true):
+
+```bash
+SPEAKR_MOCK_HOST_PORT=18420 docker compose up -d
+```
+
+### Health-check it
+
+`GET /` is unauthenticated on purpose and returns a small banner — it is what
+the container's `HEALTHCHECK`, Caddy's upstream probe and you all use:
+
+```bash
+curl -s localhost:8420/
+# {"service":"speakr-mock-server","recordings":6}
+
+docker inspect --format '{{.State.Health.Status}}' speakr-mock
+# healthy
+```
+
+Then the real smoke test, which needs the token:
+
+```bash
+curl -s -H 'X-API-Token: speakr-demo-token' localhost:8420/api/v1/recordings
+curl -s -o /dev/null -w '%{http_code}\n' localhost:8420/api/v1/recordings  # 401
+```
+
+### Behind Caddy
+
+Copy the relevant block out of `Caddyfile.example` into your Caddyfile. The
+only line you must change is the hostname — `speakr-demo.example.com` — which
+has to resolve to the box Caddy runs on. Caddy handles the certificate, so the
+reviewer gets an `https://` URL and the app never needs cleartext.
+
+Two shapes, both covered in the example file:
+
+- **Caddy in Docker.** Drop the `ports:` block from `compose.yaml`, uncomment
+  the `networks:` blocks so the service joins Caddy's existing external
+  network, and proxy to `speakr-mock:8420`. Nothing is exposed on the host.
+- **Caddy on the host.** Leave `compose.yaml` as shipped and proxy to
+  `127.0.0.1:8420`.
+
+Don't put basic auth or an IP allowlist in front of it. The reviewer gets the
+URL and the token and nothing else; anything more is a reason for the review to
+fail. There is nothing to protect — every byte it serves is invented.
+
+### What to hand the reviewer
+
+Play Console → App content → *App access* wants two things:
+
+| | |
+| --- | --- |
+| **Server URL** | `https://speakr-demo.example.com` (your hostname) |
+| **API Token** | `speakr-demo-token` |
+
+### State, and why that's fine
+
+The container holds all state in memory, exactly as the bare process does.
+`docker restart`, a host reboot or a redeploy re-seeds the same six recordings,
+five tags, two folders and four speakers. A reviewer can rename, delete or
+upload anything and the next restart puts it back — which is the behaviour you
+want for a demo endpoint that nobody is watching. There is no volume to mount
+and nothing to back up; `read_only: true` in `compose.yaml` makes that explicit.
