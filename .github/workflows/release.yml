@@ -151,8 +151,8 @@ jobs:
       - name: Stage Android artifacts
         run: |
           mkdir -p dist
-          cp build/app/outputs/bundle/release/app-release.aab "dist/Speakr-$VERSION.aab"
-          cp build/app/outputs/flutter-apk/app-release.apk "dist/Speakr-$VERSION.apk"
+          cp build/app/outputs/bundle/release/app-release.aab "dist/MinutesForSpeakr-$VERSION.aab"
+          cp build/app/outputs/flutter-apk/app-release.apk "dist/MinutesForSpeakr-$VERSION.apk"
 
       - name: Upload Android artifacts
         uses: actions/upload-artifact@v4
@@ -208,10 +208,10 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path dist | Out-Null
-          # Installer is emitted next to the .iss (OutputBaseFilename = Speakr-Setup-<version>).
-          Copy-Item "windows\installer\Output\Speakr-Setup-$env:VERSION.exe" "dist\Speakr-Setup-$env:VERSION.exe"
+          # Installer is emitted next to the .iss (OutputBaseFilename = MinutesForSpeakr-Setup-<version>).
+          Copy-Item "windows\installer\Output\MinutesForSpeakr-Setup-$env:VERSION.exe" "dist\MinutesForSpeakr-Setup-$env:VERSION.exe"
           # Portable zip = contents of the Release runner folder.
-          Compress-Archive -Path "build\windows\x64\runner\Release\*" -DestinationPath "dist\Speakr-$env:VERSION-windows-x64.zip" -Force
+          Compress-Archive -Path "build\windows\x64\runner\Release\*" -DestinationPath "dist\MinutesForSpeakr-$env:VERSION-windows-x64.zip" -Force
 
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
@@ -235,14 +235,38 @@ jobs:
         with:
           path: artifacts
 
+      # The Windows builds are unsigned (docs/RELEASE_READINESS.md item (g)),
+      # so publish SHA-256 checksums for users to verify downloads against.
+      - name: Compute checksums and release notes
+        shell: bash
+        run: |
+          (cd artifacts && sha256sum android/* windows/* | sed -E 's#^([0-9a-f]+) [ *](android|windows)/#\1  #') > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+          {
+            echo "## Downloads"
+            echo
+            echo "- **Android:** \`.apk\` for direct install (the \`.aab\` is the Play Store bundle)."
+            echo "- **Windows:** \`MinutesForSpeakr-Setup-<version>.exe\` installer, or the portable \`-windows-x64.zip\`."
+            echo
+            echo "> The Windows builds are **unsigned**. SmartScreen may show \"Windows protected your PC\" on first run — choose **More info → Run anyway**."
+            echo
+            echo "## SHA-256 checksums"
+            echo
+            echo '```'
+            cat SHA256SUMS.txt
+            echo '```'
+          } > release-notes.md
+
       - name: Create / update GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
-          name: Speakr v${{ needs.version.outputs.version }}
+          name: Minutes for Speakr v${{ needs.version.outputs.version }}
+          body_path: release-notes.md
           draft: false
           prerelease: false
           fail_on_unmatched_files: true
           files: |
             artifacts/android/*
             artifacts/windows/*
+            SHA256SUMS.txt

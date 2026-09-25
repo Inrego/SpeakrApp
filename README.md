@@ -47,8 +47,8 @@ Prebuilt artifacts for tagged versions are published on the [GitHub Releases](ht
 
 The desktop app ships in two forms on each release:
 
-- **Installer** — `Speakr-Setup-<version>.exe` (Inno Setup). Recommended for most users; adds Start Menu entries and handles upgrades.
-- **Portable zip** — `Speakr-<version>-windows-x64.zip`. Unzip anywhere and run `speakr_app.exe`; no install required.
+- **Installer** — `MinutesForSpeakr-Setup-<version>.exe` (Inno Setup). Recommended for most users; adds Start Menu entries and handles upgrades.
+- **Portable zip** — `MinutesForSpeakr-<version>-windows-x64.zip`. Unzip anywhere and run `speakr_app.exe`; no install required.
 
 > **Note:** the Windows builds are **unsigned**. Windows SmartScreen may show a "Windows protected your PC" warning the first time you run the installer or executable. Choose **More info → Run anyway** to proceed. This is expected for an unsigned community build.
 
