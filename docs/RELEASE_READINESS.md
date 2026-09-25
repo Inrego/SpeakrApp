@@ -268,8 +268,8 @@ signing secrets is empty/unset). Keystore backup remains a manual task.
 
 ## (g) Windows build is unsigned (SmartScreen) — MEDIUM
 
-**What:** The Windows installer (`Speakr-Setup-<version>.exe`) and portable zip
-(`Speakr-<version>-windows-x64.zip`) are **not code-signed**. Windows SmartScreen
+**What:** The Windows installer (`MinutesForSpeakr-Setup-<version>.exe`) and portable zip
+(`MinutesForSpeakr-<version>-windows-x64.zip`) are **not code-signed**. Windows SmartScreen
 will show an "unrecognized app / unknown publisher" warning on first run, and some
 browsers/AV may quarantine the download.
 
@@ -289,6 +289,10 @@ browsers/AV may quarantine the download.
 the artifact's SHA-256 so users can verify the download. Do **not** attempt signing
 (no certificate is in scope). Revisit later if an EV/OV code-signing certificate
 becomes available.
+
+**Status (2026-09-25):** mitigations in place, signing still out of scope. The README
+documents the click-through, and `release.yml` publishes `SHA256SUMS.txt` plus a
+release body carrying the SmartScreen note and the checksums.
 
 ---
 

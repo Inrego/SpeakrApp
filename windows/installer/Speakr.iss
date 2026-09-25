@@ -1,4 +1,4 @@
-; Speakr - Inno Setup installer script
+; Minutes for Speakr - Inno Setup installer script
 ;
 ; Packages the output of `flutter build windows --release`
 ; (build\windows\x64\runner\Release\) into a Windows installer.
@@ -30,8 +30,8 @@ AppPublisher={#MyAppPublisher}
 AppPublisherURL={#MyAppURL}
 AppSupportURL={#MyAppURL}
 AppUpdatesURL={#MyAppURL}
-DefaultDirName={autopf}\Speakr
-DefaultGroupName=Speakr
+DefaultDirName={autopf}\{#MyAppName}
+DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
 ; Windows 10 (1809) and newer; Flutter Windows is x64-only.
 MinVersion=10.0.17763
@@ -41,7 +41,7 @@ MinVersion=10.0.17763
 ; `choco install innosetup` step only runs as a fallback when iscc is absent.)
 ArchitecturesAllowed=x64
 ArchitecturesInstallIn64BitMode=x64
-OutputBaseFilename=Speakr-Setup-{#MyAppVersion}
+OutputBaseFilename=MinutesForSpeakr-Setup-{#MyAppVersion}
 SetupIconFile=..\runner\resources\app_icon.ico
 UninstallDisplayIcon={app}\{#MyAppExeName}
 UninstallDisplayName={#MyAppName}

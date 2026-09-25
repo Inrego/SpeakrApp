@@ -2,7 +2,7 @@
 
 `Speakr.iss` is an [Inno Setup](https://jrsoftware.org/isinfo.php) script that
 packages the output of `flutter build windows --release` into a Windows
-installer named `Speakr-Setup-<version>.exe`.
+installer named `MinutesForSpeakr-Setup-<version>.exe`.
 
 ## What it packages
 
@@ -15,8 +15,8 @@ build\windows\x64\runner\Release\
   data\                (icudtl.dat, flutter_assets\, app.so)
 ```
 
-Everything in that directory is installed under `{autopf}\Speakr`
-(e.g. `C:\Program Files\Speakr`). The installer adds a Start Menu shortcut,
+Everything in that directory is installed under `{autopf}\Minutes for Speakr`
+(e.g. `C:\Program Files\Minutes for Speakr`). The installer adds a Start Menu shortcut,
 an optional desktop icon, and a standard uninstaller.
 
 ## Prerequisites
@@ -44,9 +44,9 @@ iscc /DMyAppVersion=X.Y.Z windows\installer\Speakr.iss
 `--build-name`). When `/DMyAppVersion` is omitted, the script falls back to a
 `0.0.0` placeholder.
 
-The compiled installer is written to `windows\installer\Output\Speakr-Setup-X.Y.Z.exe`.
+The compiled installer is written to `windows\installer\Output\MinutesForSpeakr-Setup-X.Y.Z.exe`.
 CI uploads it to the GitHub Release alongside the portable
-`Speakr-<version>-windows-x64.zip`.
+`MinutesForSpeakr-<version>-windows-x64.zip`.
 
 ## Unsigned build
 

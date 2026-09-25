@@ -909,7 +909,7 @@ Console read the manifest, which is what unlocks the ⏳ items.
 
 | Item | Value |
 | --- | --- |
-| Bundle | the `.aab` from the release workflow (`dist/Speakr-<version>.aab`) |
+| Bundle | the `.aab` from the release workflow (`dist/MinutesForSpeakr-<version>.aab`) |
 | `versionCode` | GitHub Actions run number — must be strictly higher than any previous upload |
 | Universal APK | **do not upload** — it is for direct GitHub download only |
 
