@@ -15,8 +15,11 @@ import '../../features/live/recording_state.dart';
 import '../../features/live/widgets/discard_sheet.dart';
 import '../../features/live/widgets/recording_widgets.dart'
     show PillSourceCard, PillSourceOption;
+import '../../services/preferences/time_format_preference.dart';
+import '../../services/preferences/time_format_providers.dart';
 import '../../theme/colors.dart';
 import '../../theme/typography.dart';
+import '../../utils/formatters.dart';
 import '../../widgets/speakr_icons.dart';
 import '../shell/desktop_shortcuts.dart';
 
@@ -483,7 +486,7 @@ class _BigTimer extends StatelessWidget {
   }
 }
 
-class _StartedLine extends StatelessWidget {
+class _StartedLine extends ConsumerWidget {
   const _StartedLine({
     required this.elapsedSeconds,
     required this.mic,
@@ -496,7 +499,7 @@ class _StartedLine extends StatelessWidget {
   final String? processSourceName;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final String sysLabel;
     switch (systemMode) {
       case SystemAudioMode.off:
@@ -514,11 +517,12 @@ class _StartedLine extends StatelessWidget {
         ? '$sysLabel only'
         : 'No source';
     final startedAt = DateTime.now().subtract(Duration(seconds: elapsedSeconds));
-    final hour24 = startedAt.hour;
-    final hour12 = ((hour24 + 11) % 12) + 1;
-    final period = hour24 >= 12 ? 'PM' : 'AM';
-    final minute = startedAt.minute.toString().padLeft(2, '0');
-    final timeStr = '$hour12:$minute $period';
+    final pref = ref.watch(timeFormatPreferenceProvider).asData?.value
+        ?? TimeFormatPreference.system;
+    final timeStr = formatHourMinute(
+      startedAt,
+      use24Hour: resolveUse24Hour(pref, context),
+    ).toUpperCase();
     return Text(
       'STARTED $timeStr   ·   ${src.toUpperCase()}',
       style: SpeakrText.mono(
